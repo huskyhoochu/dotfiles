@@ -1,0 +1,32 @@
+import = [
+  "~/.config/alacritty/themes/themes/tokyo-night-storm.toml"
+]
+
+[env]
+TERM = "xterm-256color"
+
+[bell]
+animation = "EaseOutExpo"
+duration = 0
+
+[window]
+padding.x = 10
+padding.y = 10
+
+opacity = 0.9
+blur = true
+
+[font]
+normal.family = "BlexMono Nerd Font Mono"
+size = 18
+normal.style = "Italic"
+
+[cursor]
+blink_interval = 500
+blink_timeout = 5
+unfocused_hollow = false
+
+[cursor.style]
+blinking = "On"
+shape = "Block"
+
