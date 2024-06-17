@@ -1,0 +1,11 @@
+[user]
+email = dfg1499@gmail.com
+name = huskyhoochu
+
+[init]
+defaultBranch = main
+
+[core]
+eol = lf
+autocrlf = input
+
