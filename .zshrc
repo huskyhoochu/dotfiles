@@ -69,7 +69,8 @@ export FZF_DEFAULT_OPTS=" \
 --color=marker:#f2d5cf,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284"
 
 # Aliases
-alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user $realpath'
+alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
+alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
 alias bat='bat -n --color=always --line-range :500'
 
 # Shell integrations
