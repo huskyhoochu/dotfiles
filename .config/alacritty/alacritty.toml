@@ -10,10 +10,8 @@ animation = "EaseOutExpo"
 duration = 0
 
 [window]
-padding.x = 10
-padding.y = 10
-
-opacity = 0.9
+decorations = "Full"
+opacity = 0.8
 blur = true
 
 [font]
@@ -27,6 +25,9 @@ blink_timeout = 5
 unfocused_hollow = false
 
 [cursor.style]
-blinking = "On"
+blinking = "Always"
 shape = "Block"
+
+[terminal]
+osc52 = "CopyPaste"
 
