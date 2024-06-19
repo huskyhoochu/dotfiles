@@ -59,8 +59,8 @@ zstyle ':fzf-tab:*' switch-group '<' '>'
 
 # fd
 # https://github.com/sharkdp/fd
-export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+#export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
+#export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 # fzf-catppuccin
 # https://github.com/catppuccin/fzf
 export FZF_DEFAULT_OPTS=" \
@@ -70,7 +70,7 @@ export FZF_DEFAULT_OPTS=" \
 
 # Aliases
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user $realpath'
-alias view='bat -n --color=always --line-range :500'
+alias bat='bat -n --color=always --line-range :500'
 
 # Shell integrations
 # fzf
