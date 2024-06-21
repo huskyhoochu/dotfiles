@@ -43,6 +43,8 @@ setopt hist_find_no_dups
 
 # Completion styling
 #
+# ignore Capitalized character
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 # disable sort when completing `git checkout`
 zstyle ':completion:*:git-checkout:*' sort false
 # set descriptions format to enable group support
@@ -77,3 +79,18 @@ alias bat='bat -n --color=always --line-range :500'
 # fzf
 eval "$(fzf --zsh)"
 
+# fnm
+FNM_PATH="/home/funes/.local/share/fnm"
+if [ -d "$FNM_PATH" ]; then
+  export PATH="/home/funes/.local/share/fnm:$PATH"
+  eval "`fnm env`"
+fi
+
+
+# pnpm
+export PNPM_HOME="/home/funes/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
