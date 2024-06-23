@@ -1,2 +1,5 @@
 .config/alacritty/alacritty-theme/
 .config/bat/themes/
+.config/tmux/plugins/
+.fonts/
+

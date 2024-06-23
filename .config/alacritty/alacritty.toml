@@ -2,9 +2,6 @@ import = [
   "~/.config/alacritty/themes/themes/catppuccin_frappe.toml"
 ]
 
-[env]
-TERM = "xterm-256color"
-
 [bell]
 animation = "EaseOutExpo"
 duration = 0
