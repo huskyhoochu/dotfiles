@@ -95,3 +95,9 @@ case ":$PATH:" in
 esac
 # pnpm end
 
+### Import another zshrc config by env
+
+if [[ "$(uname)" == 'Darwin' ]]; then
+  source ~/.zshrc_stunning
+fi
+

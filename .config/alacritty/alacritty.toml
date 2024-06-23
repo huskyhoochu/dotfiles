@@ -8,8 +8,7 @@ duration = 0
 
 [window]
 decorations = "Buttonless"
-opacity = 0.4
-blur = true
+opacity = 0.8
 
 [font]
 normal.family = "BlexMono Nerd Font Mono"
