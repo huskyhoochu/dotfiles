@@ -7,8 +7,8 @@ animation = "EaseOutExpo"
 duration = 0
 
 [window]
-decorations = "Full"
-opacity = 0.8
+decorations = "Buttonless"
+opacity = 0.4
 blur = true
 
 [font]
@@ -22,7 +22,6 @@ blink_timeout = 5
 unfocused_hollow = false
 
 [cursor.style]
-blinking = "Always"
 shape = "Block"
 
 [terminal]

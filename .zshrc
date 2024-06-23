@@ -80,7 +80,7 @@ alias bat='bat -n --color=always --line-range :500'
 eval "$(fzf --zsh)"
 
 # fnm
-FNM_PATH="/home/funes/.local/share/fnm"
+FNM_PATH="$HOME/.local/share/fnm"
 if [ -d "$FNM_PATH" ]; then
   export PATH="/home/funes/.local/share/fnm:$PATH"
   eval "`fnm env`"
@@ -88,9 +88,10 @@ fi
 
 
 # pnpm
-export PNPM_HOME="/home/funes/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
