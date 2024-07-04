@@ -9,10 +9,12 @@ duration = 0
 [window]
 decorations = "Buttonless"
 opacity = 0.8
+padding.x = 8
+padding.y = 8
 
 [font]
 normal.family = "BlexMono Nerd Font Mono"
-size = 18
+size = 14
 normal.style = "Italic"
 
 [cursor]
