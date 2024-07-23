@@ -1,5 +1,6 @@
 .config/alacritty/alacritty-theme/
 .config/bat/themes/
 .config/tmux/plugins/
+.config/nvim/lazy-lock.json
 .fonts/
 
