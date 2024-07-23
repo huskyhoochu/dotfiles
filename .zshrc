@@ -74,6 +74,7 @@ export FZF_DEFAULT_OPTS=" \
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
 alias bat='bat -n --color=always --line-range :500'
+alias clean_cache='sudo ./delete_cache.sh'
 
 # Shell integrations
 # fzf
