@@ -44,6 +44,20 @@ print_color "Installing flatpak..."
 pacman -S --noconfirm flatpak
 check_success "Flatpak installation"
 
+# Add Flathub repository
+print_color "Adding Flathub repository..."
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+check_success "Adding Flathub repository"
+
+# Install Flatpak applications
+print_color "Installing Flatpak applications..."
+flatpak install flathub -y \
+  com.github.GradienceTeam.Gradience \
+  com.mattjakeman.ExtensionManager \
+  org.gnome.FontManager \
+  app.drey.Damask
+check_success "Flatpak applications installation"
+
 # Install yay
 print_color "Installing yay..."
 pacman -S --needed --noconfirm git base-devel
