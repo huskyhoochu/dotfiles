@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Arch Linux Cache Cleaner Script with Disk Usage Logging
+# Arch Linux and Flatpak Cache Cleaner Script
 
 # Check if script is run as root
 if [ "$EUID" -ne 0 ]; then
@@ -24,7 +24,7 @@ log_disk_usage_change() {
   echo ""
 }
 
-echo "Arch Linux 캐시 정리를 시작합니다..."
+echo "Arch Linux 및 Flatpak 캐시 정리를 시작합니다..."
 
 # Initial disk usage
 initial_usage=$(get_disk_usage)
@@ -63,6 +63,18 @@ before_journal=$(get_disk_usage)
 journalctl --vacuum-time=1week
 after_journal=$(get_disk_usage)
 log_disk_usage_change $before_journal $after_journal "저널 로그 정리"
+
+# 5. Flatpak 캐시 정리
+if command -v flatpak &>/dev/null; then
+  echo "Flatpak 캐시를 정리 중..."
+  before_flatpak=$(get_disk_usage)
+  flatpak uninstall --unused -y
+  flatpak repair
+  after_flatpak=$(get_disk_usage)
+  log_disk_usage_change $before_flatpak $after_flatpak "Flatpak 캐시 정리"
+else
+  echo "Flatpak이 설치되어 있지 않습니다. Flatpak 캐시 정리를 건너뜁니다."
+fi
 
 # Final disk usage
 final_usage=$(get_disk_usage)

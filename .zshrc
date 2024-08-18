@@ -87,6 +87,8 @@ if [ -d "$FNM_PATH" ]; then
   eval "`fnm env`"
 fi
 
+# golang
+export PATH=$HOME/go/bin:$PATH
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
