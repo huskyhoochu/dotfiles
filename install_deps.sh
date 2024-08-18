@@ -9,11 +9,22 @@ sudo pacman -S flatpak
 # yay
 sudo pacman -S --needed git base-devel && git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si
 
+### locales ###
+
+# noto fonts
+yay -S noto-fonts-cjk --noconfirm
+
+# ibus
+yay -S ibus ibus-hangul
+
 # nerd fonts
 yay -S ttf-ibmplex-mono-nerd --noconfirm
 
+### shell ###
+
 # zsh
 yay -S zsh --noconfirm
+chsh -s $(which zsh)
 
 # oh-my-posh
 yay -S oh-my-posh --noconfirm
@@ -45,8 +56,27 @@ yay -S rofi --noconfirm
 # stow
 yay -S stow --noconfirm
 
+### ssh ###
+ssh-keygen -t ed25519 -C "dfg1499@gmail.com"
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+
+### languages ###
+
 # golang
 yay -S go --noconfirm
+
+# fnm
+curl -fsSL https://fnm.vercel.app/install | bash
+
+# sdkman
+curl -s "https://get.sdkman.io" | bash
+
+# pyenv
+sudo pacman -S --needed base-devel openssl zlib xz tk
+curl https://pyenv.run | bash
+
+### applications ###
 
 # firefox
 yay -S firefox-developer-edition --noconfirm
