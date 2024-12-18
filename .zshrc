@@ -74,5 +74,9 @@ alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize -
 # fzf
 eval "$(fzf --zsh)"
 
-# fnm 
-eval "$(fnm env --use-on-cd --shell zsh)"
+# fnm
+FNM_PATH="$HOME/.local/share/fnm"
+if [ -d "$FNM_PATH" ]; then
+  export PATH="$HOME/.local/share/fnm:$PATH"
+  eval "`fnm env --use-on-cd --shell zsh`"
+fi
