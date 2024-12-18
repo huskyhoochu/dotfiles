@@ -17,6 +17,7 @@ neovim
 oh-my-posh
 ripgrep
 spicetify-cli
+stow
 tig
 wget
 
