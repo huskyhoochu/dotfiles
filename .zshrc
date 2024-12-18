@@ -1,10 +1,6 @@
-# Alacritty
-# https://github.com/alacritty/alacritty/blob/master/INSTALL.md#zsh
-fpath+=${ZDOTDIR:-~}/.zsh_functions
-
 # Oh My Posh
 # https://ohmyposh.dev/docs/installation/prompt
-eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/catppuccin_frappe.omp.json')"
+eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/amro.omp.json')"
 
 # Zinit
 # https://github.com/zdharma-continuum/zinit
@@ -42,7 +38,9 @@ setopt hist_save_no_dups
 setopt hist_find_no_dups
 
 # Completion styling
-#
+# To make fzf-tab follow FZF_DEFAULT_OPTS.
+# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
+zstyle ':fzf-tab:*' use-fzf-default-opts yes
 # ignore Capitalized character
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 # disable sort when completing `git checkout`
@@ -59,48 +57,22 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza --tree --level=2 --color=always
 # switch group using `<` and `>`
 zstyle ':fzf-tab:*' switch-group '<' '>'
 
-# fd
-# https://github.com/sharkdp/fd
-#export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
-#export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 # fzf-catppuccin
 # https://github.com/catppuccin/fzf
 export FZF_DEFAULT_OPTS=" \
---color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284 \
---color=fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf \
---color=marker:#f2d5cf,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284"
+--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+--color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+--color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
+--color=selected-bg:#45475a \
+--multi"
 
 # Aliases
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
-alias bat='bat -n --color=always --line-range :500'
-alias clean_cache='sudo ./delete_cache.sh'
 
 # Shell integrations
 # fzf
 eval "$(fzf --zsh)"
 
-# fnm
-FNM_PATH="$HOME/.local/share/fnm"
-if [ -d "$FNM_PATH" ]; then
-  export PATH="/home/funes/.local/share/fnm:$PATH"
-  eval "`fnm env`"
-fi
-
-# golang
-export PATH=$HOME/go/bin:$PATH
-
-# pnpm
-export PNPM_HOME="$HOME/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
-
-### Import another zshrc config by env
-
-if [[ "$(uname)" == 'Darwin' ]]; then
-  source ~/.zshrc_stunning
-fi
-
+# fnm 
+eval "$(fnm env --use-on-cd --shell zsh)"

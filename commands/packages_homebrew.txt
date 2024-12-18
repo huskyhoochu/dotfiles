@@ -1,0 +1,45 @@
+# Homebrew 패키지 목록
+# 마지막 업데이트: 2024-12-18
+
+# Formula 섹션: CLI 도구 및 라이브러리
+formula:
+cmatrix
+eza
+fd
+fnm
+fzf
+jq
+lazygit
+lua
+luarocks
+neofetch
+neovim
+oh-my-posh
+ripgrep
+spicetify-cli
+tig
+wget
+
+# Cask 섹션: GUI 애플리케이션
+cask:
+1password
+beekeeper-studio
+chatgpt
+devtoys
+docker
+dropbox
+font-monofur-nerd-font
+imageoptim
+jordanbaird-ice
+karabiner-elements
+keka
+kekaexternalhelper
+kitty
+maccy
+notion
+obsidian
+postman
+raycast
+slack
+spotify
+visual-studio-code
