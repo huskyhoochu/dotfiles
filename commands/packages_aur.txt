@@ -1,6 +1,7 @@
 1password
 1password-cli
 base-devel
+cmatrix
 dmenu
 dropbox-cli
 eza
@@ -33,6 +34,7 @@ rofi
 spicetify-cli
 spotify
 stow
+tig
 tmux
 ttf-apple-emoji
 ttf-monofur-nerd
