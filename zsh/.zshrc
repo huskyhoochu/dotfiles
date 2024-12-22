@@ -79,3 +79,10 @@ if [ -d "$FNM_PATH" ]; then
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "`fnm env --use-on-cd --shell zsh`"
 fi
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# 1password ssh agent
+export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
