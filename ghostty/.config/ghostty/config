@@ -1,6 +1,7 @@
 theme = catppuccin-mocha
 font-family = "MonoFur Nerd Font"
 font-size = 20
-background-opacity = 0.5
-background-blur-radius = 20
+background-opacity = 0.75
+background-blur-radius = 40
 gtk-titlebar = false
+macos-titlebar-style = hidden

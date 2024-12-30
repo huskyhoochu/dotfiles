@@ -30,6 +30,7 @@ devtoys
 docker
 dropbox
 font-monofur-nerd-font
+ghostty
 imageoptim
 jordanbaird-ice
 karabiner-elements
