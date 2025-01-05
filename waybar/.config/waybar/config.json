@@ -1,0 +1,42 @@
+{
+    "layer": "bottom",
+    "position": "bottom",
+    "height": 32,
+    "spacing": 4,
+    "modules-left": ["sway/workspaces", "sway/window"],
+    "modules-right": ["memory", "cpu", "network", "clock"],
+    
+    "sway/workspaces": {
+        "disable-scroll": true,
+        "all-outputs": true,
+        "format": "{name}"
+    },
+    
+    "sway/window": {
+        "max-length": 60,
+        "tooltip": false
+    },
+    
+    "clock": {
+        "format": "{:%Y-%m-%d %H:%M:%S}",
+        "tooltip": false,
+        "interval": 1
+    },
+    
+    "cpu": {
+        "format": "CPU {usage}%",
+        "interval": 2
+    },
+    
+    "memory": {
+        "format": "RAM {}%",
+        "interval": 2
+    },
+
+    "network": {
+        "format-wifi": "WIFI {essid}",
+        "format-ethernet": "ETH",
+        "format-disconnected": "Disconnected",
+        "tooltip": false
+    }
+}

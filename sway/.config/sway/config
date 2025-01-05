@@ -20,8 +20,7 @@ exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DE
 output * bg ~/.config/backgrounds/nice-blue-background.png fill
 
 # Waybar 실행 (polybar 대신 사용)
-exec_always killall waybar
-exec_always ~/.config/waybar/launch.sh
+exec_always waybar
 
 # 시스템 프로그램 실행
 # 1password와 dropbox는 XWayland를 통해 실행될 수 있습니다

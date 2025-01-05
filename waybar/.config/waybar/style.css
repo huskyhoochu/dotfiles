@@ -1,0 +1,103 @@
+/* Catppuccin Mocha 색상 정의 */
+@define-color base     #1e1e2e;
+@define-color mantle   #181825;
+@define-color crust    #11111b;
+@define-color text     #cdd6f4;
+@define-color subtext0 #a6adc8;
+@define-color subtext1 #bac2de;
+@define-color surface0 #313244;
+@define-color surface1 #45475a;
+@define-color surface2 #585b70;
+@define-color overlay0 #6c7086;
+@define-color overlay1 #7f849c;
+@define-color overlay2 #9399b2;
+@define-color blue     #89b4fa;
+@define-color lavender #b4befe;
+@define-color mauve    #cba6f7;
+@define-color red      #f38ba8;
+@define-color flamingo #f2cdcd;
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Monofur Nerd Font Mono";
+    font-size: 24px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: @base;
+    color: @text;
+}
+
+#workspaces button {
+    padding: 0 5px;
+    color: @text;
+}
+
+#workspaces button.active {
+    background-color: @mauve;
+    color: @crust;
+}
+
+#workspaces button.urgent {
+    background-color: @red;
+}
+
+#window,
+#pulseaudio,
+#battery,
+#cpu,
+#memory,
+#network,
+#clock {
+    padding: 0 10px;
+    color: @text;
+}
+
+#clock {
+    color: @mauve;
+}
+
+#battery {
+    color: @peach;
+}
+
+#battery.charging {
+    color: @green;
+}
+
+#battery.warning:not(.charging) {
+    color: @red;
+}
+
+#cpu {
+    color: @mauve;
+}
+
+#memory {
+    color: @mauve;
+}
+
+#network {
+    color: @flamingo;
+}
+
+#pulseaudio {
+    color: @mauve;
+}
+
+#pulseaudio.muted {
+    color: @overlay0;
+}
+
+/* 모듈 사이 구분선 */
+#clock,
+#battery,
+#cpu,
+#memory,
+#network,
+#pulseaudio {
+    border-left: 1px solid @flamingo;
+    margin: 0 4px;
+}
