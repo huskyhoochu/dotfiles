@@ -1,5 +1,4 @@
 1password
-1password-cli
 cmatrix
 dropbox-cli
 eza
@@ -16,6 +15,7 @@ ghostty-git
 google-chrome
 htop
 lazygit
+less
 luarocks
 mupdf
 neofetch
@@ -24,7 +24,6 @@ noto-fonts-cjk
 obsidian
 oh-my-posh
 ripgrep
-rofi
 spicetify-cli
 spotify
 stow
@@ -35,5 +34,8 @@ ttf-monofur-nerd
 ttf-nanum
 unzip
 vim
+waybar
 wget
+wl-clipboard
+wofi
 zsh
