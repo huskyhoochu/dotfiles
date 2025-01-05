@@ -1,0 +1,195 @@
+# Sway config file
+
+# i3 config file을 기반으로 하되, Sway에 맞게 수정된 설정입니다.
+# 기본적인 키 바인딩과 작동 방식은 i3와 유사하게 유지됩니다.
+
+# 모든 창에 대해 1픽셀 테두리 설정
+default_border pixel 1
+
+# mod 키 설정 (Windows 키)
+set $mod Mod4
+
+# 창 제목과 바에 사용될 폰트 설정
+font pango:Monofur Nerd Font 16
+
+# 자동 시작 프로그램 설정
+# XDG autostart는 Sway에서 다르게 처리됩니다
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway
+
+# 배경화면 설정 (feh 대신 Sway 내장 명령어 사용)
+output * bg ~/.config/backgrounds/nice-blue-background.png fill
+
+# Waybar 실행 (polybar 대신 사용)
+exec_always killall waybar
+exec_always ~/.config/waybar/launch.sh
+
+# 시스템 프로그램 실행
+# 1password와 dropbox는 XWayland를 통해 실행될 수 있습니다
+exec 1password --silent
+exec dropbox
+
+# fcitx5 설정 (Wayland 네이티브 지원)
+exec fcitx5 -d --replace
+
+# 화면 잠금 설정 (i3lock 대신 swaylock 사용)
+exec swaylock-effects --grace 5
+
+# 네트워크 관리자 설정
+exec nm-applet --indicator
+
+# 오디오 제어 설정 (PulseAudio)
+bindsym XF86AudioRaiseVolume exec pamixer -i 10
+bindsym XF86AudioLowerVolume exec pamixer -d 10
+bindsym XF86AudioMute exec pamixer -t
+bindsym XF86AudioMicMute exec pamixer --default-source -t
+
+# 창 드래그 설정
+floating_modifier $mod normal
+
+# 터미널 실행 (ghostty가 Wayland를 지원하는지 확인 필요)
+bindsym $mod+Return exec ghostty
+
+# 창 종료
+bindsym $mod+Shift+q kill
+
+# 프로그램 실행기 (rofi 대신 wofi 사용)
+bindsym $mod+d exec wofi --show drun
+
+# 포커스 이동
+bindsym $mod+j focus left
+bindsym $mod+k focus down
+bindsym $mod+l focus up
+bindsym $mod+semicolon focus right
+
+# 방향키로 포커스 이동
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# 창 이동
+bindsym $mod+Shift+j move left
+bindsym $mod+Shift+k move down
+bindsym $mod+Shift+l move up
+bindsym $mod+Shift+semicolon move right
+
+# 방향키로 창 이동
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# 수평/수직 분할
+bindsym $mod+h splith
+bindsym $mod+v splitv
+
+# 전체화면 전환
+bindsym $mod+f fullscreen
+
+# 컨테이너 레이아웃 변경
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+
+# 플로팅 모드 전환
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+
+# 부모 컨테이너로 포커스
+bindsym $mod+a focus parent
+
+# 작업 공간 정의
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+set $ws10 "10"
+
+# 작업 공간 전환
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
+bindsym $mod+9 workspace number $ws9
+bindsym $mod+0 workspace number $ws10
+
+# 창을 작업 공간으로 이동
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+bindsym $mod+Shift+8 move container to workspace number $ws8
+bindsym $mod+Shift+9 move container to workspace number $ws9
+bindsym $mod+Shift+0 move container to workspace number $ws10
+
+# Sway 설정 리로드
+bindsym $mod+Shift+c reload
+
+# Sway 종료
+bindsym $mod+Shift+e exec swaynag -t warning -m '정말 Sway를 종료하시겠습니까?' -B '예' 'swaymsg exit'
+
+# 리사이즈 모드
+mode "resize" {
+    bindsym j resize shrink width 10px
+    bindsym k resize grow height 10px
+    bindsym l resize shrink height 10px
+    bindsym semicolon resize grow width 10px
+
+    bindsym Left resize shrink width 10px
+    bindsym Down resize grow height 10px
+    bindsym Up resize shrink height 10px
+    bindsym Right resize grow width 10px
+
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+    bindsym $mod+r mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# Catppuccin 테마 색상
+set $rosewater #f5e0dc
+set $flamingo  #f2cdcd
+set $pink      #f5c2e7
+set $mauve     #cba6f7
+set $red       #f38ba8
+set $maroon    #eba0ac
+set $peach     #fab387
+set $yellow    #f9e2af
+set $green     #a6e3a1
+set $teal      #94e2d5
+set $sky       #89dceb
+set $sapphire  #74c7ec
+set $blue      #89b4fa
+set $lavender  #b4befe
+set $text      #cdd6f4
+set $subtext1  #bac2de
+set $subtext0  #a6adc8
+set $overlay2  #9399b2
+set $overlay1  #7f849c
+set $overlay0  #6c7086
+set $surface2  #585b70
+set $surface1  #45475a
+set $surface0  #313244
+set $base      #1e1e2e
+set $mantle    #181825
+set $crust     #11111b
+
+# 창 색상 설정
+client.focused           $mantle   $mauve    $mantle    $rosewater $mauve
+client.focused_inactive  $overlay0 $base     $text      $rosewater $overlay0
+client.unfocused        $overlay0 $base     $text      $rosewater $overlay0
+client.urgent           $peach    $base     $peach     $overlay0  $peach
+client.placeholder      $overlay0 $base     $text      $overlay0  $overlay0
+client.background       $base
