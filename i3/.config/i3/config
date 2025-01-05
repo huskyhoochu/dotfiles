@@ -28,6 +28,10 @@ exec --no-startup-id feh --bg-scale ~/.config/backgrounds/nice-blue-background.p
 # kill any hanging polybar processes
 exec_always --no-startup-id  killall polybar
 exec_always --no-startup-id ~/.config/polybar/launch_polybar.sh
+# dropbox
+exec --no-startup-id dropbox
+# 1password
+exec --no-startup-id 1password --silent
 
 # fcitx5
 exec --no-startup-id fcitx5
