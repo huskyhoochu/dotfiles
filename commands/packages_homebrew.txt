@@ -15,11 +15,17 @@ luarocks
 neofetch
 neovim
 oh-my-posh
+pyenv
+pyenv-virtualenv
 ripgrep
+sketchybar
+skhd
 spicetify-cli
 stow
 tig
+tmux
 wget
+yabai
 
 # Cask 섹션: GUI 애플리케이션
 cask:
@@ -30,9 +36,10 @@ devtoys
 docker
 dropbox
 font-monofur-nerd-font
+font-sf-mono
+font-sketchybar-app-font
 ghostty
 imageoptim
-jordanbaird-ice
 karabiner-elements
 keka
 kekaexternalhelper
