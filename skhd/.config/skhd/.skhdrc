@@ -1,0 +1,70 @@
+# Spectacle 스타일의 단축키 설정을 위한 skhdrc
+# alt + cmd 조합을 기본으로 사용합니다
+
+# 전체 화면으로 창 확장
+alt + cmd - f : yabai -m window --grid 1:1:0:0:1:1
+
+# 왼쪽 절반
+alt + cmd - left : yabai -m window --grid 1:2:0:0:1:1
+
+# 오른쪽 절반
+alt + cmd - right : yabai -m window --grid 1:2:1:0:1:1
+
+# 상단 절반
+alt + cmd - up : yabai -m window --grid 2:1:0:0:1:1
+
+# 하단 절반
+alt + cmd - down : yabai -m window --grid 2:1:0:1:1:1
+
+# 좌상단 사분면
+ctrl + cmd - left : yabai -m window --grid 2:2:0:0:1:1
+
+# 우상단 사분면
+ctrl + cmd - right : yabai -m window --grid 2:2:1:0:1:1
+
+# 좌하단 사분면
+shift + ctrl + cmd - left : yabai -m window --grid 2:2:0:1:1:1
+
+# 우하단 사분면
+shift + ctrl + cmd - right : yabai -m window --grid 2:2:1:1:1:1
+
+# 중앙 배치
+alt + cmd - c : yabai -m window --grid 6:6:1:1:4:4
+
+# 다음/이전 디스플레이로 이동
+ctrl + alt + cmd - right : yabai -m window --display next || yabai -m window --display first
+ctrl + alt + cmd - left : yabai -m window --display prev || yabai -m window --display last
+
+# 창 크기 확대/축소 (Spectacle의 grow/shrink 기능)
+alt + cmd - = : yabai -m window --ratio rel:0.1
+alt + cmd - - : yabai -m window --ratio rel:-0.1
+
+# 워크스페이스 생성 및 삭제
+shift + alt - n : yabai -m space --create # 새로운 워크스페이스 생성
+shift + alt - d : yabai -m space --destroy # 현재 워크스페이스 삭제
+
+# 워크스페이스 이동 (1~9)
+alt - 1 : yabai -m space --focus 1 # 1번 워크스페이스로 이동
+alt - 2 : yabai -m space --focus 2 # 2번 워크스페이스로 이동
+alt - 3 : yabai -m space --focus 3
+alt - 4 : yabai -m space --focus 4
+alt - 5 : yabai -m space --focus 5
+alt - 6 : yabai -m space --focus 6
+alt - 7 : yabai -m space --focus 7
+alt - 8 : yabai -m space --focus 8
+alt - 9 : yabai -m space --focus 9
+
+# 현재 윈도우를 다른 워크스페이스로 이동
+shift + alt - 1 : yabai -m window --space 1 # 현재 창을 1번 워크스페이스로 이동
+shift + alt - 2 : yabai -m window --space 2
+shift + alt - 3 : yabai -m window --space 3
+shift + alt - 4 : yabai -m window --space 4
+shift + alt - 5 : yabai -m window --space 5
+shift + alt - 6 : yabai -m window --space 6
+shift + alt - 7 : yabai -m window --space 7
+shift + alt - 8 : yabai -m window --space 8
+shift + alt - 9 : yabai -m window --space 9
+
+# 워크스페이스를 다른 디스플레이로 이동
+ctrl + alt - 1 : yabai -m space --display 1 # 현재 워크스페이스를 첫 번째 디스플레이로
+ctrl + alt - 2 : yabai -m space --display 2 # 현재 워크스페이스를 두 번째 디스플레이로
