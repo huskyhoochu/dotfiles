@@ -29,6 +29,7 @@ spotify
 stow
 tig
 tmux
+thunderbird
 ttf-apple-emoji
 ttf-monofur-nerd
 ttf-nanum
