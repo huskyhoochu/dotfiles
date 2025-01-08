@@ -75,7 +75,7 @@ function icon_map() {
   "Battle.net")
     icon_result=":battle_net:"
     ;;
-  "Bear")
+  "Bear" | "베어")
     icon_result=":bear:"
     ;;
   "BetterTouchTool")
@@ -105,7 +105,7 @@ function icon_map() {
   "Calculator" | "Calculette")
     icon_result=":calculator:"
     ;;
-  "Calendar" | "日历" | "Fantastical" | "Cron" | "Amie" | "Calendrier" | "Notion Calendar")
+  "Calendar" | "日历" | "Fantastical" | "Cron" | "Amie" | "Calendrier" | "Notion Calendar" | "캘린더")
     icon_result=":calendar:"
     ;;
   "Caprine")
@@ -231,7 +231,7 @@ function icon_map() {
   "Fusion")
     icon_result=":fusion:"
     ;;
-  "System Preferences" | "System Settings" | "系统设置" | "Réglages Système")
+  "System Preferences" | "System Settings" | "系统设置" | "Réglages Système" | "시스템 설정")
     icon_result=":gear:"
     ;;
   "GitHub Desktop")
@@ -713,6 +713,9 @@ function icon_map() {
     ;;
   "Ghostty")
     icon_result=":terminal:"
+    ;;
+  "Beekeeper Studio")
+    icon_result=":sequel_ace:"
     ;;
   *)
     icon_result=":default:"
