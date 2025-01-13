@@ -12,7 +12,6 @@ firefox
 fzf
 git
 ghostty-git
-google-chrome
 htop
 lazygit
 less
