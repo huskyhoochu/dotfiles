@@ -35,7 +35,7 @@ TOTAL_GB=$(sysctl -n hw.memsize | awk '{printf "%.2f", $1 / 1024 / 1024 / 1024}'
 echo "TOTAL_GB: $TOTAL_GB"
 
 # awk로 사용률 계산
-PERCENTAGE=$(awk -v used="$USED_GB" -v total="$TOTAL_GB" 'BEGIN {printf "%.2f", used / total * 100}')
+PERCENTAGE=$(awk -v used="$USED_GB" -v total="$TOTAL_GB" 'BEGIN {printf "%.1f", used / total * 100}')
 echo "PERCENTAGE: $PERCENTAGE"
 
 sketchybar --set "$NAME" label="$PERCENTAGE%"
