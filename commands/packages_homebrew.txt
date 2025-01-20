@@ -19,13 +19,13 @@ pyenv
 pyenv-virtualenv
 ripgrep
 sketchybar
-skhd
+koekeishiya/formulae/skhd
 spicetify-cli
 stow
 tig
 tmux
 wget
-yabai
+koekeishiya/formulae/yabai
 
 # Cask 섹션: GUI 애플리케이션
 cask:
