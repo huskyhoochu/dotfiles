@@ -1,12 +1,8 @@
-# Homebrew 패키지 목록
-# 마지막 업데이트: 2025-01-05
-
-# Formula 섹션: CLI 도구 및 라이브러리
 formula:
 cmatrix
 eza
-FelixKratz/formulae/borders
 fd
+FelixKratz/formulae/borders
 fnm
 fzf
 jq
@@ -16,8 +12,7 @@ luarocks
 neofetch
 neovim
 oh-my-posh
-pyenv
-pyenv-virtualenv
+pipx
 ripgrep
 spicetify-cli
 stow
@@ -25,11 +20,11 @@ tig
 tmux
 wget
 
-# Cask 섹션: GUI 애플리케이션
 cask:
 1password
 beekeeper-studio
 chatgpt
+claude
 devtoys
 docker
 dropbox
