@@ -13,7 +13,7 @@ after-login-command = []
 after-startup-command = [
   # JankyBorders has a built-in detection of already running process,
   # so it won't be run twice on AeroSpace restart
-  'exec-and-forget borders active_color=0xffcba6f7 inactive_color=0xff6c7086 width=12.0',
+  'exec-and-forget borders active_color=0xffcba6f7 inactive_color=0xff6c7086 width=4.0',
 ]
 
 # Start AeroSpace at login
@@ -62,8 +62,8 @@ preset = 'qwerty'
 #                 See:
 #                 https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
 [gaps]
-inner.horizontal = 8
-inner.vertical = 8
+inner.horizontal = 12
+inner.vertical = 12
 outer.left = 8
 outer.bottom = 8
 outer.top = 8
