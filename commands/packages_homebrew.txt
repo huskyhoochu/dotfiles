@@ -5,6 +5,7 @@
 formula:
 cmatrix
 eza
+FelixKratz/formulae/borders
 fd
 fnm
 fzf
@@ -18,14 +19,11 @@ oh-my-posh
 pyenv
 pyenv-virtualenv
 ripgrep
-sketchybar
-koekeishiya/formulae/skhd
 spicetify-cli
 stow
 tig
 tmux
 wget
-koekeishiya/formulae/yabai
 
 # Cask 섹션: GUI 애플리케이션
 cask:
@@ -44,6 +42,7 @@ karabiner-elements
 keka
 kekaexternalhelper
 maccy
+nikitabobko/tap/aerospace
 notion
 obsidian
 postman
