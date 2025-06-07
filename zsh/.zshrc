@@ -17,8 +17,8 @@ zinit light zsh-users/zsh-autosuggestions
 zinit light Aloxaf/fzf-tab
 
 # Load completions
-autoload -Uz compinit
-compinit
+fpath+=~/.zfunc
+autoload -Uz compinit && compinit
 
 # Keybindings
 # https://quickref.me/emacs.html
@@ -96,6 +96,10 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
+# pipx
+export LOCAL_PATH="$HOME/.local"
+[[ -d $LOCAL_PATH/bin ]] && export PATH="$LOCAL_PATH/bin:$PATH"
 
 # 1password ssh agent
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
