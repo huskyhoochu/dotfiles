@@ -21,6 +21,13 @@ return {
 				})
 			end,
 		},
+		extensions = {
+			vectorcode = {
+				opts = {
+					add_tool = true,
+				},
+			},
+		},
 	},
 	dependencies = {
 		"nvim-lua/plenary.nvim",
