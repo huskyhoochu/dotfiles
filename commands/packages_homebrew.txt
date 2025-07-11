@@ -48,6 +48,7 @@ font-fira-code-nerd-font
 font-monofur-nerd-font
 font-sf-mono
 font-sf-pro
+ghostty
 iina
 imageoptim
 jordanbaird-ice
