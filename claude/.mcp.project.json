@@ -7,6 +7,10 @@
       "env": {
         "ANTHROPIC_API_KEY": "API_KEY"
       }
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
     }
   }
 }

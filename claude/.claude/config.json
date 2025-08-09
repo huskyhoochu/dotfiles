@@ -2,11 +2,11 @@
   "version": "1.0.0",
   "name": "Automated Work Distribution System",
   "description": "Intelligent agent distribution system using Claude Code and MCP integration",
-  
+
   "systemPrompt": "./system_prompt.md",
-  "routingRules": "./routing_rules.md", 
+  "routingRules": "./routing_rules.md",
   "mcpConfig": "./mcp_config.json",
-  
+
   "agents": {
     "loadPath": "./agents/",
     "autoRoute": true,
@@ -14,34 +14,35 @@
       "work-distributor",
       "golang-pro",
       "typescript-pro",
-      "frontend-developer", 
+      "frontend-developer",
       "nextjs-fullstack-expert",
       "postgres-pro",
       "react-specialist",
       "rust-engineer",
-      "code-reviewer"
+      "code-reviewer",
+      "git-workflow-manager"
     ]
   },
-  
+
   "mcp": {
     "enforceUsage": true,
     "sequentialThinkingRequired": [
       "complex_tasks",
-      "architecture_design", 
+      "architecture_design",
       "system_planning",
       "optimization_strategy",
       "multi_step_implementation"
     ],
     "serenaRequired": [
       "code_reading",
-      "code_writing", 
+      "code_writing",
       "code_analysis",
       "function_search",
       "refactoring",
       "debugging"
     ]
   },
-  
+
   "routing": {
     "enabled": true,
     "fallbackAgent": "golang-pro",
@@ -51,7 +52,7 @@
       "topics": ["simple_questions", "definitions", "explanations"]
     }
   },
-  
+
   "features": {
     "autoAgentSelection": true,
     "mcpEnforcement": true,
@@ -59,7 +60,7 @@
     "performanceOptimization": true,
     "qualityAssurance": true
   },
-  
+
   "settings": {
     "defaultLanguage": "english",
     "verboseLogging": false,
