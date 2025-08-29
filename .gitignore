@@ -4,3 +4,4 @@
 .config/nvim/lazy-lock.json
 .fonts/
 *.log
+claude/.claude.json
