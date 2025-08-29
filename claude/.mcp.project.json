@@ -3,14 +3,22 @@
     "task-master-ai": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "args": [
+        "-y",
+        "--package=task-master-ai",
+        "task-master-ai"
+      ],
       "env": {
         "ANTHROPIC_API_KEY": "API_KEY"
       }
     },
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git", "--repository", "path/to/git/repo"]
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "path/to/git/repo"
+      ]
     },
     "figma-dev-mode-mcp-server": {
       "type": "sse",

@@ -103,3 +103,16 @@ export LOCAL_PATH="$HOME/.local"
 
 # 1password ssh agent
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+
+## [Completion]
+## Completion scripts setup. Remove the following line to uninstall
+[[ -f /Users/funes/.dart-cli-completion/zsh-config.zsh ]] && . /Users/funes/.dart-cli-completion/zsh-config.zsh || true
+## [/Completion]
+
+export PATH="/Users/funes/.shorebird/bin:$PATH"
+
+alias claude="/Users/funes/.claude/local/claude"
+
+# Task Master aliases added on 8/2/2025
+alias tm='task-master'
+alias taskmaster='task-master'
