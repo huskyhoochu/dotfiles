@@ -1,7 +1,6 @@
 [user]
 email = dfg1499@gmail.com
 name = huskyhoochu
-	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINO+supGPBGi1PxOg4kzOcMk3Fb7/7FjqJCMz88ooFwI
 
 [init]
 defaultBranch = main
@@ -9,10 +8,3 @@ defaultBranch = main
 [core]
 eol = lf
 autocrlf = input
-
-[gpg]
-	format = ssh
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[commit]
-	gpgsign = true
