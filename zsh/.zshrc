@@ -103,3 +103,6 @@ export LOCAL_PATH="$HOME/.local"
 
 # 1password ssh agent
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
+
+# bun completions
+[ -s "/Users/funes/.bun/_bun" ] && source "/Users/funes/.bun/_bun"

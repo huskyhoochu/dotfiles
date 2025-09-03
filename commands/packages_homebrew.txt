@@ -17,6 +17,7 @@ lua
 luarocks
 neofetch
 neovim
+ngrok
 oh-my-posh
 ripgrep
 spicetify-cli
