@@ -13,7 +13,7 @@ after-login-command = []
 after-startup-command = [
   # JankyBorders has a built-in detection of already running process,
   # so it won't be run twice on AeroSpace restart
-  'exec-and-forget borders active_color=0xffcba6f7 inactive_color=0xff6c7086 width=4.0',
+  # 'exec-and-forget borders active_color=0xffcba6f7 inactive_color=0xff6c7086 width=4.0',
 ]
 
 # Start AeroSpace at login
@@ -229,9 +229,9 @@ shift-down = ['volume set 0', 'mode main']
 3 = 'main'
 4 = 'main'
 5 = 'main'
-6 = 'main'
 
 # 보조 모니터용 워크스페이스 (특정 용도)
+6 = 'secondary'
 7 = 'secondary'
 8 = 'secondary'
 9 = 'secondary'
