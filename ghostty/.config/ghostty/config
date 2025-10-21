@@ -10,3 +10,4 @@ font-family = "Monofur Nerd Font"
 
 # 한국어 문자를 위한 폴백 폰트
 font-family = "Xiaolai Mono SC"
+keybind = shift+enter=text:\x1b\r

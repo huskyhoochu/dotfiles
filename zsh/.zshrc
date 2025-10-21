@@ -106,3 +106,7 @@ export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 
 # bun completions
 [ -s "/Users/funes/.bun/_bun" ] && source "/Users/funes/.bun/_bun"
+
+# Task Master aliases added on 10/7/2025
+alias tm='task-master'
+alias taskmaster='task-master'
