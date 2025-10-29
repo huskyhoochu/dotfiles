@@ -1,3 +1,8 @@
+# fcitx5 환경 변수 설정
+# 주의: 이 파일은 X11 세션에서만 자동으로 로드됩니다
+# Wayland 환경 (Sway, Fedora 43 등)에서는 sway config에서 환경 변수를 설정합니다
+# (sway/.config/sway/config 파일의 dbus-update-activation-environment 명령 참조)
+
 export GTK_IM_MODULE=fcitx5
 export QT_IM_MODULE=fcitx5
 export XMODIFIERS=@im=fcitx5

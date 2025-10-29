@@ -1,0 +1,80 @@
+# Fedora packages for dnf installation
+# Lines starting with # are comments and will be ignored
+# Empty lines will be skipped
+
+# Core utilities (modern alternatives preferred)
+bat                    # Modern 'cat' with syntax highlighting
+cmatrix
+eza                    # Modern 'ls' replacement (replaces exa)
+fd-find                # Modern 'find' replacement
+fzf                    # Fuzzy finder
+git
+btop                   # Modern 'htop' replacement (better UI, more features)
+lazygit
+less
+fastfetch              # Modern 'neofetch' replacement (neofetch is archived)
+ripgrep                # Modern 'grep' replacement
+stow
+tig
+tmux
+unzip
+vim
+wget
+zoxide                 # Smart 'cd' replacement
+zsh
+
+# Development tools
+neovim
+lua
+luarocks
+
+# Wayland/Sway ecosystem - Essential packages
+sway
+waybar
+wofi
+wl-clipboard
+swaylock               # Screen locker (basic version)
+# swaylock-effects     # Enhanced screen locker (requires COPR)
+swayidle               # Idle management daemon
+swaybg                 # Background image handler
+grim                   # Screenshot tool
+slurp                  # Region selector for screenshots
+mako                   # Wayland notification daemon
+pamixer                # Audio control (PulseAudio mixer)
+brightnessctl          # Screen brightness control
+playerctl              # Media player control (MPRIS)
+kanshi                 # Dynamic display configuration
+wlsunset               # Screen color temperature (like redshift)
+wdisplays              # GUI display manager for Wayland
+NetworkManager-tui     # NetworkManager terminal UI (Wayland native)
+
+# Korean input (fcitx5)
+fcitx5
+fcitx5-hangul
+fcitx5-configtool
+fcitx5-gtk
+fcitx5-qt
+
+# Fonts
+google-noto-sans-cjk-fonts
+google-noto-serif-cjk-fonts
+noto-color-emoji-fonts
+
+# Browsers
+firefox
+
+# Email
+thunderbird
+
+# Media
+mupdf
+
+# Manual installation required (not in default repos):
+# - ghostty (build from source or COPR)
+# - oh-my-posh (COPR: sudo dnf copr enable chronoscrat/oh-my-posh)
+# - spicetify-cli (npm install -g spicetify-cli or manual)
+# - dropbox (download RPM from dropbox.com)
+# - 1password (download RPM from 1password.com)
+# - obsidian (Flatpak or download from obsidian.md)
+# - spotify (Flatpak or RPMFusion)
+# - nerd-fonts (individual packages or manual install to ~/.local/share/fonts/)
