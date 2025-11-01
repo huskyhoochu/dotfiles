@@ -4,22 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 리포지토리 개요
 
-개인 dotfiles 리포지토리로 macOS, Arch Linux, Fedora 환경의 설정 파일들을 관리합니다. GNU Stow를 사용하여 심볼릭 링크 기반으로 dotfiles를 관리합니다.
+개인 dotfiles 리포지토리로 macOS와 Linux (Fedora) 환경의 설정 파일들을 관리합니다. GNU Stow를 사용하여 심볼릭 링크 기반으로 dotfiles를 관리합니다.
+
+**지원 환경:**
+- macOS: AeroSpace 윈도우 매니저
+- Linux: Fedora Sway Atomic (Wayland 네이티브)
 
 ## 디렉토리 구조
 
 각 디렉토리는 독립적인 패키지로 취급되며 Stow로 심볼릭 링크를 생성합니다:
 
+**공통 설정:**
 - `zsh/` - Zsh 쉘 설정 (zinit, oh-my-posh, fzf-tab)
 - `nvim/` - Neovim 설정 (LazyVim 기반)
 - `tmux/` - tmux 설정 (catppuccin 테마, vim-tmux-navigator)
 - `git/` - Git 설정 (SSH 서명 사용)
-- `aerospace/` - AeroSpace 윈도우 매니저 설정 (macOS)
 - `ghostty/` - Ghostty 터미널 설정
-- `kitty/` - Kitty 터미널 설정
-- `lazygit/` - LazyGit 설정
-- `sketchybar/`, `yabai/`, `skhd/` - macOS 윈도우 관리
-- `i3/`, `polybar/`, `sway/`, `waybar/`, `rofi/`, `wofi/` - Linux 윈도우 관리
+- `fonts/` - Nerd Fonts 등 폰트 파일
+- `backgrounds/` - 배경 이미지
+
+**macOS 전용:**
+- `aerospace/` - AeroSpace 윈도우 매니저 설정
+
+**Linux (Fedora Sway) 전용:**
+- `sway/` - Sway 타일링 윈도우 매니저 설정
+- `waybar/` - Waybar 상태 바 설정
+- `wofi/` - Wofi 애플리케이션 런처 설정
+
+**기타:**
 - `commands/` - 패키지 설치 스크립트
 - `claude/` - Claude Code 설정
 
@@ -34,19 +46,19 @@ cd commands
 ```
 `packages_homebrew.txt`에서 formula와 cask를 읽어 설치합니다. 실패한 패키지는 별도로 보고됩니다.
 
-**Arch Linux (AUR):**
-```bash
-cd commands
-./install_deps_arch.sh
-```
-`packages_aur.txt`에서 패키지를 읽어 yay로 설치합니다. 로그 파일이 자동 생성됩니다.
-
-**Fedora (dnf/COPR):**
+**Fedora Workstation (dnf/COPR):**
 ```bash
 cd commands
 ./install_deps_fedora.sh
 ```
 `packages_fedora.txt`에서 패키지를 읽어 dnf로 설치합니다. COPR 리포지토리가 필요한 패키지는 수동 설치 안내가 제공됩니다. 로그 파일이 자동 생성됩니다.
+
+**Fedora Sway Atomic (rpm-ostree):**
+```bash
+cd commands
+./install_deps_fedora_sway_atomic.sh
+```
+`packages_fedora_sway_atomic.txt`에서 패키지를 읽어 rpm-ostree로 설치합니다. Sway 생태계는 기본 포함되어 있어 추가 패키지만 설치합니다. 설치 후 재부팅이 필요합니다.
 
 ### Dotfiles 배포
 
@@ -77,11 +89,10 @@ stow -n <package_name>
 - `zsh/.zshrc` → `~/.zshrc`
 - `nvim/.config/nvim/` → `~/.config/nvim/`
 
-### 멀티 플랫폼 지원
-macOS, Arch Linux, Fedora 환경을 지원하며, 각 플랫폼별 설정이 별도 디렉토리로 구분됩니다:
-- **macOS**: aerospace, sketchybar, yabai, skhd
-- **Linux (Arch/Fedora)**: i3, sway, polybar, waybar, rofi, wofi
-- **Fedora 43 최적화**: Wayland 전용 환경에 맞춰 Sway + Waybar + Wofi 조합 권장
+### 플랫폼별 윈도우 매니저
+각 플랫폼에 최적화된 윈도우 매니저를 사용합니다:
+- **macOS**: AeroSpace (타일링 윈도우 매니저)
+- **Linux (Fedora Sway Atomic)**: Sway + Waybar + Wofi (Wayland 네이티브)
 
 ### Zsh 설정 구조
 - Zinit 플러그인 매니저 사용
@@ -133,22 +144,31 @@ SSH 키로 커밋 서명 (`gpg.format = ssh`)을 사용하며, 기본 브랜치�
 
 ### 패키지 목록 수정
 - `commands/packages_homebrew.txt`: `formula:` 섹션과 `cask:` 섹션을 명확히 구분
-- `commands/packages_aur.txt`: 주석(`#`)과 빈 줄은 자동으로 스킵됨
-- `commands/packages_fedora.txt`: 주석(`#`)과 빈 줄은 자동으로 스킵됨. COPR 패키지는 주석으로 표시됨
+- `commands/packages_fedora.txt`: 주석(`#`)과 빈 줄은 자동으로 스킵됨. 인라인 주석 사용 금지
+- `commands/packages_fedora_sway_atomic.txt`: Fedora Sway Atomic 전용. 기본 포함된 패키지는 제외됨
 
 ### Fedora COPR 사용
 일부 패키지는 Fedora 공식 리포지토리에 없어 COPR(Community Projects Repository)가 필요합니다:
 - `swaylock-effects`: eddsalkield/swaylock-effects
 - `oh-my-posh`: chronoscrat/oh-my-posh
-- `lazygit`: atim/lazygit
 
 COPR 활성화: `sudo dnf copr enable 사용자명/프로젝트명`
+
+Fedora Sway Atomic에서는 rpm-ostree 사용:
+```bash
+sudo dnf copr enable 사용자명/프로젝트명
+rpm-ostree install 패키지명
+systemctl reboot
+```
 
 ### Stow 충돌 방지
 새 설정을 추가할 때는 반드시 `stow -n` 명령으로 충돌을 먼저 확인하세요.
 
 ### 플랫폼 특정 설정
-macOS, Arch Linux, Fedora 전용 설정을 수정할 때는 대상 플랫폼을 명확히 인지하고 작업하세요.
+macOS와 Fedora 전용 설정을 수정할 때는 대상 플랫폼을 명확히 인지하고 작업하세요:
+- **macOS 전용**: `aerospace/`
+- **Fedora 전용**: `sway/`, `waybar/`, `wofi/`
+- **공통**: `zsh/`, `nvim/`, `tmux/`, `git/`, `ghostty/`
 
 ### Fedora 43 Wayland 전용 고려사항
 - X11 세션이 완전히 제거되었으므로 모든 앱은 Wayland 네이티브이거나 XWayland를 통해 실행됨
