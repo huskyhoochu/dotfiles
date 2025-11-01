@@ -1,0 +1,12 @@
+# Sway configuration for greetd greeter
+# This is used when gtkgreet is launched, not for tuigreet
+# Location: /etc/greetd/sway-config
+
+# Output configuration with background
+output * bg /usr/share/backgrounds/fedora-wallpaper.png fill
+
+# Launch greeter and exit when done
+exec "gtkgreet -l; swaymsg exit"
+
+# Optional: Custom styling
+include /etc/sway/config.d/*

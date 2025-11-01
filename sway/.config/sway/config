@@ -12,6 +12,9 @@ set $mod Mod4
 # 창 제목과 바에 사용될 폰트 설정
 font pango:Monofur Nerd Font 16
 
+# 마우스 커서 테마 및 크기 설정 (기본: 24, 권장: 32 또는 48)
+seat seat0 xcursor_theme Adwaita 96
+
 # 듀얼 모니터 설정
 # HDMI-A-1: LG HDR 4K 27" (왼쪽, 주 모니터)
 output HDMI-A-1 {
@@ -49,10 +52,10 @@ exec dropbox
 # fcitx5 설정 (Wayland 네이티브 지원)
 exec fcitx5 -d --replace
 
-# 화면 잠금 설정 (i3lock 대신 swaylock 사용)
-# swaylock-effects를 설치하려면 COPR 활성화 필요:
-# sudo dnf copr enable eddsalkield/swaylock-effects && rpm-ostree install swaylock-effects
-# exec swaylock-effects --grace 5
+# 화면 잠금 설정 (swaylock-effects)
+# 설치: cd commands && sudo ./setup_swaylock.sh
+# 설정: stow swaylock
+# 자동 잠금: 5분 후 화면 잠금, 10분 후 화면 꺼짐
 exec swayidle -w timeout 300 'swaylock -f' timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' before-sleep 'swaylock -f'
 
 # 네트워크 관리자 설정
@@ -61,6 +64,11 @@ exec swayidle -w timeout 300 'swaylock -f' timeout 600 'swaymsg "output * dpms o
 
 # 알림 데몬 설정 (Wayland 네이티브)
 exec mako
+
+# 마우스 휠 방향 반대로 (natural scrolling)
+input type:pointer {
+    natural_scroll enabled
+}
 
 # 오디오 제어 설정 (PulseAudio)
 bindsym XF86AudioRaiseVolume exec pamixer -i 10
@@ -93,6 +101,9 @@ bindsym $mod+d exec wofi --show drun
 # 네트워크 설정 (nmtui)
 bindsym $mod+n exec ghostty -e nmtui
 
+# 화면 잠금 (swaylock)
+bindsym $mod+l exec swaylock -f
+
 # 모니터 간 포커스 이동
 bindsym $mod+comma focus output left
 bindsym $mod+period focus output right
@@ -101,23 +112,11 @@ bindsym $mod+period focus output right
 bindsym $mod+Shift+comma move output left
 bindsym $mod+Shift+period move output right
 
-# 포커스 이동
-bindsym $mod+j focus left
-bindsym $mod+k focus down
-bindsym $mod+l focus up
-bindsym $mod+semicolon focus right
-
 # 방향키로 포커스 이동
 bindsym $mod+Left focus left
 bindsym $mod+Down focus down
 bindsym $mod+Up focus up
 bindsym $mod+Right focus right
-
-# 창 이동
-bindsym $mod+Shift+j move left
-bindsym $mod+Shift+k move down
-bindsym $mod+Shift+l move up
-bindsym $mod+Shift+semicolon move right
 
 # 방향키로 창 이동
 bindsym $mod+Shift+Left move left

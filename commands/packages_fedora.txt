@@ -1,12 +1,13 @@
-# Fedora packages for dnf installation
+# Fedora 43 Workstation packages for dnf installation
 # Lines starting with # are comments and will be ignored
 # Empty lines will be skipped
 
+# NOTE: Fedora 43 Workstation uses GNOME desktop environment
+# Sway/Wayland-specific packages are not needed (use packages_fedora_sway_atomic.txt for Sway)
+
 # Core utilities (modern alternatives preferred)
-bat
 cmatrix
 eza
-fd-find
 fzf
 git
 btop
@@ -19,35 +20,12 @@ tig
 tmux
 unzip
 vim
-wget
-zoxide
 zsh
 
 # Development tools
 neovim
 lua
 luarocks
-
-# Wayland/Sway ecosystem - Essential packages
-sway
-waybar
-wofi
-wlogout
-wl-clipboard
-swaylock
-swayidle
-swaybg
-grim
-slurp
-mako
-pamixer
-pavucontrol
-brightnessctl
-playerctl
-kanshi
-wlsunset
-wdisplays
-NetworkManager-tui
 
 # Korean input (fcitx5)
 fcitx5
@@ -59,10 +37,11 @@ fcitx5-qt
 # Fonts
 google-noto-sans-cjk-fonts
 google-noto-serif-cjk-fonts
-noto-color-emoji-fonts
+google-noto-color-emoji-fonts
 
 # Browsers
 firefox
+vivaldi
 
 # Media
 mupdf

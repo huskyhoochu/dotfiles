@@ -1,0 +1,23 @@
+# greetd configuration file
+# Location: /etc/greetd/config.toml
+
+[terminal]
+# The VT to run the greeter on. Can be "next", "current" or a number
+vt = 1
+
+[default_session]
+# Command to run the greeter
+# tuigreet options:
+#   --time: Display current time
+#   --remember: Remember last session
+#   --remember-user-session: Remember session per user
+#   --asterisks: Show asterisks when typing password
+#   --greeting: Custom welcome message
+#   --cmd: Default session command
+command = "tuigreet --time --remember --remember-user-session --asterisks --greeting 'Welcome to Fedora Sway' --cmd sway"
+user = "greeter"
+
+# Initial session (auto-login, optional - comment out for normal login)
+# [initial_session]
+# command = "sway"
+# user = "your-username"  # Replace with your actual username

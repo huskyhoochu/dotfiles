@@ -14,10 +14,7 @@
 # - Notification daemon: dunst (not mako)
 
 # Core utilities (modern alternatives preferred)
-bat
 cmatrix
-eza
-fd-find
 fzf
 btop
 less
@@ -28,8 +25,6 @@ tig
 tmux
 unzip
 vim
-wget
-zoxide
 zsh
 
 # Development tools
@@ -44,6 +39,10 @@ pamixer
 pavucontrol
 brightnessctl
 NetworkManager-tui
+
+# Display manager (replaces SDDM)
+greetd
+greetd-tuigreet
 
 # Korean input (fcitx5)
 fcitx5
@@ -60,11 +59,19 @@ google-noto-color-emoji-fonts
 # Media
 mupdf
 
+# COPR packages (require COPR activation before installation)
+# Activate COPR: sudo dnf copr enable <user>/<repo>
+# Install: rpm-ostree install <package> && systemctl reboot
+# Use setup_swaylock.sh script for automatic installation
+
+# swaylock-effects - Enhanced screen locker with effects
+# COPR: eddsalkield/swaylock-effects
+# Script: ./setup_swaylock.sh
+
 # Manual installation required (not in default repos):
 # - ghostty (build from source or COPR)
 # - lazygit (COPR: sudo dnf copr enable atim/lazygit && rpm-ostree install lazygit)
-# - oh-my-posh (COPR: sudo dnf copr enable chronoscrat/oh-my-posh)
-# - swaylock-effects (COPR: sudo dnf copr enable eddsalkield/swaylock-effects)
+# - oh-my-posh (COPR: sudo dnf copr enable chronoscrat/oh-my-posh && rpm-ostree install oh-my-posh)
 # - spicetify-cli (npm install -g spicetify-cli or manual)
 # - dropbox (download RPM from dropbox.com)
 # - 1password (download RPM from 1password.com)

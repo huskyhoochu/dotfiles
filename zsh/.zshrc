@@ -1,5 +1,6 @@
 # Oh My Posh
 # https://ohmyposh.dev/docs/installation/prompt
+export PATH=$PATH:$HOME/.local/bin
 eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/star.omp.json')"
 
 # Zinit
@@ -84,7 +85,7 @@ fi
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 
 # bun completions
-[ -s "/Users/funes/.bun/_bun" ] && source "/Users/funes/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # Task Master aliases added on 10/7/2025
 alias tm='task-master'
