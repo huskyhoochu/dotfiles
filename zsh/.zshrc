@@ -1,6 +1,7 @@
 # Oh My Posh
 # https://ohmyposh.dev/docs/installation/prompt
 export PATH=$PATH:$HOME/.local/bin
+export PATH=$PATH:$HOME/.cargo/bin
 eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/star.omp.json')"
 
 # Zinit
