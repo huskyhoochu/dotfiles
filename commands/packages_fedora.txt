@@ -62,9 +62,6 @@ noto-color-emoji-fonts
 # Browsers
 firefox
 
-# Email
-thunderbird
-
 # Media
 mupdf
 
