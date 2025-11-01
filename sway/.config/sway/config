@@ -13,16 +13,16 @@ set $mod Mod4
 font pango:Monofur Nerd Font 16
 
 # 듀얼 모니터 설정
-# LG ULTRAFINE 32" (왼쪽)
-output "LG Electronics LG ULTRAFINE 0x00000101" {
+# HDMI-A-1: LG HDR 4K 27" (왼쪽, 주 모니터)
+output HDMI-A-1 {
     mode 3840x2160@60Hz
     position 0,0
     scale 1
     bg ~/.config/backgrounds/nice-blue-background.png fill
 }
 
-# LG Electronics 27" (오른쪽, 주 모니터)
-output "LG Electronics 27\" 0x00000101" {
+# DP-3: LG ULTRAFINE 32" (오른쪽, 보조 모니터)
+output DP-3 {
     mode 3840x2160@60Hz
     position 3840,0
     scale 1
@@ -38,7 +38,8 @@ output * bg ~/.config/backgrounds/nice-blue-background.png fill
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=sway GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx
 
 # Waybar 실행 (polybar 대신 사용)
-exec_always waybar
+# 리로드 시 기존 waybar를 종료하고 새로 시작
+exec_always killall -q waybar; waybar
 
 # 시스템 프로그램 실행
 # 1password와 dropbox는 XWayland를 통해 실행될 수 있습니다
@@ -156,19 +157,19 @@ set $ws9 "9"
 set $ws10 "10"
 
 # 워크스페이스를 특정 모니터에 할당
-# 워크스페이스 1-5: 27인치 (오른쪽, 주 모니터)
-workspace 1 output "LG Electronics 27\" 0x00000101"
-workspace 2 output "LG Electronics 27\" 0x00000101"
-workspace 3 output "LG Electronics 27\" 0x00000101"
-workspace 4 output "LG Electronics 27\" 0x00000101"
-workspace 5 output "LG Electronics 27\" 0x00000101"
+# 워크스페이스 1-5: HDMI-A-1 (27인치, 왼쪽 주 모니터)
+workspace 1 output HDMI-A-1
+workspace 2 output HDMI-A-1
+workspace 3 output HDMI-A-1
+workspace 4 output HDMI-A-1
+workspace 5 output HDMI-A-1
 
-# 워크스페이스 6-10: 32인치 (왼쪽)
-workspace 6 output "LG Electronics LG ULTRAFINE 0x00000101"
-workspace 7 output "LG Electronics LG ULTRAFINE 0x00000101"
-workspace 8 output "LG Electronics LG ULTRAFINE 0x00000101"
-workspace 9 output "LG Electronics LG ULTRAFINE 0x00000101"
-workspace 10 output "LG Electronics LG ULTRAFINE 0x00000101"
+# 워크스페이스 6-10: DP-3 (32인치, 오른쪽 보조 모니터)
+workspace 6 output DP-3
+workspace 7 output DP-3
+workspace 8 output DP-3
+workspace 9 output DP-3
+workspace 10 output DP-3
 
 # 작업 공간 전환
 bindsym $mod+1 workspace number $ws1
