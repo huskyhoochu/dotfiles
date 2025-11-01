@@ -1,0 +1,3 @@
+export ANTHROPIC_API_KEY=""
+export PERPLEXITY_API_KEY=""
+export CONTEXT7_API_KEY=""
