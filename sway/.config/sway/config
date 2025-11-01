@@ -32,7 +32,10 @@ exec dropbox
 exec fcitx5 -d --replace
 
 # 화면 잠금 설정 (i3lock 대신 swaylock 사용)
-exec swaylock-effects --grace 5
+# swaylock-effects를 설치하려면 COPR 활성화 필요:
+# sudo dnf copr enable eddsalkield/swaylock-effects && rpm-ostree install swaylock-effects
+# exec swaylock-effects --grace 5
+exec swayidle -w timeout 300 'swaylock -f' timeout 600 'swaymsg "output * dpms off"' resume 'swaymsg "output * dpms on"' before-sleep 'swaylock -f'
 
 # 네트워크 관리자 설정
 # nm-applet은 XWayland 기반이므로 사용하지 않음

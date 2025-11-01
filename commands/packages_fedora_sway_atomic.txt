@@ -39,7 +39,9 @@ luarocks
 
 # Wayland/Sway ecosystem - Additional packages not included by default
 wofi
+wlogout
 pamixer
+pavucontrol
 brightnessctl
 NetworkManager-tui
 

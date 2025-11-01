@@ -32,6 +32,7 @@ luarocks
 sway
 waybar
 wofi
+wlogout
 wl-clipboard
 swaylock
 swayidle
@@ -40,6 +41,7 @@ grim
 slurp
 mako
 pamixer
+pavucontrol
 brightnessctl
 playerctl
 kanshi
