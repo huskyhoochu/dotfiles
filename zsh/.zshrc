@@ -80,27 +80,6 @@ if [ -d "$FNM_PATH" ]; then
   eval "`fnm env --use-on-cd --shell zsh`"
 fi
 
-#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-export SDKMAN_DIR="$HOME/.sdkman"
-[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init - zsh)"
-eval "$(pyenv virtualenv-init -)"
-
-# pnpm
-export PNPM_HOME="$HOME/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
-
-# pipx
-export LOCAL_PATH="$HOME/.local"
-[[ -d $LOCAL_PATH/bin ]] && export PATH="$LOCAL_PATH/bin:$PATH"
-
 # 1password ssh agent
 export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 

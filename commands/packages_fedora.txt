@@ -3,24 +3,24 @@
 # Empty lines will be skipped
 
 # Core utilities (modern alternatives preferred)
-bat                    # Modern 'cat' with syntax highlighting
+bat
 cmatrix
-eza                    # Modern 'ls' replacement (replaces exa)
-fd-find                # Modern 'find' replacement
-fzf                    # Fuzzy finder
+eza
+fd-find
+fzf
 git
-btop                   # Modern 'htop' replacement (better UI, more features)
+btop
 lazygit
 less
-fastfetch              # Modern 'neofetch' replacement (neofetch is archived)
-ripgrep                # Modern 'grep' replacement
+fastfetch
+ripgrep
 stow
 tig
 tmux
 unzip
 vim
 wget
-zoxide                 # Smart 'cd' replacement
+zoxide
 zsh
 
 # Development tools
@@ -33,20 +33,19 @@ sway
 waybar
 wofi
 wl-clipboard
-swaylock               # Screen locker (basic version)
-# swaylock-effects     # Enhanced screen locker (requires COPR)
-swayidle               # Idle management daemon
-swaybg                 # Background image handler
-grim                   # Screenshot tool
-slurp                  # Region selector for screenshots
-mako                   # Wayland notification daemon
-pamixer                # Audio control (PulseAudio mixer)
-brightnessctl          # Screen brightness control
-playerctl              # Media player control (MPRIS)
-kanshi                 # Dynamic display configuration
-wlsunset               # Screen color temperature (like redshift)
-wdisplays              # GUI display manager for Wayland
-NetworkManager-tui     # NetworkManager terminal UI (Wayland native)
+swaylock
+swayidle
+swaybg
+grim
+slurp
+mako
+pamixer
+brightnessctl
+playerctl
+kanshi
+wlsunset
+wdisplays
+NetworkManager-tui
 
 # Korean input (fcitx5)
 fcitx5
