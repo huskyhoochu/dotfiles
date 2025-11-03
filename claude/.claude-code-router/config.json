@@ -1,0 +1,77 @@
+{
+  "LOG": false,
+  "LOG_LEVEL": "debug",
+  "CLAUDE_PATH": "",
+  "HOST": "127.0.0.1",
+  "PORT": 3456,
+  "APIKEY": "",
+  "API_TIMEOUT_MS": "600000",
+  "PROXY_URL": "",
+  "transformers": [],
+  "Providers": [
+    {
+      "name": "llama-server",
+      "api_base_url": "http://127.0.0.1:8080/v1/chat/completions",
+      "api_key": "not_needed",
+      "models": [
+        "qwen2.5-coder-7b-instruct-q8_0"
+      ],
+      "transformer": {
+        "use": [],
+        "qwen2.5-coder-7b-instruct-q8_0": {
+          "use": [
+            "tooluse",
+            "enhancetool",
+            "maxtoken"
+          ]
+        }
+      }
+    },
+    {
+      "name": "openrouter",
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "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",
+      "models": [
+        "x-ai/grok-code-fast-1"
+      ],
+      "transformer": {
+        "use": [
+          "openrouter"
+        ]
+      }
+    },
+    {
+      "name": "openrouter-minimax-m2",
+      "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+      "api_key": "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",
+      "models": [
+        "minimax/minimax-m2"
+      ],
+      "transformer": {
+        "use": [
+          "openrouter"
+        ]
+      }
+    }
+  ],
+  "StatusLine": {
+    "enabled": false,
+    "currentStyle": "default",
+    "default": {
+      "modules": []
+    },
+    "powerline": {
+      "modules": []
+    }
+  },
+  "Router": {
+    "default": "openrouter-minimax-m2,minimax/minimax-m2",
+    "background": "",
+    "think": "",
+    "longContext": "",
+    "longContextThreshold": 60000,
+    "webSearch": "",
+    "image": ""
+  },
+  "CUSTOM_ROUTER_PATH": ""
+}

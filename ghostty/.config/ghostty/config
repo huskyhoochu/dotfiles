@@ -2,7 +2,7 @@ theme = Rose Pine
 font-size = 16
 background-opacity = 0.65
 background-blur-radius = 20
-gtk-titlebar = false
+gtk-titlebar = true
 macos-titlebar-style = hidden
 
 # 기본 폰트 (영어 및 일반 문자)

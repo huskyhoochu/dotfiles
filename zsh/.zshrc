@@ -2,6 +2,7 @@
 # https://ohmyposh.dev/docs/installation/prompt
 export PATH=$PATH:$HOME/.local/bin
 export PATH=$PATH:$HOME/.cargo/bin
+export PATH=$PATH:$HOME/Documents/external_packages/llama.cpp/build/bin
 eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/star.omp.json')"
 
 # Zinit
@@ -91,3 +92,7 @@ export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 # Task Master aliases added on 10/7/2025
 alias tm='task-master'
 alias taskmaster='task-master'
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
