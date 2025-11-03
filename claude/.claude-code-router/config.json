@@ -30,7 +30,7 @@
     {
       "name": "openrouter",
       "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
-      "api_key": "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",
+      "api_key": "",
       "models": [
         "x-ai/grok-code-fast-1"
       ],
@@ -43,7 +43,7 @@
     {
       "name": "openrouter-minimax-m2",
       "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
-      "api_key": "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",
+      "api_key": "",
       "models": [
         "minimax/minimax-m2"
       ],
