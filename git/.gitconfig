@@ -15,3 +15,4 @@ defaultBranch = main
 [core]
 eol = lf
 autocrlf = input
+	editor = nvim

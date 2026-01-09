@@ -1,6 +1,6 @@
-theme = Rose Pine
+theme = Rose Pine Moon
 font-size = 16
-background-opacity = 0.65
+background-opacity = 0.8
 background-blur-radius = 20
 gtk-titlebar = true
 macos-titlebar-style = hidden
@@ -9,5 +9,5 @@ macos-titlebar-style = hidden
 font-family = "Monofur Nerd Font Mono"
 
 # 한국어 문자를 위한 폴백 폰트
-font-family = "Xiaolai Mono"
+font-family = "Xiaolai Mono SC"
 keybind = shift+enter=text:\x1b\r
