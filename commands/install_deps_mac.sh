@@ -21,7 +21,7 @@ while IFS= read -r line; do
   [[ -z "$line" || "$line" =~ ^# || "$line" == "formula:" ]] && continue
   [[ "$line" == "cask:" ]] && break
 
-  if ! brew install "$line"; then
+  if ! brew install "$line" </dev/null; then
     failed_formulas+=("$line")
   fi
 done <packages_homebrew.txt
@@ -37,7 +37,7 @@ while IFS= read -r line; do
   fi
 
   if [[ "$is_cask_section" == true ]]; then
-    if ! brew install --cask "$line"; then
+    if ! brew install --cask "$line" </dev/null; then
       failed_casks+=("$line")
     fi
   fi
