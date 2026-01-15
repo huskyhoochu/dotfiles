@@ -1,18 +1,19 @@
 [credential "https://github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
+
 [credential "https://gist.github.com"]
-	helper = 
+	helper =
 	helper = !/usr/bin/gh auth git-credential
 
 [user]
-email = dfg1499@gmail.com
-name = huskyhoochu
+	email = dfg1499@gmail.com
+	name = huskyhoochu
 
 [init]
-defaultBranch = main
+	defaultBranch = main
 
 [core]
-eol = lf
-autocrlf = input
+	eol = lf
+	autocrlf = input
 	editor = nvim
