@@ -4,3 +4,12 @@
 .config/nvim/lazy-lock.json
 .fonts/
 *.log
+
+# Claude Code - 로컬 데이터 제외, 이식 가능한 설정만 트래킹
+claude/.claude.json
+claude/.claude.local.json
+claude/.claude-code-router/
+claude/.claude/*
+!claude/.claude/settings.json
+!claude/.claude/hooks/
+!claude/.claude/CLAUDE.md
