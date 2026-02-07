@@ -71,6 +71,7 @@ export FZF_DEFAULT_OPTS=" \
 # Aliases
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
+alias claude-mem='bun "$HOME/.claude/plugins/marketplaces/thedotmack/plugin/scripts/worker-service.cjs"'
 
 # Shell integrations
 # fzf
@@ -104,3 +105,13 @@ export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# mise (runtime version manager)
+eval "$("$HOME/.local/bin/mise" activate zsh)"
+
+# Homebrew
+if [[ "$(uname)" == "Darwin" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+else
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+fi
