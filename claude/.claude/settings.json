@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/cyprien/.claude/hooks/cleanup-orphaned-claude.sh",
+            "command": "$HOME/.claude/hooks/cleanup-orphaned-claude.sh",
             "timeout": 15
           }
         ]
