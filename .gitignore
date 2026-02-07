@@ -5,6 +5,9 @@
 .fonts/
 *.log
 
+# Zsh - 환경변수(API 키 포함)는 로컬 전용
+zsh/.zshenv
+
 # Claude Code - 로컬 데이터 제외, 이식 가능한 설정만 트래킹
 claude/.claude.json
 claude/.claude.local.json

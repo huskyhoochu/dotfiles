@@ -1,0 +1,15 @@
+# API Keys
+export PERPLEXITY_API_KEY=""
+export CONTEXT7_API_KEY=""
+export OPENROUTER_API_KEY=""
+export LINEAR_API_KEY=""
+export GEMINI_API_KEY=""
+export OPENAI_API_KEY=""
+
+# SDKMAN Java & Maven PATH (for Mason/Neovim LSP)
+export JAVA_HOME="$HOME/.sdkman/candidates/java/current"
+export MAVEN_HOME="$HOME/.sdkman/candidates/maven/current"
+export PATH="$JAVA_HOME/bin:$MAVEN_HOME/bin:$PATH"
+
+# mise shims PATH (for Neovim LSP - ruby-lsp, etc.)
+export PATH="$HOME/.local/share/mise/shims:$PATH"
