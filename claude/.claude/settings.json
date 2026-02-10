@@ -2,6 +2,19 @@
   "permissions": {
     "allow": []
   },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME\"/.claude/hooks/cleanup-orphaned-claude.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "echo \"$(basename \"$(pwd)\") $(git -c core.useBuiltinFSMonitor=false branch --show-current 2>/dev/null | sed 's/^/on /')\""
@@ -24,18 +37,5 @@
     "claude-mem@thedotmack": true,
     "typescript-lsp@claude-plugins-official": true
   },
-  "language": "한국어",
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/cleanup-orphaned-claude.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  }
+  "language": "한국어"
 }
