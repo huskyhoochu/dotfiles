@@ -1,0 +1,4 @@
+[user]
+	email = <your-work-email>
+	name = <your-work-name>
+	signingkey = <your-work-ssh-public-key>
