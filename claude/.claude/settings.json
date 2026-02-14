@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/cleanup-orphaned-claude.sh",
+            "command": "\"$HOME\"/.claude/hooks/cleanup-orphaned-claude.sh",
             "timeout": 15
           }
         ]

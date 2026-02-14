@@ -8,6 +8,10 @@
 # Zsh - 환경변수(API 키 포함)는 로컬 전용
 zsh/.zshenv
 
+# Git - 개인정보(signingkey 등) 포함 설정은 로컬 전용
+git/.gitconfig
+git/.gitconfig-work
+
 # Claude Code - 로컬 데이터 제외, 이식 가능한 설정만 트래킹
 claude/.claude.json
 claude/.claude.local.json
