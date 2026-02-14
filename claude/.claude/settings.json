@@ -5,6 +5,28 @@
     ]
   },
   "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
@@ -12,6 +34,11 @@
             "type": "command",
             "command": "\"$HOME\"/.claude/hooks/cleanup-orphaned-claude.sh",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
+            "timeout": 5
           }
         ]
       }
