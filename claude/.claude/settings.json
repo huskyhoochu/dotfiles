@@ -1,6 +1,21 @@
 {
   "permissions": {
-    "allow": []
+    "allow": [
+      "mcp__pencil"
+    ]
+  },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/cleanup-orphaned-claude.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -25,17 +40,5 @@
     "typescript-lsp@claude-plugins-official": true
   },
   "language": "한국어",
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/cleanup-orphaned-claude.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  }
+  "skipDangerousModePermissionPrompt": true
 }
