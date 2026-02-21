@@ -20,7 +20,13 @@ Parse the user's argument:
 - Check for `--brief` flag → if present, run **Brief Mode** (Steps 1 + 4 only)
 - Default: **Full Report Mode** (all 5 steps)
 
-## Full Report Mode — 5-Step Sequential Pipeline
+## Full Report Mode — Sequential Pipeline
+
+### Step 0: Timestamp
+
+Call **`mcp__time__get_current_time`** with `timezone: "Asia/Seoul"` to get the current date and time. Use this timestamp for:
+- The report's `{date}` field
+- Awareness of how recent the search results are relative to "now"
 
 ### Step 1: Initial Discovery
 
@@ -107,8 +113,9 @@ If the user chooses to save, write the **exact report text as output in the chat
 ## Brief Mode (--brief flag)
 
 When `--brief` is specified, run only:
-1. **Step 1** — Initial Discovery (Perplexity ask + Tavily search, parallel)
-2. **Step 4** — Quick synthesis using your own reasoning (no additional MCP call needed)
+1. **Step 0** — Timestamp (get current time)
+2. **Step 1** — Initial Discovery (Perplexity ask + Tavily search, parallel)
+3. **Step 4** — Quick synthesis using your own reasoning (no additional MCP call needed)
 
 Generate output following `references/brief-template.md` instead of the full report template.
 Then run **Step 6: Save Prompt** (same as Full Report Mode).
@@ -126,6 +133,9 @@ Then run **Step 6: Save Prompt** (same as Full Report Mode).
 - Never let a single tool failure stop the entire pipeline
 
 ## Tool Reference
+
+### Time Tools
+- `mcp__time__get_current_time` — Get current time in a specific timezone
 
 ### Perplexity Tools
 - `mcp__plugin_perplexity_perplexity__perplexity_ask` — Quick AI answer with citations
