@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "mcp__pencil"
+    ],
+    "deny": [
+      "mcp__plugin_perplexity_perplexity__perplexity_research"
     ]
   },
   "hooks": {
