@@ -14,6 +14,7 @@ git/.gitconfig-work
 
 # Claude Code - 로컬 데이터 제외, 이식 가능한 설정만 트래킹
 claude/.claude.json
+claude/.claude.json.tmp.*
 claude/.claude.local.json
 claude/.claude-code-router/
 claude/.claude/*

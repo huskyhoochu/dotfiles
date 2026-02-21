@@ -6,6 +6,18 @@
       "args": [
         "mcp-server-time"
       ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
+    },
+    "youtube": {
+      "command": "uvx",
+      "args": ["mcp-youtube-intelligence"],
+      "env": {
+        "MYI_LLM_PROVIDER": "google",
+        "GOOGLE_API_KEY": "${GEMINI_API_KEY}"
+      }
     }
   }
 }
