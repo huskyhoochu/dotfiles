@@ -30,20 +30,22 @@ Call **`mcp__time__get_current_time`** with `timezone: "Asia/Seoul"` to get the 
 
 ### Step 1: Initial Discovery
 
-Run these two calls **in parallel**:
+Run these three calls **in parallel**:
 
 1. **`perplexity_ask`**: Ask for an AI-synthesized overview of the topic. This returns cited text with numbered references and source URLs.
 2. **`tavily_search`**: Search for related web pages (use `search_depth: "advanced"`, `max_results: 10`).
+3. **`search_youtube`**: Search YouTube for related videos (use `max_results: 5`, `order: "relevance"`). This ensures video content is actively discovered rather than depending on web search results to contain YouTube URLs.
 
-After both return:
-- Merge all unique URLs from both results
-- Deduplicate URLs
+After all three return:
 - Extract a preliminary overview/summary from Perplexity's response
-- Collect the full URL list for Step 2
+- **Extract key entities** (people, products, technologies, companies) from the Perplexity overview — these become **refinement terms** for Step 2
+- Merge all unique URLs from Perplexity + Tavily results
+- Collect YouTube video IDs from `search_youtube` results
+- Deduplicate across all sources
 
-### Step 2: Source Classification
+### Step 2: Source Classification & Query Refinement
 
-Classify each URL from Step 1 by pattern matching (refer to `references/source-classification.md`):
+**2a. Classify URLs** from Tavily/Perplexity by pattern matching (refer to `references/source-classification.md`):
 
 | Pattern | Type |
 |---------|------|
@@ -51,20 +53,25 @@ Classify each URL from Step 1 by pattern matching (refer to `references/source-c
 | `reddit.com`, `forum`, `community`, `discuss`, `stackoverflow` | Community |
 | Everything else | Article/Document |
 
-For YouTube URLs, extract the `video_id` (the `v=` parameter or path segment after `youtu.be/`).
+For YouTube URLs in web results, extract the `video_id` (the `v=` parameter or path segment after `youtu.be/`).
+
+**2b. Merge video sources**: Combine YouTube video IDs from web search URLs (2a) with video IDs from `search_youtube` (Step 1). Deduplicate.
+
+**2c. Targeted refinement** (conditional): If the Perplexity overview from Step 1 revealed specific subtopics, technical terms, or entities that differ significantly from the original keyword, run **one** additional `tavily_search` with a refined query incorporating those terms. Skip this if the original results already cover the topic well.
 
 Produce three categorized lists:
 - `articles[]` — document/article URLs
-- `videos[]` — YouTube video IDs
+- `videos[]` — YouTube video IDs (from both web search and active YouTube search)
 - `community[]` — forum/discussion URLs
 
 ### Step 3: Deep Extraction (type-specific branching)
 
-Extract content from each category. Run extractions **in parallel where possible** within each category, but process categories sequentially if context limits are a concern.
+Extract content from each category. Run extractions **in parallel** across all categories.
 
 **Articles & Documents** (top 5 URLs):
 - Use `tavily_extract` with the list of URLs
 - This returns markdown content for each page
+- **Official docs upgrade**: If any URL points to official documentation (e.g., `docs.*`, `*.readthedocs.io`, `developer.*`), use `tavily_crawl` instead with `max_depth: 1`, `max_breadth: 5` to capture surrounding pages for richer context
 
 **YouTube Videos** (top 3 video IDs):
 - For each video_id, call `mcp__youtube__get_transcript` with `mode: "summary"`
@@ -114,7 +121,7 @@ If the user chooses to save, write the **exact report text as output in the chat
 
 When `--brief` is specified, run only:
 1. **Step 0** — Timestamp (get current time)
-2. **Step 1** — Initial Discovery (Perplexity ask + Tavily search, parallel)
+2. **Step 1** — Initial Discovery (Perplexity ask + Tavily search + YouTube search, all parallel)
 3. **Step 4** — Quick synthesis using your own reasoning (no additional MCP call needed)
 
 Generate output following `references/brief-template.md` instead of the full report template.
