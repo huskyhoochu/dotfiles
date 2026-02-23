@@ -5,11 +5,8 @@ return {
 	opts = {
 		flavour = "mocha",
 		transparent_background = true,
-		integration = {
-			nvimtree = {
-				enable = true,
-				transparent_panel = true,
-			},
+		integrations = {
+			nvimtree = true,
 		},
 	},
 }
