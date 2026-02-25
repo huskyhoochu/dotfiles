@@ -1,0 +1,7 @@
+--target=$HOME
+--ignore='README\.md'
+--ignore='README'
+--ignore='LICENSE'
+--ignore='\.DS_Store'
+--ignore='.*\.template'
+--ignore='.*\.log'

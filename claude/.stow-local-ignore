@@ -1,0 +1,7 @@
+# 기본 stow ignore 패턴 (.stow-local-ignore는 기본값을 대체하므로 명시 필요)
+\.git
+\.gitignore
+\.gitmodules
+
+# claude 패키지 전용
+claude_code_strategy\.md
