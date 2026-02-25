@@ -37,25 +37,6 @@ Everything not matching the above patterns falls into this category. Includes:
 - Academic papers
 - Corporate announcements
 
-## Extraction Strategy by Type
-
-### Articles & Documents
-- **Tool**: `tavily_extract` (default) or `tavily_crawl` (for official docs)
-- **Batch**: Up to 5 URLs per call
-- **Output**: Markdown content
-- **Official docs upgrade**: If a URL matches `docs.*`, `*.readthedocs.io`, `developer.*`, or similar official documentation patterns, use `tavily_crawl` with `max_depth: 1`, `max_breadth: 5` to capture surrounding pages
-
-### YouTube Videos
-- **Discovery**: Actively searched via `search_youtube` in Step 1, supplemented by YouTube URLs found in web search results
-- **Tools**: `youtube_get_transcript` (mode: summary) + `youtube_get_comments` (summarize: true)
-- **Limit**: Top 3 videos (to manage context size)
-- **Output**: Transcript summary + comment sentiment
-
-### Community Discussions
-- **Tool**: `tavily_extract`
-- **Limit**: Top 3 threads
-- **Output**: Discussion content in markdown
-
 ## Priority Rules
 
 When more URLs are available than the extraction limits:

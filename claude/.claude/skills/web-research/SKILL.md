@@ -1,161 +1,125 @@
 ---
 name: web-research
-description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and YouTube MCP tools in a sequential pipeline. Invoke with /research <keyword>."
+description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and YouTube MCP tools in a sequential pipeline to produce a comprehensive Korean-language report. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
 user_invocable: true
 argument: "<keyword_or_topic> [--brief]"
 ---
 
 # Web Research Agent
 
-You are a research agent that orchestrates three MCP tool families — **Perplexity**, **Tavily**, and **YouTube** — in a sequential pipeline to produce a comprehensive Korean-language research report.
+A research agent that orchestrates three MCP tool families — **Perplexity**, **Tavily**, and **YouTube** — in a sequential pipeline to produce a comprehensive Korean-language research report.
 
-## Output Language
+## Core Rules
 
-**Always produce the final report in Korean (한국어).** Search queries may use English or Korean depending on the topic. Internal reasoning and tool calls use English.
-
-## Argument Parsing
-
-Parse the user's argument:
-- Extract the main **keyword/topic** (everything except flags)
-- Check for `--brief` flag → if present, run **Brief Mode** (Steps 1 + 4 only)
-- Default: **Full Report Mode** (all 5 steps)
+- **Output language**: Report = Korean, search queries = strategy below, internal reasoning = English
+- **Search query language**: English keyword → English search. Korean keyword (contains U+AC00-U+D7AF) → Step 1 in Korean, Step 2c adds an English translation query
+- **Argument parsing**: `--brief` flag → Brief Mode (Steps 0 + 1 + 4 only). Default: Full Report Mode (Steps 0-5)
+- **Tool reference**: See `references/tool-guide.md` for tool details, parameters, and caveats
 
 ## Full Report Mode — Sequential Pipeline
 
 ### Step 0: Timestamp
 
-Call **`mcp__time__get_current_time`** with `timezone: "Asia/Seoul"` to get the current date and time. Use this timestamp for:
-- The report's `{date}` field
-- Awareness of how recent the search results are relative to "now"
+Call `get_current_time` (timezone: "Asia/Seoul") for the report's `{date}` field and recency awareness.
 
 ### Step 1: Initial Discovery
 
-Run these three calls **in parallel**:
+Run three calls **in parallel**:
 
-1. **`perplexity_ask`**: Ask for an AI-synthesized overview of the topic. This returns cited text with numbered references and source URLs.
-2. **`tavily_search`**: Search for related web pages (use `search_depth: "advanced"`, `max_results: 10`).
-3. **`search_youtube`**: Search YouTube for related videos (use `max_results: 5`, `order: "relevance"`). This ensures video content is actively discovered rather than depending on web search results to contain YouTube URLs.
+1. **`perplexity_ask`** — AI-synthesized overview + citation URLs (search_context_size: "high")
+2. **`tavily_search`** — Web search (search_depth: "advanced", max_results: 10)
+3. **`search_youtube`** — YouTube video search (max_results: 5, order: "relevance")
 
-After all three return:
-- Extract a preliminary overview/summary from Perplexity's response
-- **Extract key entities** (people, products, technologies, companies) from the Perplexity overview — these become **refinement terms** for Step 2
-- Merge all unique URLs from Perplexity + Tavily results
-- Collect YouTube video IDs from `search_youtube` results
+Post-processing:
+- Extract preliminary overview/summary from Perplexity response
+- **Extract key entities** (people, products, technologies, companies) → refinement terms for Step 2
+- Merge unique URLs from Perplexity + Tavily
+- Collect YouTube video IDs from search_youtube results
 - Deduplicate across all sources
 
 ### Step 2: Source Classification & Query Refinement
 
-**2a. Classify URLs** from Tavily/Perplexity by pattern matching (refer to `references/source-classification.md`):
+**2a. Classify URLs** by pattern matching (refer to `references/source-classification.md`):
+- Video: `youtube.com/watch`, `youtu.be/`, etc.
+- Community: `reddit.com`, `forum`, `stackoverflow`, etc.
+- Article: everything else
 
-| Pattern | Type |
-|---------|------|
-| `youtube.com/watch`, `youtu.be/` | Video |
-| `reddit.com`, `forum`, `community`, `discuss`, `stackoverflow` | Community |
-| Everything else | Article/Document |
+Extract `video_id` from YouTube URLs (v= parameter or youtu.be/ path segment).
 
-For YouTube URLs in web results, extract the `video_id` (the `v=` parameter or path segment after `youtu.be/`).
+**2b. Merge video sources**: Combine video IDs from web search URLs (2a) + search_youtube (Step 1). Deduplicate.
 
-**2b. Merge video sources**: Combine YouTube video IDs from web search URLs (2a) with video IDs from `search_youtube` (Step 1). Deduplicate.
+**2c. Targeted refinement** (conditional): If Step 1 overview revealed specific subtopics/terms that differ from the original keyword, run **one** additional `tavily_search` with refined query. Skip if original results already cover the topic well. For Korean keywords, also run one additional search with an English translation query.
 
-**2c. Targeted refinement** (conditional): If the Perplexity overview from Step 1 revealed specific subtopics, technical terms, or entities that differ significantly from the original keyword, run **one** additional `tavily_search` with a refined query incorporating those terms. Skip this if the original results already cover the topic well.
+**Build source_matrix** (input for Step 3):
+```
+articles[]  — {url, title}
+videos[]    — {video_id, title, language_hint: "ko"|"en"|"other"}
+community[] — {url, platform}
+```
 
-Produce three categorized lists:
-- `articles[]` — document/article URLs
-- `videos[]` — YouTube video IDs (from both web search and active YouTube search)
-- `community[]` — forum/discussion URLs
+`language_hint` detection: Title contains Hangul (U+AC00-U+D7AF) or CJK characters → "ko" or "other". Otherwise → "en".
 
-### Step 3: Deep Extraction (type-specific branching)
+### Step 3: Deep Extraction
 
-Extract content from each category. Run extractions **in parallel** across all categories.
+Extract content from each category. Run extractions **in parallel** across categories.
 
 **Articles & Documents** (top 5 URLs):
-- Use `tavily_extract` with the list of URLs
-- This returns markdown content for each page
-- **Official docs upgrade**: If any URL points to official documentation (e.g., `docs.*`, `*.readthedocs.io`, `developer.*`), use `tavily_crawl` instead with `max_depth: 1`, `max_breadth: 5` to capture surrounding pages for richer context
+- `tavily_extract` with `query` parameter set to research topic (relevance reranking)
 
-**YouTube Videos** (top 3 video IDs):
-- For each video_id, call `mcp__youtube__get_transcript` with `mode: "summary"`
-- Also call `mcp__youtube__get_comments` with `summarize: true, top_n: 10`
-- These can run in parallel per video
+**YouTube Videos** (top 3):
+- All videos: `get_video` (metadata + summary) + `get_comments` (summarize: true)
+- `language_hint == "en"`: also use `get_transcript` (mode: "summary")
+- `language_hint == "ko"` or `"other"`: skip `get_transcript` (returns raw STT dump, wastes context)
 
 **Community Discussions** (top 3 URLs):
-- Use `tavily_extract` with the community URLs
-- This returns the discussion thread content
-
-Collect all extracted content for Step 4.
+- `tavily_extract` with `query` parameter set to research topic
 
 ### Step 4: Synthesis & Analysis
 
-Combine all gathered information:
-- Step 1's AI overview (Perplexity summary)
-- Step 3's extracted content (articles, video transcripts, community discussions)
+Combine Step 1 AI overview + Step 3 extracted content for cross-source analysis.
 
-Use **`perplexity_reason`** to perform cross-source analysis:
-- Identify **consensus points** across sources
-- Flag **controversial or divided opinions**
-- Note any **quantitative data** (numbers, statistics, benchmarks)
-- Identify **gaps** — what's not covered by available sources
+**`perplexity_reason` decision table:**
 
-Alternatively, if the extracted content is already rich enough, perform the synthesis using your own reasoning without an additional MCP call.
+| Condition | Action |
+|-----------|--------|
+| Successful extractions ≥8 + source types ≥2 + clear consensus | Synthesize directly (skip) |
+| Sources conflict OR comparison/trade-off topic | Required |
+| Successful extractions ≤3 | Required (gap identification) |
+| Otherwise | Recommended |
 
-### Step 5: Report Generation
+When used, include a concise findings summary in the prompt and ask it to identify: **consensus points**, **controversial areas**, **quantitative data**, and **evidence gaps**.
 
-Generate the final report following the structure in `references/report-template.md`.
+### Step 5: Report Generation & Save
+
+Generate the final report following `references/report-template.md`.
 
 **Rules:**
 - Write the entire report in **Korean**
 - Include all source URLs as clickable markdown links
-- Assign confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim)
+- Confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim)
 - Output the report **directly in the chat response** first
 
-### Step 6: Save Prompt
+After output, use `AskUserQuestion` to ask whether to save:
+- **저장하지 않음** — do nothing
+- **파일로 저장** — user provides an absolute path → Write the already-output report text verbatim (do NOT re-generate or re-format)
 
-After the report is fully output to the chat, use the `AskUserQuestion` tool to ask whether to save:
+## Brief Mode (--brief)
 
-- Option 1: **저장하지 않음** — do nothing
-- Option 2: **파일로 저장** — user provides an absolute path
+Run: Step 0 (timestamp) → Step 1 (initial discovery) → Step 4 (quick synthesis using own reasoning, no additional MCP call needed)
 
-If the user chooses to save, write the **exact report text as output in the chat** to the specified path using the Write tool. Do NOT re-generate, re-format, or re-process the report — copy the already-output markdown verbatim.
+Generate output following `references/brief-template.md`, then run the same save prompt as Step 5.
 
-## Brief Mode (--brief flag)
+## Fallback Mode
 
-When `--brief` is specified, run only:
-1. **Step 0** — Timestamp (get current time)
-2. **Step 1** — Initial Discovery (Perplexity ask + Tavily search + YouTube search, all parallel)
-3. **Step 4** — Quick synthesis using your own reasoning (no additional MCP call needed)
+**Entry conditions** (any one triggers):
+- Step 3 successful extractions ≤ **2**
+- Both Perplexity and Tavily **unresponsive**
 
-Generate output following `references/brief-template.md` instead of the full report template.
-Then run **Step 6: Save Prompt** (same as Full Report Mode).
-
-## Prohibited Tools
-
-**NEVER use these tools** — they are slow (30s+), expensive, and redundant with this skill's pipeline:
-- `perplexity_research` — Use the 5-step pipeline instead
+Use `tavily_research` (model: "mini") as a single-call alternative. Note in the report that fallback mode was used. This is a last resort — the full pipeline produces higher quality results.
 
 ## Error Handling
 
-- If a specific MCP tool fails (e.g., YouTube transcript unavailable), skip that source and note it in the report's Gaps section
-- If no YouTube videos are found, skip Step 3's video extraction entirely
+- If a specific MCP tool fails, skip that source and note it in the report's Gaps section
+- If no YouTube videos found, skip Step 3 video extraction entirely
 - If Tavily extract fails for a URL, try the next URL in the list
-- Never let a single tool failure stop the entire pipeline
-
-## Tool Reference
-
-### Time Tools
-- `mcp__time__get_current_time` — Get current time in a specific timezone
-
-### Perplexity Tools
-- `mcp__plugin_perplexity_perplexity__perplexity_ask` — Quick AI answer with citations
-- `mcp__plugin_perplexity_perplexity__perplexity_reason` — Step-by-step reasoning with web grounding
-- `mcp__plugin_perplexity_perplexity__perplexity_search` — Raw search results (URLs + snippets)
-
-### Tavily Tools
-- `mcp__tavily__tavily_search` — Web search with depth control
-- `mcp__tavily__tavily_extract` — Extract content from URLs
-- `mcp__tavily__tavily_crawl` — Crawl website structure
-
-### YouTube Tools
-- `mcp__youtube__get_transcript` — Video transcript (summary/full/chunks)
-- `mcp__youtube__get_comments` — Top comments with optional summarization
-- `mcp__youtube__get_video` — Video metadata
-- `mcp__youtube__search_youtube` — Search YouTube videos
+- A single tool failure should never stop the entire pipeline
