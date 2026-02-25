@@ -25,6 +25,14 @@
 | `github.com/*/discussions` | GitHub Discussions |
 | `github.com/*/issues` | GitHub Issues |
 | `discourse.*` | Discourse forums |
+| `dev.to` | DEV Community (developer blogs) |
+| `lobste.rs` | Lobsters (tech link aggregation) |
+| `huggingface.co/*/discussions` | Hugging Face Discussions (AI/ML) |
+| `news.hada.io` | GeekNews (Korean HN, tech/AI) |
+| `velog.io` | Velog (Korean dev blogs) |
+| `disquiet.io` | Disquiet (Korean product/startup) |
+| `clien.net` | Clien (Korean tech) |
+| `dcinside.com` | DCInside (Korean general) |
 | URL contains `forum` | Generic forum |
 | URL contains `community` | Generic community |
 | URL contains `discuss` | Generic discussion |

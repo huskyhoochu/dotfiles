@@ -66,10 +66,21 @@ Extract content from each category. Run extractions **in parallel** across categ
 **Articles & Documents** (top 5 URLs):
 - `tavily_extract` with `query` parameter set to research topic (relevance reranking)
 
-**YouTube Videos** (top 3):
-- All videos: Run `scripts/supadata.py video <id>` (metadata: title, description, viewCount, likeCount, tags, channel)
-- All videos: Run `scripts/supadata.py transcript <id> --lang=en --text` (auto mode, falls back to available language)
-- `language_hint == "ko"`: also try `scripts/supadata.py translate <id> --lang=en --text` for English translation
+**YouTube Videos** (top 3 by viewCount):
+
+**Phase A — Metadata** (parallel for all 3):
+- Run `scripts/supadata.py video <id>` for each video
+- Evaluate each result:
+  - **description richness**: News channels often include full article text; creator/streamer channels usually have minimal descriptions (channel links, timestamps only)
+  - **`transcriptLanguages`**: This array indicates which transcripts are available. Empty array (`[]`) means no transcript exists — do NOT attempt `transcript` call
+
+**Phase B — Transcript extraction** (parallel, only for videos where `transcriptLanguages` is non-empty):
+- `language_hint == "ko"` AND `"ko"` in transcriptLanguages → `scripts/supadata.py transcript <id> --lang=ko --text`
+- `language_hint == "en"` AND `"en"` in transcriptLanguages → `scripts/supadata.py transcript <id> --lang=en --text`
+- Other language available → try `--lang=en` first, fall back to any available language
+- `language_hint == "ko"` AND transcript only in Korean → optionally try `scripts/supadata.py translate <id> --lang=en --text` for English translation
+
+**Yield priority**: When description is rich (>200 words of topical content), transcript is less critical. When description is sparse, transcript becomes the primary value source.
 
 **Community Discussions** (top 3 URLs):
 - `tavily_extract` with `query` parameter set to research topic

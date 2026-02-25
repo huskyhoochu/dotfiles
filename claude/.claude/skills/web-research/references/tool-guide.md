@@ -74,15 +74,22 @@ All YouTube data is fetched via `scripts/supadata.py` (Supadata REST API). Run w
 - **Purpose**: Step 3 video metadata.
 - **Example**: `scripts/supadata.py video dQw4w9WgXcQ`
 - **Accepts**: Video ID or full YouTube URL.
-- **Returns**: JSON with `{title, description, viewCount, likeCount, tags[], channel, duration, uploadDate}`
+- **Returns**: JSON with `{title, description, viewCount, likeCount, tags[], channel, duration, uploadDate, transcriptLanguages[]}`
 - **Note**: No comment data available. Use `viewCount`/`likeCount` as engagement proxy.
+- **Key field — `transcriptLanguages`**: Array of available transcript language codes. **Empty array (`[]`) = no transcript available.** Always check this before calling `transcript` to avoid wasted API calls.
+- **Description quality varies by channel type**:
+  - **News channels** (KBS, YTN, 연합뉴스 etc.): Often paste full article text in description → high standalone value, transcript less critical
+  - **Creator/streamer channels**: Usually minimal (channel links, timestamps, hashtags only) → transcript is the primary value source
+  - **Official game/product channels**: Short promotional text → low information density
 
 #### `supadata.py transcript`
 - **Purpose**: Step 3 video transcript.
 - **Example**: `scripts/supadata.py transcript dQw4w9WgXcQ --lang=en --text`
 - **Options**: `--lang=` (ISO 639-1 code, always specify to avoid wrong language), `--text` (plain text mode, recommended)
 - **Returns**: JSON with `{content, lang, availableLangs[]}`
-- **Caveat**: Without `--lang`, may return any available language. Always pass `--lang=en` for English content.
+- **Caveat**: Without `--lang`, may return any available language. Match `--lang` to the video's actual language (ko for Korean, en for English).
+- **Availability is unpredictable**: Even similar channel types differ — always check `transcriptLanguages` from the `video` response first. Calling `transcript` on a video with empty `transcriptLanguages` returns an error and wastes an API call.
+- **Auto-transcription quality**: English transcripts are generally accurate. Korean auto-transcriptions have domain terminology errors (e.g., game terms "소서리스" → "소설리스", proper nouns garbled). Usable for topic understanding but not for direct quotation.
 
 #### `supadata.py translate`
 - **Purpose**: Translate transcript to another language.
