@@ -1,13 +1,13 @@
 ---
 name: web-research
-description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and YouTube MCP tools in a sequential pipeline to produce a comprehensive Korean-language report. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
+description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and Supadata YouTube API in a sequential pipeline to produce a comprehensive Korean-language report. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
 user_invocable: true
 argument: "<keyword_or_topic> [--brief]"
 ---
 
 # Web Research Agent
 
-A research agent that orchestrates three MCP tool families — **Perplexity**, **Tavily**, and **YouTube** — in a sequential pipeline to produce a comprehensive Korean-language research report.
+A research agent that orchestrates **Perplexity**, **Tavily**, and **Supadata YouTube API** (via `scripts/supadata.py`) in a sequential pipeline to produce a comprehensive Korean-language research report.
 
 ## Core Rules
 
@@ -28,13 +28,13 @@ Run three calls **in parallel**:
 
 1. **`perplexity_ask`** — AI-synthesized overview + citation URLs (search_context_size: "high")
 2. **`tavily_search`** — Web search (search_depth: "advanced", max_results: 10)
-3. **`search_youtube`** — YouTube video search (max_results: 5, order: "relevance")
+3. **YouTube search** — Run `scripts/supadata.py search "<query>" --type=video --limit=5`
 
 Post-processing:
 - Extract preliminary overview/summary from Perplexity response
 - **Extract key entities** (people, products, technologies, companies) → refinement terms for Step 2
 - Merge unique URLs from Perplexity + Tavily
-- Collect YouTube video IDs from search_youtube results
+- Collect YouTube video IDs from YouTube search results
 - Deduplicate across all sources
 
 ### Step 2: Source Classification & Query Refinement
@@ -46,7 +46,7 @@ Post-processing:
 
 Extract `video_id` from YouTube URLs (v= parameter or youtu.be/ path segment).
 
-**2b. Merge video sources**: Combine video IDs from web search URLs (2a) + search_youtube (Step 1). Deduplicate.
+**2b. Merge video sources**: Combine video IDs from web search URLs (2a) + YouTube search (Step 1). Deduplicate.
 
 **2c. Targeted refinement** (conditional): If Step 1 overview revealed specific subtopics/terms that differ from the original keyword, run **one** additional `tavily_search` with refined query. Skip if original results already cover the topic well. For Korean keywords, also run one additional search with an English translation query.
 
@@ -67,9 +67,9 @@ Extract content from each category. Run extractions **in parallel** across categ
 - `tavily_extract` with `query` parameter set to research topic (relevance reranking)
 
 **YouTube Videos** (top 3):
-- All videos: `get_video` (metadata + summary) + `get_comments` (summarize: true)
-- `language_hint == "en"`: also use `get_transcript` (mode: "summary")
-- `language_hint == "ko"` or `"other"`: skip `get_transcript` (returns raw STT dump, wastes context)
+- All videos: Run `scripts/supadata.py video <id>` (metadata: title, description, viewCount, likeCount, tags, channel)
+- All videos: Run `scripts/supadata.py transcript <id> --lang=en --text` (auto mode, falls back to available language)
+- `language_hint == "ko"`: also try `scripts/supadata.py translate <id> --lang=en --text` for English translation
 
 **Community Discussions** (top 3 URLs):
 - `tavily_extract` with `query` parameter set to research topic
@@ -119,7 +119,7 @@ Use `tavily_research` (model: "mini") as a single-call alternative. Note in the 
 
 ## Error Handling
 
-- If a specific MCP tool fails, skip that source and note it in the report's Gaps section
+- If a specific tool or script call fails, skip that source and note it in the report's Gaps section
 - If no YouTube videos found, skip Step 3 video extraction entirely
 - If Tavily extract fails for a URL, try the next URL in the list
 - A single tool failure should never stop the entire pipeline

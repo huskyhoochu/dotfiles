@@ -1,6 +1,6 @@
 # Tool Guide
 
-Consolidated reference for all MCP tools used in this pipeline: roles, parameters, and caveats.
+Consolidated reference for all tools used in this pipeline: roles, parameters, and caveats.
 
 ## Role Assignment
 
@@ -10,10 +10,10 @@ Consolidated reference for all MCP tools used in this pipeline: roles, parameter
 | Cross-source analysis + gap detection | `perplexity_reason` | Admits gaps rather than hallucinating |
 | URL collection | `tavily_search` | Clean results with content excerpts |
 | Page content extraction | `tavily_extract` | URL → markdown, `query` param for relevance reranking |
-| Video discovery | `search_youtube` | Active YouTube search independent of web results |
-| Video metadata + summary | `get_video` | Reliable across all languages (~300 tokens) |
-| Video transcript | `get_transcript` | Detailed content for English videos |
-| Community sentiment | `get_comments` | Summarized comment analysis across all languages |
+| Video discovery | `supadata.py search` | YouTube search with filters (type, sort, limit) |
+| Video metadata | `supadata.py video` | Title, stats (views/likes), tags, channel |
+| Video transcript | `supadata.py transcript` | All languages, auto-fallback |
+| Transcript translation | `supadata.py translate` | Cross-language transcript (paid plan) |
 | Timestamp | `get_current_time` | Report date and recency awareness |
 
 ## Tool Details
@@ -60,25 +60,41 @@ Consolidated reference for all MCP tools used in this pipeline: roles, parameter
 - **Caveat**: Same SPA limitation as `tavily_crawl`.
 - **Alternative**: Check `/sitemap.xml` directly via `tavily_extract`.
 
-### YouTube
+### YouTube (via `scripts/supadata.py`)
 
-#### `search_youtube`
-- **Purpose**: Step 1 video search. Works well across all languages.
-- **Recommended params**: `max_results: 5`, `order: "relevance"`
+All YouTube data is fetched via `scripts/supadata.py` (Supadata REST API). Run with Bash tool.
 
-#### `get_video`
-- **Purpose**: Step 3 video metadata + language-agnostic summary (~300 tokens).
-- **Strength**: Reliable information source for non-English videos. Always call first.
+#### `supadata.py search`
+- **Purpose**: Step 1 video search.
+- **Example**: `scripts/supadata.py search "Claude Code" --type=video --limit=5`
+- **Options**: `--type=` (video|channel|playlist|all), `--limit=` (default 5), `--sort=` (relevance|rating|date|views)
+- **Returns**: JSON with `results[]` containing `{id, title, description, thumbnail, duration, viewCount, uploadDate, channel}`
 
-#### `get_transcript`
-- **Purpose**: Step 3 detailed transcript for English videos.
-- **Recommended params**: `mode: "summary"`
-- **Caveat**: For non-English videos (especially Korean/CJK), summary mode returns raw STT dump (10,000+ chars of garbled text). Do not use for non-English videos.
+#### `supadata.py video`
+- **Purpose**: Step 3 video metadata.
+- **Example**: `scripts/supadata.py video dQw4w9WgXcQ`
+- **Accepts**: Video ID or full YouTube URL.
+- **Returns**: JSON with `{title, description, viewCount, likeCount, tags[], channel, duration, uploadDate}`
+- **Note**: No comment data available. Use `viewCount`/`likeCount` as engagement proxy.
 
-#### `get_comments`
-- **Purpose**: Step 3 community reaction collection.
-- **Recommended params**: `summarize: true`, `top_n: 10`
-- **Strength**: Works reliably across all languages.
+#### `supadata.py transcript`
+- **Purpose**: Step 3 video transcript.
+- **Example**: `scripts/supadata.py transcript dQw4w9WgXcQ --lang=en --text`
+- **Options**: `--lang=` (ISO 639-1 code, always specify to avoid wrong language), `--text` (plain text mode, recommended)
+- **Returns**: JSON with `{content, lang, availableLangs[]}`
+- **Caveat**: Without `--lang`, may return any available language. Always pass `--lang=en` for English content.
+
+#### `supadata.py translate`
+- **Purpose**: Translate transcript to another language.
+- **Example**: `scripts/supadata.py translate dQw4w9WgXcQ --lang=en --text`
+- **Options**: `--lang=` (required, target language), `--text` (plain text mode)
+- **Caveat**: Requires paid Supadata plan. If `upgrade-required` error returned, skip gracefully.
+
+#### `supadata.py channel`
+- **Purpose**: Channel metadata lookup.
+- **Example**: `scripts/supadata.py channel @RickAstleyYT`
+- **Accepts**: Channel handle (@name), channel ID, or URL.
+- **Returns**: JSON with `{id, name, description, handle, subscriberCount, videoCount, viewCount}`
 
 ### Time
 
