@@ -106,9 +106,6 @@ export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-# mise (runtime version manager)
-eval "$("$HOME/.local/bin/mise" activate zsh)"
-
 # Homebrew
 if [[ "$(uname)" == "Darwin" ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv zsh)"
