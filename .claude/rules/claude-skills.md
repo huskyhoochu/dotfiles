@@ -1,5 +1,6 @@
 ---
-globs: ["claude/**"]
+paths:
+  - "claude/**"
 ---
 
 # Claude Code Settings and Skills

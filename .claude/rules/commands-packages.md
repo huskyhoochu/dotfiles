@@ -1,5 +1,6 @@
 ---
-globs: ["commands/**"]
+paths:
+  - "commands/**"
 ---
 
 # Package Scripts and Lists

@@ -1,5 +1,10 @@
 ---
-globs: ["sway/**", "waybar/**", "wofi/**", "greetd/**", "swaylock/**"]
+paths:
+  - "sway/**"
+  - "waybar/**"
+  - "wofi/**"
+  - "greetd/**"
+  - "swaylock/**"
 ---
 
 # Fedora Sway Atomic — Linux/Wayland Rules
