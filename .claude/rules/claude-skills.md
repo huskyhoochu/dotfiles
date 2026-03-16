@@ -26,7 +26,7 @@ Skills live in `claude/.claude/skills/<skill-name>/` with a `SKILL.md` entry poi
 
 | Skill | Purpose |
 |-------|---------|
-| `web-research` | Multi-source web research (Perplexity, Tavily, Supadata) |
+| `web-research` | Multi-source web research (Perplexity, Tavily, Brave Search) |
 | `web-design` | Interactive web design consultation |
 | `codebase-docs` | Generate/improve CLAUDE.md and .claude/rules/ docs |
 
