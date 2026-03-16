@@ -2,109 +2,85 @@
 
 Consolidated reference for all tools used in this pipeline: roles, parameters, and caveats.
 
+All scripts are in `scripts/` and run via the Bash tool. Each requires its corresponding API key environment variable.
+
 ## Role Assignment
 
 | Role | Tool | Strength |
 |------|------|----------|
-| AI-synthesized overview + citations | `perplexity_ask` | Fast summary with source URLs |
-| Cross-source analysis + gap detection | `perplexity_reason` | Admits gaps rather than hallucinating |
-| URL collection | `tavily_search` | Clean results with content excerpts |
-| Page content extraction | `tavily_extract` | URL → markdown, `query` param for relevance reranking |
-| Video discovery | `supadata.py search` | YouTube search with filters (type, sort, limit) |
-| Video metadata | `supadata.py video` | Title, stats (views/likes), tags, channel |
-| Video transcript | `supadata.py transcript` | All languages, auto-fallback |
-| Transcript translation | `supadata.py translate` | Cross-language transcript (paid plan) |
-| Timestamp | `get_current_time` | Report date and recency awareness |
+| AI-synthesized overview + citations | `perplexity_search.py ask` | Fast summary with source URLs |
+| Cross-source analysis + gap detection | `perplexity_search.py reason` | Admits gaps rather than hallucinating |
+| URL collection (Step 1) | `brave_search.py web` | Low-cost web search, broad coverage |
+| Refinement search (Step 2c) | `tavily_search.py search` | Quality assessment via relevance score |
+| Page content extraction | `tavily_search.py extract` | URL → markdown, `--query` for relevance reranking |
+| Fallback research | `tavily_search.py research` | Single-call alternative when main pipeline fails |
+| Video discovery | `brave_search.py video` | Video results with metadata (title, duration, views) |
+| News discovery (Step 1 conditional + Step 2c) | `brave_search.py news` | Date metadata for time-sensitive topics |
+| Timestamp | `perplexity_search.py timestamp` | Report date and recency awareness |
 
 ## Tool Details
 
-### Perplexity
+### Perplexity (via `scripts/perplexity_search.py`)
 
-#### `perplexity_ask`
+Requires `PERPLEXITY_API_KEY` environment variable. Run with Bash tool.
+
+#### `perplexity_search.py ask`
 - **Purpose**: Step 1 initial overview. Returns AI-synthesized summary with numbered citation URLs.
-- **Recommended params**: `search_context_size: "high"` (research tasks need rich context)
+- **Usage**: `scripts/perplexity_search.py ask "<query>" [--context=high] [--recency=month] [--domains=a.com,b.com]`
+- **Options**: `--context` (search context size, default: "high"), `--recency` (filter: day/week/month/year), `--domains` (comma-separated domain filter)
 - **Caveat**: Occasionally overconfident — cross-validate key claims with other sources.
 
-#### `perplexity_reason`
+#### `perplexity_search.py reason`
 - **Purpose**: Step 4 cross-source analysis. Best for source conflicts, comparisons/trade-offs, and gap identification.
+- **Usage**: `scripts/perplexity_search.py reason "<query>" [--effort=high] [--context=high]`
+- **Options**: `--effort` (reasoning effort, default: "high"), `--context` (search context size, default: "high")
 - **Strength**: Explicitly admits when evidence is insufficient (flags gaps instead of hallucinating).
-- **Recommended params**: `search_context_size: "high"`
 
-#### `perplexity_search`
-- **Purpose**: Raw search results as URLs + snippets. Verbose content per result.
-- **Note**: Not typically used in this pipeline — `tavily_search` and `perplexity_ask` cover its role.
-
-#### `perplexity_research`
-- **Note**: Not used in this pipeline due to high cost (30s+) and redundancy with the multi-step approach.
-
-### Tavily
-
-#### `tavily_search`
-- **Purpose**: Step 1 web search. Returns clean, well-structured results.
-- **Recommended params**: `search_depth: "advanced"`, `max_results: 10`
-
-#### `tavily_extract`
-- **Purpose**: Step 3 content extraction. URL list → markdown conversion.
-- **Core value**: `query` parameter reranks extracted chunks by relevance, reducing noise from long pages.
-- **Recommended params**: `query: "<research topic>"`
-
-#### `tavily_research`
-- **Purpose**: Fallback mode only. Single-call alternative when main pipeline fails.
-- **Recommended params**: `model: "mini"` (cost efficiency)
-
-#### `tavily_crawl`
-- **Caveat**: Fails on SPA/JS-rendered sites (React, Next.js, Mintlify, Docusaurus, etc.). Only works on static HTML.
-- **Alternative**: Use `tavily_extract` on individual URLs instead.
-
-#### `tavily_map`
-- **Caveat**: Same SPA limitation as `tavily_crawl`.
-- **Alternative**: Check `/sitemap.xml` directly via `tavily_extract`.
-
-### YouTube (via `scripts/supadata.py`)
-
-All YouTube data is fetched via `scripts/supadata.py` (Supadata REST API). Run with Bash tool.
-
-#### `supadata.py search`
-- **Purpose**: Step 1 video search.
-- **Example**: `scripts/supadata.py search "Claude Code" --type=video --limit=5`
-- **Options**: `--type=` (video|channel|playlist|all), `--limit=` (default 5), `--sort=` (relevance|rating|date|views)
-- **Returns**: JSON with `results[]` containing `{id, title, description, thumbnail, duration, viewCount, uploadDate, channel}`
-
-#### `supadata.py video`
-- **Purpose**: Step 3 video metadata.
-- **Example**: `scripts/supadata.py video dQw4w9WgXcQ`
-- **Accepts**: Video ID or full YouTube URL.
-- **Returns**: JSON with `{title, description, viewCount, likeCount, tags[], channel, duration, uploadDate, transcriptLanguages[]}`
-- **Note**: No comment data available. Use `viewCount`/`likeCount` as engagement proxy.
-- **Key field — `transcriptLanguages`**: Array of available transcript language codes. **Empty array (`[]`) = no transcript available.** Always check this before calling `transcript` to avoid wasted API calls.
-- **Description quality varies by channel type**:
-  - **News channels** (KBS, YTN, 연합뉴스 etc.): Often paste full article text in description → high standalone value, transcript less critical
-  - **Creator/streamer channels**: Usually minimal (channel links, timestamps, hashtags only) → transcript is the primary value source
-  - **Official game/product channels**: Short promotional text → low information density
-
-#### `supadata.py transcript`
-- **Purpose**: Step 3 video transcript.
-- **Example**: `scripts/supadata.py transcript dQw4w9WgXcQ --lang=en --text`
-- **Options**: `--lang=` (ISO 639-1 code, always specify to avoid wrong language), `--text` (plain text mode, recommended)
-- **Returns**: JSON with `{content, lang, availableLangs[]}`
-- **Caveat**: Without `--lang`, may return any available language. Match `--lang` to the video's actual language (ko for Korean, en for English).
-- **Availability is unpredictable**: Even similar channel types differ — always check `transcriptLanguages` from the `video` response first. Calling `transcript` on a video with empty `transcriptLanguages` returns an error and wastes an API call.
-- **Auto-transcription quality**: English transcripts are generally accurate. Korean auto-transcriptions have domain terminology errors (e.g., game terms "소서리스" → "소설리스", proper nouns garbled). Usable for topic understanding but not for direct quotation.
-
-#### `supadata.py translate`
-- **Purpose**: Translate transcript to another language.
-- **Example**: `scripts/supadata.py translate dQw4w9WgXcQ --lang=en --text`
-- **Options**: `--lang=` (required, target language), `--text` (plain text mode)
-- **Caveat**: Requires paid Supadata plan. If `upgrade-required` error returned, skip gracefully.
-
-#### `supadata.py channel`
-- **Purpose**: Channel metadata lookup.
-- **Example**: `scripts/supadata.py channel @RickAstleyYT`
-- **Accepts**: Channel handle (@name), channel ID, or URL.
-- **Returns**: JSON with `{id, name, description, handle, subscriberCount, videoCount, viewCount}`
-
-### Time
-
-#### `get_current_time`
+#### `perplexity_search.py timestamp`
 - **Purpose**: Step 0 timestamp collection.
-- **Recommended params**: `timezone: "Asia/Seoul"`
+- **Usage**: `scripts/perplexity_search.py timestamp [--tz=Asia/Seoul]`
+- **Options**: `--tz` (timezone name, default: "Asia/Seoul"). Supported: Asia/Seoul, Asia/Tokyo, America/New_York, America/Chicago, America/Denver, America/Los_Angeles, Europe/London, Europe/Paris, Europe/Berlin, UTC
+- **Returns**: JSON with `timezone`, `datetime` (ISO 8601), `day_of_week`
+
+### Tavily (via `scripts/tavily_search.py`)
+
+Requires `TAVILY_API_KEY` environment variable. Run with Bash tool.
+
+#### `tavily_search.py search`
+- **Purpose**: Step 2c refinement search. Assesses subtopic result quality via relevance score. Default `--depth=basic`.
+- **Usage**: `scripts/tavily_search.py search "<query>" [--depth=basic] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week]`
+- **Options**: `--depth` (basic/advanced, default: "basic"), `--max` (max results, default: 10), `--topic` (general/news/finance, default: "general"), `--domains` (include domains), `--exclude` (exclude domains), `--recency` (time_range: day/week/month/year)
+
+#### `tavily_search.py extract`
+- **Purpose**: Step 3 content extraction. URL list → markdown conversion.
+- **Usage**: `scripts/tavily_search.py extract "url1,url2,url3" [--query=topic] [--depth=basic]`
+- **Options**: `--query` (reranks extracted chunks by relevance, reducing noise), `--depth` (basic/advanced, default: "basic")
+- **Core value**: `--query` parameter reranks extracted chunks by relevance, reducing noise from long pages.
+
+#### `tavily_search.py research`
+- **Purpose**: Fallback mode only. Single-call alternative when main pipeline fails.
+- **Usage**: `scripts/tavily_search.py research "<query>" [--model=mini] [--timeout=120]`
+- **Options**: `--model` (mini/pro/auto, default: "mini"), `--timeout` (max polling wait in seconds, default: 120)
+- **Note**: Async operation — script handles polling automatically. May take 30-120 seconds.
+
+### Brave Search (via `scripts/brave_search.py`)
+
+Requires `BRAVE_API_KEY` environment variable. Run with Bash tool.
+
+#### `brave_search.py video`
+- **Purpose**: Step 1 video discovery.
+- **Example**: `scripts/brave_search.py video "Claude Code" --count=5`
+- **Options**: `--count=` (default 5), `--country=` (e.g., us, kr), `--lang=` (e.g., en, ko)
+- **Returns**: JSON with video results containing title, URL, description, source, duration, view count, thumbnail
+
+#### `brave_search.py web`
+- **Purpose**: Step 1 primary URL collection. Low-cost web search with broad coverage.
+- **Example**: `scripts/brave_search.py web "Claude Code tutorial" --count=10`
+- **Options**: `--count=` (default 10), `--country=`, `--lang=`
+- **Returns**: JSON with web results containing title, URL, description, metadata
+
+#### `brave_search.py news`
+- **Purpose**: Step 1 conditional news collection + Step 2c news refinement. Called when time-sensitive topics detected.
+- **Example**: `scripts/brave_search.py news "AI regulation" --count=5`
+- **Options**: `--count=` (default 5), `--country=`, `--lang=`
+- **Returns**: JSON with news results containing title, URL, description, date

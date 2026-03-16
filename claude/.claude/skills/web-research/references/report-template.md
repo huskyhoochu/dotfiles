@@ -33,10 +33,10 @@ Use this structure for the full research report. Fill all sections in **Korean**
 | 소스 | 핵심 내용 | URL |
 |------|----------|-----|
 
-<!-- 영상 섹션: YouTube 영상을 분석한 경우에만 포함. 영상 미발견 시 섹션 전체 생략. -->
+<!-- 영상 섹션: 영상을 분석한 경우에만 포함. 영상 미발견 시 섹션 전체 생략. -->
 ### 영상
-| 채널 | 조회수 | 핵심 내용 | 댓글 여론 |
-|------|--------|----------|----------|
+| 소스 | 제목 | 핵심 내용 | URL |
+|------|------|----------|-----|
 
 <!-- 커뮤니티 토론 섹션: 커뮤니티 토론을 분석한 경우에만 포함. 미발견 시 섹션 전체 생략. -->
 ### 커뮤니티 토론
@@ -55,6 +55,6 @@ Use this structure for the full research report. Fill all sections in **Korean**
 - **신뢰도 (Confidence)**: High = 3+ sources agree, Medium = 1-2 sources, Low = single unverified claim
 - **소스 유형 (Source Type)**: 기사 (Article), 영상 (Video), 커뮤니티 (Community), 공식문서 (Official Docs)
 - **정량 데이터**: Only include if actual numbers/statistics were found. Write "발견된 정량 데이터 없음" if none.
-- **영상 테이블**: Only include if YouTube videos were analyzed. Omit the section entirely if no videos were found.
+- **영상 테이블**: Only include if video results were found. Omit the section entirely if no videos were found.
 - **커뮤니티 테이블**: Only include if community discussions were analyzed. Omit if none found.
 - **전체 출처**: Number each source and provide clickable markdown links. Group by type.

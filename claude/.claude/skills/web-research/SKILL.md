@@ -1,13 +1,13 @@
 ---
 name: web-research
-description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and Supadata YouTube API in a sequential pipeline to produce a comprehensive Korean-language report. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
+description: "Research any keyword/topic by orchestrating Perplexity, Tavily, and Brave Search API in a sequential pipeline to produce a comprehensive Korean-language report. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
 user_invocable: true
 argument: "<keyword_or_topic> [--brief]"
 ---
 
 # Web Research Agent
 
-A research agent that orchestrates **Perplexity**, **Tavily**, and **Supadata YouTube API** (via `scripts/supadata.py`) in a sequential pipeline to produce a comprehensive Korean-language research report.
+A research agent that orchestrates **Perplexity**, **Tavily**, and **Brave Search API** via Python CLI scripts (`scripts/`) in a sequential pipeline to produce a comprehensive Korean-language research report.
 
 ## Core Rules
 
@@ -20,21 +20,25 @@ A research agent that orchestrates **Perplexity**, **Tavily**, and **Supadata Yo
 
 ### Step 0: Timestamp
 
-Call `get_current_time` (timezone: "Asia/Seoul") for the report's `{date}` field and recency awareness.
+Run `scripts/perplexity_search.py timestamp --tz=Asia/Seoul` for the report's `{date}` field and recency awareness.
 
 ### Step 1: Initial Discovery
 
 Run three calls **in parallel**:
 
-1. **`perplexity_ask`** — AI-synthesized overview + citation URLs (search_context_size: "high")
-2. **`tavily_search`** — Web search (search_depth: "advanced", max_results: 10)
-3. **YouTube search** — Run `scripts/supadata.py search "<query>" --type=video --limit=5`
+1. **Perplexity ask** — Run `scripts/perplexity_search.py ask "<query>" --context=high` — AI-synthesized overview + citation URLs
+2. **Brave web search** — Run `scripts/brave_search.py web "<query>" --count=10` — URL discovery
+3. **Brave video search** — Run `scripts/brave_search.py video "<query>" --count=5`
+
+**News topic detection** (conditional parallel call): If the query contains time-sensitive keywords (흥행, 출시, 발표, 업데이트, 사건, 논란, 속보, release, launch, announce, breaking, etc.) or the Perplexity overview centers on recent events:
+- **Brave news** — Run `scripts/brave_search.py news "<query>" --count=5` as an additional call
 
 Post-processing:
 - Extract preliminary overview/summary from Perplexity response
 - **Extract key entities** (people, products, technologies, companies) → refinement terms for Step 2
-- Merge unique URLs from Perplexity + Tavily
-- Collect YouTube video IDs from YouTube search results
+- Merge unique URLs from Perplexity + Brave web
+- Collect video results from Brave (titles, URLs, metadata)
+- If Brave news was called, merge news results into source_matrix articles[] (leverage date metadata)
 - Deduplicate across all sources
 
 ### Step 2: Source Classification & Query Refinement
@@ -44,52 +48,43 @@ Post-processing:
 - Community: `reddit.com`, `forum`, `stackoverflow`, etc.
 - Article: everything else
 
-Extract `video_id` from YouTube URLs (v= parameter or youtu.be/ path segment).
+**2b. Merge video sources**: Combine video URLs from web search (2a) + Brave video search (Step 1). Deduplicate.
 
-**2b. Merge video sources**: Combine video IDs from web search URLs (2a) + YouTube search (Step 1). Deduplicate.
+**2c. Targeted refinement** (conditional): If Step 1 overview revealed specific subtopics/terms that differ from the original keyword, run **one** additional search. Skip if original results already cover the topic well.
 
-**2c. Targeted refinement** (conditional): If Step 1 overview revealed specific subtopics/terms that differ from the original keyword, run **one** additional `tavily_search` with refined query. Skip if original results already cover the topic well. For Korean keywords, also run one additional search with an English translation query.
+| Condition | API | Rationale |
+|-----------|-----|-----------|
+| General refinement (subtopic deep-dive) | `scripts/tavily_search.py search "<refined>" --depth=basic --max=10` | Relevance score for quality assessment |
+| News refinement (time-sensitive subtopic) | `scripts/brave_search.py news "<refined>" --count=5` | Dedicated news endpoint with date metadata |
+| Korean → English translation supplement | `scripts/brave_search.py web "<english query>" --count=10` | Broad English-language coverage |
 
 **Build source_matrix** (input for Step 3):
 ```
 articles[]  — {url, title}
-videos[]    — {video_id, title, language_hint: "ko"|"en"|"other"}
+videos[]    — {url, title, source, description}
 community[] — {url, platform}
 ```
-
-`language_hint` detection: Title contains Hangul (U+AC00-U+D7AF) or CJK characters → "ko" or "other". Otherwise → "en".
 
 ### Step 3: Deep Extraction
 
 Extract content from each category. Run extractions **in parallel** across categories.
 
 **Articles & Documents** (top 5 URLs):
-- `tavily_extract` with `query` parameter set to research topic (relevance reranking)
+- `scripts/tavily_search.py extract "url1,url2,..." --query="<research topic>"` (relevance reranking)
 
-**YouTube Videos** (top 3 by viewCount):
-
-**Phase A — Metadata** (parallel for all 3):
-- Run `scripts/supadata.py video <id>` for each video
-- Evaluate each result:
-  - **description richness**: News channels often include full article text; creator/streamer channels usually have minimal descriptions (channel links, timestamps only)
-  - **`transcriptLanguages`**: This array indicates which transcripts are available. Empty array (`[]`) means no transcript exists — do NOT attempt `transcript` call
-
-**Phase B — Transcript extraction** (parallel, only for videos where `transcriptLanguages` is non-empty):
-- `language_hint == "ko"` AND `"ko"` in transcriptLanguages → `scripts/supadata.py transcript <id> --lang=ko --text`
-- `language_hint == "en"` AND `"en"` in transcriptLanguages → `scripts/supadata.py transcript <id> --lang=en --text`
-- Other language available → try `--lang=en` first, fall back to any available language
-- `language_hint == "ko"` AND transcript only in Korean → optionally try `scripts/supadata.py translate <id> --lang=en --text` for English translation
-
-**Yield priority**: When description is rich (>200 words of topical content), transcript is less critical. When description is sparse, transcript becomes the primary value source.
+**Videos** (top 5 by relevance):
+- Video information is already available from Brave Search results (title, description, source, view count, duration)
+- For videos with URLs pointing to articles or pages with richer content, use `scripts/tavily_search.py extract` to get more detail
+- No transcript extraction — rely on video descriptions and metadata from search results
 
 **Community Discussions** (top 3 URLs):
-- `tavily_extract` with `query` parameter set to research topic
+- `scripts/tavily_search.py extract "url1,url2,..." --query="<research topic>"`
 
 ### Step 4: Synthesis & Analysis
 
 Combine Step 1 AI overview + Step 3 extracted content for cross-source analysis.
 
-**`perplexity_reason` decision table:**
+**`perplexity_search.py reason` decision table:**
 
 | Condition | Action |
 |-----------|--------|
@@ -110,13 +105,13 @@ Generate the final report following `references/report-template.md`.
 - Confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim)
 - Output the report **directly in the chat response** first
 
-After output, use `AskUserQuestion` to ask whether to save:
-- **저장하지 않음** — do nothing
-- **파일로 저장** — user provides an absolute path → Write the already-output report text verbatim (do NOT re-generate or re-format)
+After output, use `AskUserQuestion` to ask whether to save (ask in Korean):
+- **Don't save** — do nothing
+- **Save to file** — user provides an absolute path → Write the already-output report text verbatim (do NOT re-generate or re-format)
 
 ## Brief Mode (--brief)
 
-Run: Step 0 (timestamp) → Step 1 (initial discovery) → Step 4 (quick synthesis using own reasoning, no additional MCP call needed)
+Run: Step 0 (timestamp) → Step 1 (initial discovery) → Step 4 (quick synthesis using own reasoning, no additional script call needed)
 
 Generate output following `references/brief-template.md`, then run the same save prompt as Step 5.
 
@@ -126,11 +121,11 @@ Generate output following `references/brief-template.md`, then run the same save
 - Step 3 successful extractions ≤ **2**
 - Both Perplexity and Tavily **unresponsive**
 
-Use `tavily_research` (model: "mini") as a single-call alternative. Note in the report that fallback mode was used. This is a last resort — the full pipeline produces higher quality results.
+Use `scripts/tavily_search.py research "<query>" --model=mini` as a single-call alternative. Note in the report that fallback mode was used. This is a last resort — the full pipeline produces higher quality results.
 
 ## Error Handling
 
 - If a specific tool or script call fails, skip that source and note it in the report's Gaps section
-- If no YouTube videos found, skip Step 3 video extraction entirely
+- If no video results found, skip video section entirely
 - If Tavily extract fails for a URL, try the next URL in the list
 - A single tool failure should never stop the entire pipeline
