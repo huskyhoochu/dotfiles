@@ -4,7 +4,12 @@ description: |
   Explore a workspace codebase and generate or improve CLAUDE.md and
   .claude/rules/ documentation. Analyzes directory structure, tech stack,
   conventions, and workflows to produce context-engineered documentation
-  optimized for Claude's processing. Invoke with /codebase-docs [path].
+  optimized for Claude's processing. Use this skill when the user wants to
+  set up a project for Claude, initialize Claude context, create or update
+  CLAUDE.md, document a codebase for Claude, migrate from .cursorrules,
+  or mentions "codebase docs", "claude docs", "셋업", "문서화" in context
+  of Claude configuration — even if they don't say "codebase-docs" explicitly.
+  Invoke with /codebase-docs [path].
 user_invocable: true
 argument: "[workspace-path]"
 ---
@@ -25,11 +30,13 @@ This skill applies context engineering best practices:
 
 ## Workflow
 
-### Step 0 — Determine Workspace
+### Step 0 — Determine Workspace & Language
 
 If argument provided, use that path. Otherwise, use the current working directory.
 
 Confirm the target workspace path with the user before proceeding. If the workspace is the same repo where this skill lives (dotfiles), warn and confirm — the user likely wants to target a different project.
+
+Detect the user's language from conversation context. The generated CLAUDE.md body (rules, directives, commands) should be in English for higher LLM compliance. Project description and inline comments may use the user's language if the team is non-English.
 
 ### Step 1 — Codebase Exploration
 
@@ -38,6 +45,8 @@ Run these **in parallel** using the Explore agent or direct tools:
 **1a. Structure scan:**
 - `ls` top-level directory
 - `Glob` for key config files: `**/package.json`, `**/Cargo.toml`, `**/go.mod`, `**/pyproject.toml`, `**/build.gradle*`, `**/pom.xml`, `**/Makefile`, `**/Dockerfile*`, `**/docker-compose*`, `**/.github/workflows/*`
+- `Glob` for framework/tooling configs: `**/tsconfig*.json`, `**/vite.config.*`, `**/next.config.*`, `**/nuxt.config.*`, `**/tailwind.config.*`, `**/turbo.json`, `**/nx.json`, `**/pnpm-workspace.yaml`
+- `Glob` for version/env files: `**/.nvmrc`, `**/.node-version`, `**/.python-version`, `**/.env.example`, `**/renovate.json`, `**/.github/dependabot.yml`
 - `Glob` for existing docs: `**/CLAUDE.md`, `**/.claude/rules/*`, `**/.cursorrules`, `**/.github/CONTRIBUTING.md`
 
 **1b. Convention detection:**
@@ -45,7 +54,13 @@ Run these **in parallel** using the Explore agent or direct tools:
 - `Grep` for linting configs: `.eslintrc*`, `.prettierrc*`, `ruff.toml`, `.golangci*`, `clippy.toml`
 - Check for CI/CD: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`
 
-**1c. Read key files** (first 100 lines each, if they exist):
+**1c. Git history analysis:**
+- `git log --oneline -20` — recent work direction and active areas
+- `git log --format='%s' -50` — detect commit conventions (conventional commits, prefixes, etc.)
+- `git log --diff-filter=M --name-only --pretty='' -50 | sort | uniq -c | sort -rn | head -10` — most actively modified files
+- Branch naming patterns (`git branch -r | head -20`)
+
+**1d. Read key files** (first 100 lines each, if they exist):
 - README.md or README.*
 - Main config file (package.json, pyproject.toml, etc.)
 - Existing CLAUDE.md / .cursorrules (full read)
@@ -63,12 +78,16 @@ From Step 1 results, determine:
 | **Testing** | Framework, test location, run commands |
 | **CI/CD** | Pipeline structure, deployment targets |
 | **Existing conventions** | Code style, commit conventions, PR process |
+| **Git workflow** | Commit message format, branch strategy, active areas |
+| **Runtime versions** | Node/Python/Go versions pinned via version files |
+
+**If `.cursorrules` found:** Parse and map existing rules into CLAUDE.md sections and `.claude/rules/` files. Present a migration plan showing where each rule maps to before proceeding. Delete `.cursorrules` only after user confirms the migration is complete.
 
 Classify the codebase:
 
 | Type | CLAUDE.md Focus |
 |------|----------------|
-| Monorepo | Top-level index + per-package rules in `.claude/rules/` |
+| Monorepo | Top-level index + per-package rules (see `references/monorepo-guide.md`) |
 | Library/SDK | API design conventions, test patterns, versioning |
 | Web app | Component patterns, state management, routing |
 | CLI tool | Command structure, argument parsing, output format |
@@ -81,12 +100,14 @@ Check if CLAUDE.md or `.claude/rules/` already exist.
 
 **If no existing docs** → generate fresh using `references/claude-md-template.md`.
 
-**If existing docs found** → enter Improvement Mode:
+**If existing docs found** → enter Improvement Mode (see `references/improvement-checklist.md` for detailed criteria):
 1. Read existing docs fully
-2. Identify gaps against the analysis from Step 2
-3. Identify violations of context engineering principles (too long, too vague, missing build commands, etc.)
-4. Present a diff-style improvement plan to the user
-5. Apply only after user confirmation
+2. **Staleness check** — verify all referenced file paths still exist, commands still work (check against current config files), and tech stack descriptions match current dependencies
+3. **Gap analysis** — compare existing docs against Step 2 analysis. Look for missing sections, undocumented conventions, new packages/tools added since docs were written
+4. **Context engineering audit** — check for violations: >200 lines, generic advice, duplicated content between CLAUDE.md and rules files, missing progressive disclosure, instructions not in English
+5. **Rules scope validation** — verify `.claude/rules/` glob patterns match current directory structure
+6. Present a categorized improvement plan (stale, missing, violations) with diffs to the user
+7. Apply only after user confirmation
 
 #### CLAUDE.md Structure (see `references/claude-md-template.md`)
 

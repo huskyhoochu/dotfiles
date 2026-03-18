@@ -27,7 +27,6 @@ Use this as a structural guide. Adapt sections to the project. Delete sections t
 \`\`\`bash
 [test all]
 [test single file pattern]
-[test with coverage]
 \`\`\`
 
 ### Lint & Format
@@ -66,12 +65,11 @@ src/
 
 ## Testing
 
-[Testing conventions specific to this project]
+[Conventions only — commands go in the Commands section above]
 
 - Test location: [co-located | separate __tests__/ | tests/]
 - Naming: [*.test.ts | *_test.go | test_*.py]
-- [Mocking approach]
-- [Required coverage threshold, if any]
+- [Mocking approach, if non-obvious]
 
 ## File References
 
