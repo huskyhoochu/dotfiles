@@ -44,7 +44,11 @@ Use this structure for the full research report. Fill all sections in **Korean**
 |--------|----------|----------|-----|
 
 ## 미비점 및 추가 조사 필요 영역
-{gaps_and_further_research_needed}
+{knowledge_gaps_only}
+<!-- 이 섹션에는 실제 주제에 대한 지식 공백만 기재한다.
+     예시 (O): "AI 영화의 박스오피스 실적 데이터를 찾을 수 없었다"
+     예시 (X): "네이버 블로그 원문을 추출하지 못했다" — 이건 파이프라인 기술 한계이지 지식 공백이 아니다.
+     추출 실패한 URL이 있으면 이 섹션 하단에 각주로 간략히 언급할 수 있으나, 주요 항목으로 나열하지 않는다. -->
 
 ## 전체 출처
 {all_sources_as_numbered_markdown_links}
@@ -58,3 +62,4 @@ Use this structure for the full research report. Fill all sections in **Korean**
 - **영상 테이블**: Only include if video results were found. Omit the section entirely if no videos were found.
 - **커뮤니티 테이블**: Only include if community discussions were analyzed. Omit if none found.
 - **전체 출처**: Number each source and provide clickable markdown links. Group by type.
+- **미비점**: Only list genuine knowledge gaps — topic areas where no source provided information. Do NOT list pipeline limitations (URLs not extracted, bot-blocked sites) as research gaps. Skipped URLs are covered by the Perplexity overview. If extraction failures exist, mention them as a brief footnote, not a numbered gap item.

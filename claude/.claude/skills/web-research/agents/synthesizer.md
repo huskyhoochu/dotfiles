@@ -11,6 +11,7 @@ You receive:
 - `{extracted_community}`: extracted community content (may be empty)
 - `{video_metadata}`: video results from Brave search
 - `{refinement_data}`: additional refinement search results (may be empty)
+- `{extraction_coverage}`: which URLs were extracted, which failed, which were skipped
 - `{query}`: original research keyword
 - `{timestamp}`: report date
 - `{script_dir}`: path to scripts directory
@@ -42,8 +43,12 @@ Key rules:
 - Include all source URLs as clickable markdown links
 - If video results exist, include the video section. If none, omit entirely.
 - If community results exist, include the community section. If none, omit entirely.
-- If extraction failed for some URLs, note gaps in the "미비점" section
 - If `perplexity_search.py reason` was used, integrate its analysis into the appropriate sections
+
+**Handling the "미비점" section — use `{extraction_coverage}` to distinguish gap types:**
+- **Skipped URLs are NOT gaps.** Sources in `extraction_coverage.skipped` were not deeply extracted due to pipeline limits, but their information is already covered via the Perplexity overview and Brave search metadata. Do not list them as limitations.
+- **Failed URLs are minor technical notes**, not research gaps. If `extraction_coverage.failed` has entries (e.g., bot-blocked sites like Naver Blog), mention them briefly as a footnote — not as a major gap.
+- **True research gaps** are topic areas where *no source at all* was found across the entire pipeline. These are the only items that belong in the "미비점" section. For example: "AI 영화의 박스오피스 실적에 대한 데이터를 찾을 수 없었다" is a real gap; "네이버 블로그 원문을 추출하지 못했다" is not (that's a technical failure, and the content was likely already summarized by Perplexity).
 
 ## Output
 

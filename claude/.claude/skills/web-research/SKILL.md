@@ -28,8 +28,8 @@ Phase 2: Classification ────── orchestrator inline (lightweight)
               │
               ▼
 Phase 3: Deep Extraction ───── 1-2 subagents in parallel
-  ├─ Article Extractor          (top 5 article URLs)
-  └─ Community Extractor        (top 3 community URLs, if any)
+  ├─ Article Extractor          (top 8 article URLs)
+  └─ Community Extractor        (top 5 community URLs, if any)
               │
               ▼
 Phase 4: Synthesis ─────────── 1 subagent
@@ -137,14 +137,14 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 
 **Subagent C — Article Extractor:**
 - `{category}`: "articles"
-- `{urls}`: top 5 article URLs from source_matrix (comma-separated)
+- `{urls}`: top 8 article URLs from source_matrix (comma-separated)
 - `{query}`: research topic (for relevance reranking)
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
 
 **Subagent D — Community Extractor** (only if community URLs exist):
 - `{category}`: "community"
-- `{urls}`: top 3 community URLs from source_matrix (comma-separated)
+- `{urls}`: top 5 community URLs from source_matrix (comma-separated)
 - `{query}`: research topic
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
@@ -152,6 +152,20 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 Video metadata is already available from Brave search results — no extraction subagent needed.
 
 **Wait for all extraction subagents to complete.**
+
+**Post-extraction: Build extraction coverage summary.** After extraction completes, build `extraction_coverage` to pass to the synthesizer. This tells the synthesizer exactly which sources were deeply extracted, which failed, and which were intentionally skipped:
+
+```json
+{
+  "extracted": ["url1", "url2"],
+  "failed": ["url3"],
+  "skipped": ["url4", "url5", "..."]
+}
+```
+
+- `extracted`: URLs where Tavily returned content successfully
+- `failed`: URLs where extraction was attempted but failed (bot blocking, timeout, etc.)
+- `skipped`: all remaining source_matrix URLs that were not sent to extraction (due to pipeline limits)
 
 ### Phase 4: Synthesis
 
@@ -169,6 +183,7 @@ Provide the synthesizer with:
 - `{extracted_community}`: contents of `extraction/community.json` (if exists)
 - `{video_metadata}`: video entries from source_matrix
 - `{refinement_data}`: contents of `refinement.json` (if exists)
+- `{extraction_coverage}`: the extraction coverage summary built in Phase 3 (extracted/failed/skipped URLs)
 
 The synthesizer decides whether to call `perplexity_search.py reason` based on:
 
