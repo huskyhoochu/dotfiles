@@ -1,8 +1,8 @@
 ---
 name: tsdoc
-description: "Add TSDoc comments to exported symbols across the project. By default scans uncommitted/untracked files; use --all to scan the entire codebase. Use when the user wants to document code with TSDoc or invokes /tsdoc."
+description: "Add TSDoc comments to exported symbols across the project. By default scans uncommitted/untracked files; use --all to scan the entire codebase. Use when the user wants to document TypeScript code, add comments or documentation to functions/types/exports, write JSDoc/TSDoc, or mentions code documentation for .ts/.tsx files — even if they just say 'add comments', 'document this', or 'JSDoc'. Also triggers on /tsdoc."
 user_invocable: true
-argument: "[--all] [file-or-directory-path]"
+argument: "[--all] [--update] [file-or-directory-path]"
 ---
 
 # TSDoc Documentation Skill
@@ -36,10 +36,20 @@ Always skip:
 
 For each file in scope:
 
-1. **Read the file** and identify all exported symbols using LSP `documentSymbol`
-2. **Skip symbols that already have TSDoc** (lines immediately above starting with `/**`)
-3. **Write TSDoc** for each undocumented exported symbol following the conventions in [references/tsdoc-conventions.md](references/tsdoc-conventions.md)
-4. **Run the project's lint/format command** after all files are processed to ensure formatting is preserved
+1. **Survey the file** — run LSP `documentSymbol` to get the structural overview before reading the full file
+2. **Identify exported symbols** — read only the relevant sections, not the entire file if it's large
+3. **Resolve actual types** — run LSP `hover` on each exported symbol to see the compiler's inferred type. Do not guess types from reading the function body — the inferred type may differ from what the code appears to return
+4. **Skip already-documented symbols** — lines immediately above starting with `/**`. If `--update` flag is set, also check existing TSDoc against conventions (hyphen separators, no type annotations, all-or-nothing `@param`) and fix violations
+5. **Write TSDoc** for each undocumented symbol following [references/tsdoc-conventions.md](references/tsdoc-conventions.md), using the resolved type information from step 3
+6. **Run the project's lint/format command** after all files are processed to ensure formatting is preserved
+
+### Batch Processing
+
+When processing many files (`--all` or a large directory):
+
+- **Chunk by directory** — process one directory at a time to stay within context limits
+- **Use subagents for parallelism** — spawn one subagent per directory chunk when the file count exceeds ~10 files. Each subagent receives the conventions reference and processes its chunk independently
+- **Report progress** — after each chunk, update the user on files scanned and symbols documented
 
 ## Symbol Coverage
 
@@ -67,9 +77,16 @@ Document these exported symbol types:
 - **@throws for intentional errors only**: Document thrown errors that callers should handle.
 - **@example sparingly**: Only for non-trivial APIs or functions with tricky usage.
 
+## Edge Cases
+
+- **`.js` files** — out of scope. This skill targets TypeScript (`.ts`, `.tsx`) only. If the user asks for JSDoc on `.js` files, note the distinction and handle inline without this skill.
+- **`export default`** — document the default export like any named export. Place TSDoc above the `export default` statement.
+- **Re-exports and barrel files** (`export * from`, `export { X } from`) — skip. Document at the source, not the re-export.
+- **Monorepo with multiple `tsconfig.json`** — LSP resolves based on the nearest tsconfig. When processing across project boundaries, note which tsconfig context is active.
+
 ## Output
 
 After processing, report:
 - Number of files scanned
-- Number of symbols documented
+- Number of symbols documented (new + updated if `--update`)
 - Any files skipped and why

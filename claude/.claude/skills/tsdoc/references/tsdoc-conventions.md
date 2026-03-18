@@ -211,6 +211,28 @@ export function createApp(db: Database) {
 export class DomainError extends Error {
 ```
 
+### React Component
+
+```ts
+/**
+ * Paginated list of search results with client-side filtering.
+ *
+ * @param props.query - Current search query used to highlight matching text
+ * @param props.onPageChange - Called with the new page index when user navigates
+ */
+export function SearchResults({ query, onPageChange }: SearchResultsProps) {
+```
+
+```ts
+/** Full-screen loading indicator displayed during route transitions. */
+export function LoadingOverlay() {
+```
+
+For React components:
+- Document the component's **purpose and behavior**, not its visual appearance.
+- Use `@param props.fieldName` when individual props need explanation. If the Props interface is already well-documented, a summary line is sufficient.
+- Omit `@returns` — React components always return JSX.
+
 ## What NOT to Document
 
 - Re-exports and barrel files (`export * from`)
