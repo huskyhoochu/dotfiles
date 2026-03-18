@@ -1,14 +1,16 @@
 ---
 name: uiux-review
 description: |
-  Perform a comprehensive UI/UX review of frontend code in the current codebase or a specified directory/file. Use this skill when the user asks to review UI, UX, design quality, visual hierarchy, color usage, accessibility, micro-interactions, affordance, or component states in frontend code. Triggers on: "review UI", "check UX", "audit design", "review accessibility", "check component states", "review animations", "/uiux-review".
+  Perform a comprehensive UI/UX review of frontend code in the current codebase or a specified directory/file. Use this skill when the user asks to review UI, UX, design quality, visual hierarchy, color usage, accessibility, micro-interactions, affordance, component states, responsive design, or web performance in frontend code. Also use this skill when the user mentions "audit design", "check components", "review animations", "check accessibility", "review responsive", or asks about visual consistency — even if they don't explicitly say "UI/UX review". Triggers on: "review UI", "check UX", "audit design", "review accessibility", "check component states", "review animations", "responsive check", "/uiux-review".
 user_invocable: true
 argument: "[path] — directory or file to review. Defaults to current working directory."
 ---
 
 # UI/UX Review
 
-Comprehensive frontend UI/UX review using parallel specialist agents. Modeled after the code-review plugin's multi-agent pipeline: gather context → parallel specialist review → confidence scoring → filter → structured report.
+Frontend UI/UX review using parallel specialist agents. Each agent self-scores findings so only high-confidence issues reach the final report.
+
+Pipeline: context discovery → 6 parallel specialist reviews (with self-scoring) → deduplicate → structured report.
 
 ## Arguments
 
@@ -19,136 +21,108 @@ Parse the user's argument:
 
 ## Workflow
 
-### Step 1 — Pre-flight Check (Haiku agent)
+### Step 1 — Context Discovery
 
-Launch a Haiku agent to scan the target path and determine:
+Launch a single agent (`model: "haiku"`) to scan the target path and return **all of the following in one pass**:
 
-1. Does the target contain frontend code? (Look for `.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`, `.scss` files.)
-2. What framework is used? (React, Vue, Svelte, plain HTML/CSS, etc.)
-3. Is there any existing design system documentation? (Look for `design-system/`, `tokens/`, `theme/`, CSS variables, Tailwind config, any style guide docs.)
-4. List the top-level frontend files and directories relevant to UI/UX review. Return max 30 files, prioritizing component files over utility/logic files.
+1. **Frontend detection**: Are there frontend files? (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.html`, `.css`, `.scss`)
+   → If none found, stop and report: "No frontend code found at [path]."
+2. **Framework**: React, Vue, Svelte, plain HTML/CSS, etc.
+3. **Design system signals**: Token files, theme files, CSS variable declarations, Tailwind config — file paths only.
+4. **CLAUDE.md files**: In the target path and its parents — file paths only.
+5. **File inventory**: Up to 30 UI-relevant files, prioritizing components over utility/logic files.
+6. **Scope summary**: Read the top 10 most UI-relevant files and return:
+   - 3-sentence summary of what the UI does
+   - UI patterns observed (forms, modals, cards, navigation, data tables, etc.)
+   - Styling approach identified
 
-If no frontend code is found, stop and report: "No frontend code found at [path]."
+### Step 2 — Parallel Specialist Review (6 agents)
 
-### Step 2 — Context Gathering (Haiku agent)
+Launch all 6 agents simultaneously (`model: "sonnet"`). Each agent receives:
+- The full context from Step 1
+- Its specific reference file to load
+- The self-scoring rubric below
 
-Launch a Haiku agent to:
-1. Find any CLAUDE.md files in the target path and its parents. Return file paths only (not contents).
-2. Find any design tokens, theme files, or CSS variable declarations (e.g., `variables.css`, `tokens.json`, `theme.ts`). Return file paths only.
-3. Return the tech stack summary from Step 1.
+Each agent **scores every issue it finds** and **discards anything below 75** before returning results. This eliminates false positives at the source — agents have the best context to judge their own domain.
 
-### Step 3 — Scope Summary (Haiku agent)
+**Self-scoring rubric (provide verbatim to each agent):**
 
-Launch a Haiku agent to read the top 10 most UI-relevant files identified in Step 1, then return:
-- A 3-sentence summary of what the UI does (purpose, main components, overall structure).
-- A list of UI patterns observed (forms, modals, cards, navigation, data tables, etc.).
-- Any immediately obvious design system or styling approach.
+```
+Score each issue you find:
 
-### Step 4 — Parallel Specialist Review (6 Sonnet agents)
+0: False positive. Doesn't hold up to scrutiny. Framework default. Auto-generated code.
+25: Possibly real. Can't verify. Stylistic preference, not a standard violation.
+50: Likely real but minor. Nitpick or rare edge case. Low user impact.
+75: High confidence. Verified real. Clear violation of a named standard. Users will notice.
+100: Certain. Confirmed. Happens in a primary user flow. No ambiguity.
 
-Launch all 6 agents simultaneously. Each agent loads its specific reference file and returns a list of issues with exact file paths and line numbers where possible.
+Also read references/scoring-rubric.md for domain-specific scoring thresholds and
+false positive examples. Only return issues scoring 75+.
+```
+
+**Return format for all agents:** `[file:line] (score: N) issue description — severity: high/medium/low`
+
+---
 
 **Agent 1 — Visual Hierarchy & Layout**
-Read `references/visual-hierarchy-checklist.md` before reviewing.
-Examine the target files for:
+Read `references/visual-hierarchy-checklist.md`.
 - Spacing and grid consistency (4px/8px grid adherence)
-- Visual hierarchy clarity (size, weight, color contrast for importance signaling)
-- Typography scale consistency and line-height adherence
+- Visual hierarchy clarity (size, weight, color for importance signaling)
+- Typography scale consistency and line-height
 - Alignment and proximity grouping (Gestalt principles)
 - White space usage
 
-Return issues as: `[file:line] issue description — severity: high/medium/low`
-
 **Agent 2 — Color & Theming**
-Read `references/color-theming-checklist.md` before reviewing.
-Examine the target files for:
+Read `references/color-theming-checklist.md`.
 - Hardcoded color values instead of design tokens/CSS variables
 - Missing semantic color roles (primary, error, success, warning, surface)
-- Dark mode implementation issues (hardcoded light-only values, missing dark variants)
-- Insufficient contrast ratios (WCAG AA: 4.5:1 for text)
-- Pure black (#000000) used as background
+- Dark mode implementation issues
+- Color-only state differentiation (no icon/text backup)
+- **Ownership boundary**: Do NOT check contrast ratios — Agent 5 (Accessibility) owns contrast.
 
-Return issues as: `[file:line] issue description — severity: high/medium/low`
-
-**Agent 3 — Affordance & Signifiers**
-Read `references/interaction-design-checklist.md` before reviewing.
-Examine the target files for:
-- Interactive elements without clear signifiers (missing cursor, hover state, or visual cue)
-- Hidden or buried primary actions (key actions not prominent)
-- Ambiguous button/link labels
-- Missing or insufficient hover states on clickable elements
-- Anti-patterns: flat buttons that look like text, text that looks like buttons
-
-Return issues as: `[file:line] issue description — severity: high/medium/low`
-
-**Agent 4 — Feedback & Component States**
-Read `references/interaction-design-checklist.md` before reviewing.
-Examine the target files for:
-- Missing component states: hover, focus, active, disabled, loading, error, success
-- Focus styles removed without replacement (`outline: none` without custom focus indicator)
+**Agent 3 — Interaction Design**
+Read `references/interaction-design-checklist.md`, **Parts A and B only**.
+- Interactive elements without clear signifiers (missing cursor, hover state, visual cue)
+- Primary action prominence and discoverability
+- Missing component states: hover, active, disabled, loading, error, success
+- Disabled state indistinguishable from enabled
 - No loading/skeleton states for async content
-- Error states not designed (form validation, fetch errors)
-- Disabled state indistinguishable from enabled state
+- **Ownership boundary**: Do NOT check focus styles or `outline` removal — Agent 5 owns focus.
 
-Return issues as: `[file:line] issue description — severity: high/medium/low`
-
-**Agent 5 — Micro-interactions & Motion**
-Read `references/interaction-design-checklist.md` before reviewing.
-Examine the target files for:
-- Abrupt state transitions without easing (linear or instant transitions)
+**Agent 4 — Motion & Animation**
+Read `references/interaction-design-checklist.md`, **Part C only**.
+- Abrupt state transitions without easing
+- Transition duration outside natural range (200–400ms for micro-interactions)
 - Missing `prefers-reduced-motion` media query for animations
-- Transition duration outside the natural range (aim for 200–400ms)
-- Missing touch feedback (no visual/haptic response to taps on mobile)
-- Over-animation (excessive motion that could distract or harm)
+- Over-animation (excessive motion that distracts)
+- Missing feedback transitions (toggle/delete/navigation with no animation)
 
-Return issues as: `[file:line] issue description — severity: high/medium/low`
-
-**Agent 6 — Accessibility**
-Read `references/accessibility-checklist.md` before reviewing.
-Examine the target files for:
-- Focus styles removed (`outline: none` with no replacement)
-- State conveyed by color alone (no icon/text alternative)
-- Missing `aria-*` attributes for dynamic content (`aria-live`, `aria-expanded`, etc.)
+**Agent 5 — Accessibility**
+Read `references/accessibility-checklist.md`.
+- **Owns all focus-related issues**: `outline: none` removal, missing focus indicators, `:focus` vs `:focus-visible`
+- **Owns all contrast issues**: WCAG AA 4.5:1 for text, 3:1 for large text and UI components
+- Missing `aria-*` attributes for dynamic content
 - Touch targets smaller than 44×44px
-- Interactive elements unreachable via keyboard (missing `tabindex`, `role`, or keyboard handler)
+- Interactive elements unreachable via keyboard
 - Images without alt text, icons without labels
+- Form accessibility (missing labels, required fields)
 
-Return issues as: `[file:line] issue description — severity: high/medium/low`
+**Agent 6 — Responsive Design & Performance**
+Read `references/responsive-performance-checklist.md`.
+- Missing or broken responsive breakpoints for key layouts
+- Fixed pixel widths that break on smaller screens
+- Images without explicit dimensions (causes layout shift / CLS)
+- Content overflow and text truncation issues
+- Missing viewport meta tag, zoom restriction
+- Hover-only interactions with no touch alternative
 
-### Step 5 — Confidence Scoring (parallel Haiku agents)
+### Step 3 — Deduplicate & Report
 
-For each issue found across all 6 agents, launch a parallel Haiku agent. Provide the agent with:
-- The issue description and file:line reference
-- The CLAUDE.md file paths from Step 2
-- The tech stack context from Step 1
+Collect results from all 6 agents.
 
-The agent must score the issue on 0–100 confidence. Give the agent this rubric verbatim:
+**Deduplication**: If the same `file:line` appears from multiple agents, keep the higher-scoring version only.
 
-```
-Score the issue on this scale:
-0: False positive. Does not stand up to scrutiny, or is a pre-existing/framework issue.
-25: Possibly real. Could not verify. Stylistic issue not explicitly required.
-50: Likely real but minor. Nitpick or rare edge case. Low importance relative to scope.
-75: High confidence. Verified as a real issue. Will be encountered in practice. Important.
-100: Certain. Confirmed real. Will happen frequently. Clear violation of standard or checklist item.
-
-For issues in the Accessibility category, treat WCAG AA violations as 100 if confirmed.
-For issues in Color, treat hardcoded colors in a codebase with existing tokens as 75+.
-```
-
-### Step 6 — Filter
-
-Discard any issue with a score below 75.
-
-If no issues remain, skip to Step 8 and report: "No significant UI/UX issues found."
-
-### Step 7 — Pre-report Eligibility Check (Haiku agent)
-
-Launch a Haiku agent to confirm the target path still exists and was not deleted. This mirrors the final eligibility check in the code-review plugin.
-
-### Step 8 — Output the Report
-
-Format the final report using the template below. Group issues by specialist domain. Sort each group by severity (high → medium → low).
+Format the final report. Group by specialist domain. Sort each group by score (highest first).
 
 ---
 
@@ -159,43 +133,45 @@ Target: {path}
 Framework: {framework}
 Files reviewed: {count}
 
-Found {N} issues:
+Found {N} issues (confidence ≥ 75):
 
 #### Visual Hierarchy & Layout
 
 1. [high] Brief description
-   `{file}:{line}` — {specific observation}
+   `{file}:{line}` — {specific observation} (confidence: {score})
 
 #### Color & Theming
 
 2. [high] Brief description
-   `{file}:{line}` — {specific observation}
+   `{file}:{line}` — {specific observation} (confidence: {score})
 
-#### Affordance & Signifiers
+#### Interaction Design
 
 (none found)
 
-#### Feedback & Component States
+#### Motion & Animation
 
 3. [medium] Brief description
-   `{file}:{line}` — {specific observation}
-
-#### Micro-interactions & Motion
-
-4. [medium] Brief description
-   `{file}:{line}` — {specific observation}
+   `{file}:{line}` — {specific observation} (confidence: {score})
 
 #### Accessibility
 
-5. [high] Brief description
-   `{file}:{line}` — {specific observation}
+4. [high] Brief description
+   `{file}:{line}` — {specific observation} (confidence: {score})
+
+#### Responsive Design & Performance
+
+5. [medium] Brief description
+   `{file}:{line}` — {specific observation} (confidence: {score})
 
 ---
 Reference standards:
-- Visual Hierarchy: WCAG, Figma design system guidelines
-- Color: WCAG AA 4.5:1 contrast, Material Design 3 token system
-- Micro-interactions: Dan Saffer's framework (200–400ms natural range)
-- Accessibility: WCAG 2.1 AA, Apple HIG (44×44px touch targets), MDN prefers-reduced-motion
+- Visual Hierarchy: Figma guidelines, 4px/8px grid system
+- Color: Material Design 3 token system
+- Interaction: Don Norman's signifier theory, Material Design 3 State Layers
+- Motion: Dan Saffer's framework (200–400ms), Disney's 12 principles
+- Accessibility: WCAG 2.1 AA, Apple HIG (44×44px touch targets)
+- Responsive: Mobile-first principles, Core Web Vitals (CLS)
 ```
 
 ---
@@ -209,10 +185,10 @@ Target: {path}
 Framework: {framework}
 Files reviewed: {count}
 
-No significant UI/UX issues found.
+No significant UI/UX issues found (confidence threshold: 75).
 
-Domains checked: Visual Hierarchy, Color & Theming, Affordance & Signifiers,
-Feedback & States, Micro-interactions & Motion, Accessibility
+Domains checked: Visual Hierarchy, Color & Theming, Interaction Design,
+Motion & Animation, Accessibility, Responsive Design & Performance
 ```
 
 ---
@@ -224,13 +200,15 @@ Feedback & States, Micro-interactions & Motion, Accessibility
 - **Generated code**: If files are clearly auto-generated (e.g., `.generated.ts`, icon sprite files), skip them.
 - **False positive threshold**: A component that intentionally uses `outline: none` with a custom `:focus-visible` style is NOT a violation — confirm before flagging.
 - **Severity mapping**: high = accessibility violation or broken UX flow; medium = degraded experience but functional; low = polish/refinement.
+- **Ownership boundaries**: Each agent owns specific checks to prevent duplication. Contrast ratios → Accessibility. Focus styles → Accessibility. Color tokens → Color & Theming. `prefers-reduced-motion` → Motion.
 
 ## Reference Files
 
 | File | Load when | Content |
 |------|-----------|---------|
-| `references/visual-hierarchy-checklist.md` | Agents 1 | Grid, spacing, typography review criteria |
-| `references/color-theming-checklist.md` | Agent 2 | Color tokens, dark mode, contrast criteria |
-| `references/interaction-design-checklist.md` | Agents 3, 4, 5 | Affordance, states, micro-interactions criteria |
-| `references/accessibility-checklist.md` | Agent 6 | WCAG, ARIA, keyboard, motion criteria |
-| `references/scoring-rubric.md` | Step 5 scoring agents | Full confidence scoring rubric with examples |
+| `references/visual-hierarchy-checklist.md` | Agent 1 | Grid, spacing, typography criteria |
+| `references/color-theming-checklist.md` | Agent 2 | Color tokens, dark mode (not contrast) |
+| `references/interaction-design-checklist.md` | Agents 3, 4 | Affordance + states (A, B), motion (C) |
+| `references/accessibility-checklist.md` | Agent 5 | WCAG, ARIA, keyboard, focus, contrast |
+| `references/responsive-performance-checklist.md` | Agent 6 | Responsive, layout shift, viewport |
+| `references/scoring-rubric.md` | All agents | Domain-specific scoring thresholds, false positive examples |
