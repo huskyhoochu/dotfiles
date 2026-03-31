@@ -1,0 +1,11 @@
+[Unit]
+Description=Deskflow KVM Server
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/deskflow-core server -s %h/.config/Deskflow/deskflow-server.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

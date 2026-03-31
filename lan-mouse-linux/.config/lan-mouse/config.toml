@@ -1,8 +1,0 @@
-port = 4242
-release_bind = ["KeyA", "KeyS", "KeyD", "KeyF"]
-
-# macOS (right side)
-[right]
-hostname = "funesui-MacBookPro.local"
-ips = ["192.168.35.115"]
-activate_on_startup = true
