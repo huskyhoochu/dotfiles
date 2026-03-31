@@ -1,0 +1,9 @@
+port = 4242
+release_bind = ["KeyA", "KeyS", "KeyD", "KeyF"]
+frontend = "cli"
+
+# Fedora (left side)
+[left]
+hostname = "fedora"
+ips = ["192.168.35.65"]
+activate_on_startup = true

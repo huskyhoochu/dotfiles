@@ -8,8 +8,8 @@ cd "$DOTFILES_DIR"
 COMMON_PACKAGES=(zsh nvim tmux git ghostty fonts backgrounds claude)
 
 # 플랫폼별 패키지
-MACOS_PACKAGES=(aerospace)
-LINUX_PACKAGES=(sway waybar wofi swaylock)
+MACOS_PACKAGES=(aerospace lan-mouse-macos)
+LINUX_PACKAGES=(sway waybar wofi swaylock lan-mouse-linux)
 
 detect_os() {
   case "$(uname -s)" in
