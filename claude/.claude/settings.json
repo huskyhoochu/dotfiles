@@ -2,9 +2,6 @@
   "permissions": {
     "allow": [
       "mcp__pencil"
-    ],
-    "deny": [
-      "mcp__plugin_perplexity_perplexity__perplexity_research"
     ]
   },
   "hooks": {
@@ -54,7 +51,6 @@
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "linear@claude-plugins-official": false,
     "explanatory-output-style@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
@@ -64,12 +60,21 @@
     "claude-mem@thedotmack": true,
     "typescript-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
-    "slack@claude-plugins-official": true,
+    "slack@claude-plugins-official": false,
     "notion@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true
+    "security-guidance@claude-plugins-official": true,
+    "pg@aiguide": true
+  },
+  "extraKnownMarketplaces": {
+    "aiguide": {
+      "source": {
+        "source": "github",
+        "repo": "timescale/pg-aiguide"
+      }
+    }
   },
   "language": "한국어",
   "effortLevel": "high",
