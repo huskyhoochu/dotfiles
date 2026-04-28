@@ -88,6 +88,7 @@ Example: `zsh/.zshrc` → `~/.zshrc`, `nvim/.config/nvim/` → `~/.config/nvim/`
 |---------|---------|
 | `commands/` | Package install scripts and package lists |
 | `claude/` | Claude Code settings and skills (stowed to `~/.claude/`) |
+| `pi/` | pi.dev (pi-mono) — zenmux.ai providers + rtk auto-prefix hook (stowed to `~/.pi/`) |
 
 ## Architecture
 
