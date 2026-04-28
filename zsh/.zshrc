@@ -72,6 +72,12 @@ export FZF_DEFAULT_OPTS=" \
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
 alias claude-mem='bun "$HOME/.claude/plugins/marketplaces/thedotmack/plugin/scripts/worker-service.cjs"'
+unalias yt-wall 2>/dev/null
+ytwall() {
+  yt-dlp -S "res:2160,vcodec:h264" --merge-output-format mp4 \
+    -o "$HOME/Downloads/%(title)s.%(ext)s" \
+    --exec "after_move:transcode-to-h264 {}" "$@"
+}
 
 # Shell integrations
 # fzf
@@ -111,4 +117,14 @@ if [[ "$(uname)" == "Darwin" ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv zsh)"
 else
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+fi
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '$HOME/Downloads/google-cloud-sdk/path.zsh.inc' ]; then . '$HOME/Downloads/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '$HOME/Downloads/google-cloud-sdk/completion.zsh.inc' ]; then . '$HOME/Downloads/google-cloud-sdk/completion.zsh.inc'; fi
+
+if command -v ngrok &>/dev/null; then
+  eval "$(ngrok completion)"
 fi
