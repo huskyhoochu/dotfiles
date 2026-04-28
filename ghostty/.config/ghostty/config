@@ -12,4 +12,4 @@ font-family = "Monofur Nerd Font Mono"
 font-family = "Xiaolai Mono SC"
 
 # Claude Code (Shift+Enter = 줄바꿈 구분)
-keybind = shift+enter=text:\x1b\r
+keybind = alt+backspace=text:\x1b\x7f
