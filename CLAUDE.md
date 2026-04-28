@@ -1,6 +1,25 @@
 # CLAUDE.md
 
-Personal dotfiles repository managing macOS and Linux (Fedora Sway Atomic) configurations via GNU Stow symlinks.
+Personal dotfiles repository managing macOS and Linux (Fedora Workstation / Sway Atomic) configurations via GNU Stow symlinks.
+
+## Current host
+
+Verified via `uname -a` and `fastfetch` on 2026-04-28. The repo supports multiple targets, but **this machine is regular Fedora Workstation, not Sway Atomic** — so dnf (not rpm-ostree), GNOME (not Sway), and the `install_deps_fedora.sh` script apply here.
+
+| | |
+|---|---|
+| Host | GEM12 (`fedora`) |
+| OS | Fedora Linux 43 (Workstation Edition) x86_64 |
+| Kernel | `6.19.12-200.fc43.x86_64` |
+| DE / WM | GNOME 49.6 / Mutter (Wayland) |
+| Shell | zsh 5.9 |
+| CPU / GPU | AMD Ryzen 7 PRO 8845HS / Radeon 780M (integrated) |
+| Memory | 60.6 GiB |
+| Disk | btrfs, 928 GiB |
+| Package managers in use | dnf (rpm), flatpak, Homebrew (linuxbrew at `/home/linuxbrew/.linuxbrew`) |
+| Locale | `ko_KR.UTF-8` |
+
+Implication: the `sway/`, `waybar/`, `wofi/`, `greetd/`, `swaylock/` Stow packages are not deployed on this host. Sway-Atomic-specific guidance (rpm-ostree reboots, SELinux relabel) does not apply here.
 
 ## Commands
 
@@ -69,6 +88,7 @@ Example: `zsh/.zshrc` → `~/.zshrc`, `nvim/.config/nvim/` → `~/.config/nvim/`
 |---------|---------|
 | `commands/` | Package install scripts and package lists |
 | `claude/` | Claude Code settings and skills (stowed to `~/.claude/`) |
+| `pi/` | pi.dev (pi-mono) — zenmux.ai providers + rtk auto-prefix hook (stowed to `~/.pi/`) |
 
 ## Architecture
 

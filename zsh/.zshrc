@@ -4,6 +4,9 @@ export PATH=$PATH:$HOME/.local/bin
 export PATH=$PATH:$HOME/.cargo/bin
 export PATH=$PATH:$HOME/Documents/external_packages/llama.cpp/build/bin
 eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/star.omp.json')"
+# Avoid baking the absolute binary path into precmd hooks — re-resolve via PATH each call
+# so brew/dnf upgrades don't break live sessions when the binary path changes.
+_omp_executable=oh-my-posh
 
 # Zinit
 # https://github.com/zdharma-continuum/zinit
@@ -72,12 +75,7 @@ export FZF_DEFAULT_OPTS=" \
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
 alias claude-mem='bun "$HOME/.claude/plugins/marketplaces/thedotmack/plugin/scripts/worker-service.cjs"'
-unalias yt-wall 2>/dev/null
-ytwall() {
-  yt-dlp -S "res:2160,vcodec:h264" --merge-output-format mp4 \
-    -o "$HOME/Downloads/%(title)s.%(ext)s" \
-    --exec "after_move:transcode-to-h264 {}" "$@"
-}
+alias yt-wall='f() { yt-dlp -f "bestvideo[height<=2160]+bestaudio/best" --merge-output-format mp4 -o "$HOME/Downloads/%(title)s.mp4" "https://www.youtube.com/watch?v=$1"; }; f'
 
 # Shell integrations
 # fzf

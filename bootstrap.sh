@@ -5,7 +5,7 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DOTFILES_DIR"
 
 # 공통 패키지 (모든 플랫폼)
-COMMON_PACKAGES=(zsh nvim tmux git ghostty fonts backgrounds claude)
+COMMON_PACKAGES=(zsh nvim tmux git ghostty fonts backgrounds claude pi)
 
 # 플랫폼별 패키지
 MACOS_PACKAGES=(aerospace)

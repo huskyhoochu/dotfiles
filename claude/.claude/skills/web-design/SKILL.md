@@ -1,5 +1,5 @@
 ---
-name: web-design-claude
+name: web-design
 description: |
   Claude-optimized web design skill. Generates distinctive, production-grade
   single-page HTML through interactive design consultation. Tuned for Claude's

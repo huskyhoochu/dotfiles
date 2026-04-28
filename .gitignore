@@ -5,6 +5,9 @@
 .fonts/
 *.log
 
+# Fonts - fontconfig UUID 캐시 마커는 머신별 자동 생성
+fonts/**/.uuid
+
 # Zsh - 환경변수(API 키 포함)는 로컬 전용
 zsh/.zshenv
 

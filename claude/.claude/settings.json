@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__pencil"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "hooks": {
     "Stop": [
@@ -42,6 +43,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -57,7 +69,6 @@
     "code-review@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
-    "claude-mem@thedotmack": true,
     "typescript-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
     "slack@claude-plugins-official": false,
@@ -68,7 +79,7 @@
     "security-guidance@claude-plugins-official": true,
     "pg@aiguide": true,
     "ralph-loop@claude-plugins-official": true,
-    "ecc@ecc": true
+    "vercel@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "aiguide": {
@@ -86,5 +97,8 @@
   },
   "language": "한국어",
   "effortLevel": "medium",
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark-ansi",
+  "autoCompactEnabled": true,
+  "skipAutoPermissionPrompt": true
 }
