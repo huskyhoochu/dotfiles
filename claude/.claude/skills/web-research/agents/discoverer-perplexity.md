@@ -8,7 +8,8 @@ You are a discovery subagent in a web research pipeline. Your job: run a Perplex
    ```bash
    python3 {script_dir}/perplexity_search.py ask "{query}" --context=high
    ```
-   If `{language}` is Korean, use the query as-is. If English, use the query as-is.
+   - **Query language by `{scope}`**: `KR-local` → Korean query; `Global` → English query (translate the keyword if it was Korean); `Mixed` → English query. (The user types in Korean, but authoritative sources for Global topics are in English — don't let the query language force a Korean-only search.)
+   - If `{has_news_keywords}` is true, add `--recency=month` (free recency filter on the same billed call).
 
 2. Parse the JSON response and extract:
    - **overview**: The AI-synthesized summary text (from `choices[0].message.content`)

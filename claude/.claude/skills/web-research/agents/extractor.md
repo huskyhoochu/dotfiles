@@ -7,12 +7,13 @@ You are an extraction subagent in a web research pipeline. Your job: extract pag
 Extract content from the following URLs using Tavily extract:
 
 ```bash
-python3 {script_dir}/tavily_search.py extract "{urls}" --query="{query}"
+python3 {script_dir}/tavily_search.py extract "{urls}" --query="{query}" --depth={depth}
 ```
 
 Where:
 - `{urls}`: comma-separated list of URLs to extract
 - `{query}`: research topic for relevance reranking
+- `{depth}`: extract depth (`advanced` for primary articles, `basic` for secondary community threads)
 
 ## Post-processing
 

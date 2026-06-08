@@ -22,10 +22,18 @@ Use this structure for the full research report. Fill all sections in **Korean**
 {points_where_multiple_sources_agree}
 
 ### 논쟁점 / 의견 분화
-{controversial_or_divided_opinions}
+{competing_views_AND_which_is_better_supported_and_why}
 
 ### 정량 데이터
 {numbers_statistics_benchmarks_if_any}
+
+## 종합 판단
+<!-- 필수 섹션. 생략 불가. 위 합의점/논쟁점은 이 판단의 근거다. -->
+**입장:** {모든 증거를 종합해 분석가가 실제로 취하는 한 문장 입장}
+**확신도:** 높음 / 보통 / 낮음 — {이유: 증거 깊이, 소스 합의, 소스 품질}
+**근거:** {선택한 입장이 대안보다 잘 뒷받침되는 이유 — 받치는 소스 인용}
+**반대 입장이 더 약한 이유:** {경쟁 견해가 왜 "다른" 게 아니라 "약한"지}
+**이 결론을 뒤집을 조건:** {어떤 새 증거가 나오면 판단이 바뀌는가}
 
 ## 소스 상세
 
@@ -56,7 +64,8 @@ Use this structure for the full research report. Fill all sections in **Korean**
 
 ## Field Guidelines
 
-- **신뢰도 (Confidence)**: High = 3+ sources agree, Medium = 1-2 sources, Low = single unverified claim
+- **종합 판단**: 반드시 작성. 양비론(fence-sitting)은 증거가 실제로 결론을 못 내릴 때만 허용하며, 그 경우에도 '왜 결론 불가인지'를 명시한다. 합의점/논쟁점은 이 판단의 입력 근거로 남긴다.
+- **신뢰도 (Confidence)**: High = 3+ sources agree, Medium = 1-2 sources, Low = single unverified claim. **출처 수만이 아니라 품질로 보정**: 동일 출처·저품질군이면 한 단계 하향, 단일 1차/공식 소스는 Low 위로 상향, 소스 충돌·희소 시 하향 (`source-classification.md`의 품질 위계 참조).
 - **소스 유형 (Source Type)**: 기사 (Article), 영상 (Video), 커뮤니티 (Community), 공식문서 (Official Docs)
 - **정량 데이터**: Only include if actual numbers/statistics were found. Write "발견된 정량 데이터 없음" if none.
 - **영상 테이블**: Only include if video results were found. Omit the section entirely if no videos were found.

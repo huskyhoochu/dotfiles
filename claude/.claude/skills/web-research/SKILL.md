@@ -9,10 +9,15 @@ argument: "<keyword_or_topic> [--brief]"
 
 Orchestrates parallel subagents (via the Agent tool) across **Perplexity**, **Tavily**, and **Brave Search API** to produce a comprehensive Korean-language research report. Each pipeline phase spawns focused subagents that communicate through a shared workspace directory.
 
+**Goal**: Not "summarize what the sources say about the topic" but "given the best available evidence, reach the most defensible answer, lay out the competing views, and judge which is stronger and why." The report must end in a synthesized **stance**, not a catalogue of sources.
+
 ## Core Rules
 
 - **Output language**: Report = Korean, search queries = strategy below, internal reasoning = English
-- **Search query language**: English keyword → English search. Korean keyword (contains U+AC00-U+D7AF) → Korean search in Phase 1, English supplement in Phase 2
+- **Search strategy by topic scope** — the query being in Korean does NOT by itself mean "search Korean sources". The *query language* (how the user typed it) and the *search target* (where the authoritative sources live) are independent. **Topic scope** decides the target:
+  - **KR-local** (subject is Korea-specific: domestic companies, people, politics, society, institutions, services, culture): Korean queries; Brave `--country=kr --lang=ko`; Perplexity in Korean.
+  - **Global** (internationally-discussed tech/product/science/general topic — authoritative sources are in English even when asked in Korean): English queries (translate the Korean keyword); Brave defaults (us/en); Perplexity in English. One Korean supplement for key terms is optional.
+  - **Mixed** (global subject where the Korean market/reaction also matters): English primary + a Korean supplement in Phase 2; run Brave with defaults in Phase 1.
 - **Argument parsing**: `--brief` flag → Brief Mode (Phase 0 + 1 + Quick Synthesis). Default: Full Report Mode (Phase 0-4)
 - **Tool reference**: See `references/tool-guide.md` for script details, parameters, and caveats
 
@@ -50,7 +55,7 @@ All subagents save structured JSON here. The orchestrator reads these files to c
 **Data contract:**
 ```
 $WORKSPACE/
-├── meta.json                # {timestamp, query, language, mode}
+├── meta.json                # {timestamp, query, scope, is_news_topic, mode}
 ├── discovery/
 │   ├── perplexity.json      # {overview, citations[], entities[], is_news_topic}
 │   ├── brave_web.json       # raw Brave web API response
@@ -70,9 +75,10 @@ $WORKSPACE/
 1. Parse arguments: extract keyword and `--brief` flag
 2. Run `scripts/perplexity_search.py timestamp --tz=Asia/Seoul` for the report's `{date}` field
 3. Create workspace directory
-4. Detect search language: Korean if keyword contains Hangul (U+AC00-U+D7AF)
-5. Detect news keywords: 흥행, 출시, 발표, 업데이트, 사건, 논란, 속보, release, launch, announce, breaking, etc.
-6. Save `meta.json` to workspace
+4. Detect query language: Korean if keyword contains Hangul (U+AC00-U+D7AF). This labels the *query* only — it does NOT decide the search target.
+5. Decide **topic scope** — `KR-local` / `Global` / `Mixed` — by judging the keyword's meaning yourself (no keyword dictionary). This drives the search strategy in Core Rules. When genuinely unsure, default to `Mixed`.
+6. Detect news keywords: 흥행, 출시, 발표, 업데이트, 사건, 논란, 속보, release, launch, announce, breaking, etc.
+7. Save `meta.json` to workspace (include `scope` and `is_news_topic`)
 
 ### Phase 1: Parallel Discovery
 
@@ -82,7 +88,8 @@ Spawn **two subagents simultaneously** using the Agent tool. Read each agent tem
 
 Read `agents/discoverer-perplexity.md`. Spawn with these variables:
 - `{query}`: the research keyword
-- `{language}`: detected search language
+- `{scope}`: topic scope (`KR-local`/`Global`/`Mixed`) — sets query language per Core Rules
+- `{has_news_keywords}`: whether news keywords were detected in Phase 0
 - `{workspace}`: workspace path
 - `{script_dir}`: path to this skill's `scripts/` directory
 
@@ -92,7 +99,7 @@ This agent runs Perplexity ask, extracts key entities, and detects if the topic 
 
 Read `agents/discoverer-brave.md`. Spawn with these variables:
 - `{query}`: the research keyword
-- `{language}`: detected search language
+- `{scope}`: topic scope (`KR-local`/`Global`/`Mixed`) — sets `--country`/`--lang` per Core Rules
 - `{has_news_keywords}`: whether news keywords were detected in Phase 0
 - `{workspace}`: workspace path
 - `{script_dir}`: path to this skill's `scripts/` directory
@@ -105,7 +112,7 @@ This agent runs Brave web, video, and conditionally news searches.
 
 This phase is lightweight enough to run inline in the orchestrator. No subagent needed.
 
-1. Read `discovery/perplexity.json` and `discovery/brave_web.json` from workspace
+1. Read `discovery/perplexity.json` and `discovery/brave_web.slim.json` (the compact projection the Brave agent emits; fall back to `brave_web.json` only if the slim file is missing) from workspace
 2. Classify all URLs by pattern matching (refer to `references/source-classification.md`):
    - Video: `youtube.com/watch`, `youtu.be/`, etc.
    - Community: `reddit.com`, `forum`, `stackoverflow`, etc.
@@ -114,15 +121,23 @@ This phase is lightweight enough to run inline in the orchestrator. No subagent 
 4. If `discovery/brave_news.json` exists, merge news results into articles (leverage date metadata)
 5. Deduplicate across all sources
 
-**Refinement decision**: Read `discovery/perplexity.json` entities. If entities reveal subtopics not covered by initial results, run **one** refinement search inline:
+**Refinement decision**: Read `discovery/perplexity.json` entities. Test each entity string against the titles/URLs in `source_matrix`. If **2 or more entities are unmatched** (raised by Perplexity but absent from collected sources), run **one** refinement search on the top unmatched entity. Pick the branch deterministically:
 
 | Condition | Script call |
 |-----------|-------------|
-| General subtopic deep-dive | `scripts/tavily_search.py search "<refined>" --depth=basic --max=10` |
-| News refinement | `scripts/brave_search.py news "<refined>" --count=5` |
-| Korean → English supplement | `scripts/brave_search.py web "<english query>" --count=10` |
+| News topic (`is_news_topic` true) | `scripts/brave_search.py news "<refined>" --count=5` |
+| `Global` topic (asked in Korean) | `scripts/brave_search.py web "<english query>" --count=10` |
+| `Mixed` topic (Korean side underrepresented) | `scripts/brave_search.py web "<korean query>" --count=10 --country=kr --lang=ko` |
+| Otherwise (`KR-local` deep-dive) | `scripts/tavily_search.py search "<refined>" --depth=basic --max=10` |
 
-Save refinement results to `refinement.json`. Build and save `source_matrix.json`:
+**Disconfirming search** — for comparison / recommendation / claim-style topics, *always* run one extra Brave call for counter-evidence (the cheapest guard against one-sided sourcing). Route results into `source_matrix` so the stance has to reckon with them:
+
+```bash
+# KR-local context:   scripts/brave_search.py web "<query> 비판 OR 단점 OR 논란 OR 한계" --count=5 --country=kr --lang=ko
+# Global/Mixed context: scripts/brave_search.py web "<query> criticism OR limitations OR problems OR risks" --count=5
+```
+
+Save refinement (and disconfirming) results to `refinement.json`. Build and save `source_matrix.json`:
 ```json
 {
   "articles": [{"url": "...", "title": "..."}],
@@ -139,6 +154,7 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 - `{category}`: "articles"
 - `{urls}`: top 8 article URLs from source_matrix (comma-separated)
 - `{query}`: research topic (for relevance reranking)
+- `{depth}`: "advanced" — articles are the report's primary evidence spine, worth the deeper extract
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
 
@@ -146,6 +162,7 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 - `{category}`: "community"
 - `{urls}`: top 5 community URLs from source_matrix (comma-separated)
 - `{query}`: research topic
+- `{depth}`: "basic" — community threads are secondary; basic depth keeps cost down
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
 
@@ -189,10 +206,12 @@ The synthesizer decides whether to call `perplexity_search.py reason` based on:
 
 | Condition | Action |
 |-----------|--------|
-| Successful extractions >= 8 + source types >= 2 + clear consensus | Synthesize directly (skip) |
 | Sources conflict OR comparison/trade-off topic | Required |
 | Successful extractions <= 3 | Required (gap identification) |
+| Extractions >= 8 + source types >= 2 + clean consensus | Run **one disconfirming check** (ask `reason` for the strongest counter-case): if none surfaces, raise confidence; if one does, the stance must address it. Do NOT skip silently. |
 | Otherwise | Recommended |
+
+Note: skipping `reason` only skips the extra API call — it never skips forming a stance. Stance construction (Step 1.5 in the synthesizer) is always done inline.
 
 The synthesizer outputs the complete report text.
 
@@ -210,7 +229,7 @@ Simplified pipeline — no extraction or deep synthesis:
 1. **Phase 0**: Setup (same as full mode)
 2. **Phase 1**: Parallel Discovery (same — spawn both subagents)
 3. **Skip Phases 2-3**
-4. **Quick Synthesis**: Read discovery results. The orchestrator synthesizes directly (no subagent needed for brief mode — the data volume is small enough). Generate output following `references/brief-template.md`.
+4. **Quick Synthesis**: Read discovery results. The orchestrator synthesizes directly (no subagent needed for brief mode — the data volume is small enough). Generate output following `references/brief-template.md`. Even here, end with a **잠정 판단** — a one-line provisional stance (which way the evidence leans + what deeper research would confirm it), not just a restated summary. Mark it provisional, since brief mode skips deep extraction and disconfirming search.
 5. **Output & Save**: Same as Phase 5
 
 ## Fallback Mode
