@@ -1,0 +1,17 @@
+model_list:
+  - model_name: kimi
+    litellm_params:
+      model: openai/moonshotai/kimi-k2.6
+      api_base: https://zenmux.ai/api/v1
+      api_key: os.environ/ZENMUX_API_KEY
+      max_tokens: 32768
+
+  - model_name: kimi-fast
+    litellm_params:
+      model: openai/moonshotai/kimi-k2.6
+      api_base: https://zenmux.ai/api/v1
+      api_key: os.environ/ZENMUX_API_KEY
+      max_tokens: 8192
+
+litellm_settings:
+  drop_params: true
