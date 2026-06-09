@@ -1,0 +1,13 @@
+[Unit]
+Description=LiteLLM proxy (Anthropic Messages -> Ollama)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/cyprien/.local/bin/litellm --config /home/cyprien/.local/litellm-proxy/config.yaml --port 4000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
