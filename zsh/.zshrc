@@ -1,3 +1,10 @@
+# Homebrew — must come before oh-my-posh (and any other brew-installed tool)
+if [[ "$(uname)" == "Darwin" ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+else
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+fi
+
 # Oh My Posh
 # https://ohmyposh.dev/docs/installation/prompt
 export PATH=$PATH:$HOME/.local/bin
@@ -109,13 +116,6 @@ export SSH_AUTH_SOCK="$HOME/.1password/agent.sock"
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-
-# Homebrew
-if [[ "$(uname)" == "Darwin" ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv zsh)"
-else
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
-fi
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '$HOME/Downloads/google-cloud-sdk/path.zsh.inc' ]; then . '$HOME/Downloads/google-cloud-sdk/path.zsh.inc'; fi
