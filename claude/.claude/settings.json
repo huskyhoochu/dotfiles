@@ -79,7 +79,8 @@
     "security-guidance@claude-plugins-official": true,
     "pg@aiguide": true,
     "ralph-loop@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true
+    "vercel@claude-plugins-official": true,
+    "ai-action-tracker@ai-action-tracker": true
   },
   "extraKnownMarketplaces": {
     "aiguide": {
@@ -93,10 +94,16 @@
         "source": "git",
         "url": "https://github.com/affaan-m/everything-claude-code.git"
       }
+    },
+    "ai-action-tracker": {
+      "source": {
+        "source": "directory",
+        "path": "/home/cyprien/Documents/transcodes/ai-action-tracker"
+      }
     }
   },
   "language": "한국어",
-  "effortLevel": "medium",
+  "effortLevel": "low",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "autoCompactEnabled": true,
