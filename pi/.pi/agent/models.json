@@ -13,12 +13,18 @@
           "input": [
             "text"
           ],
-          "contextWindow": 128000,
-          "maxTokens": 16384,
+          "contextWindow": 1048576,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.435,
+            "output": 0.87,
+            "cacheRead": 0.0036,
+            "cacheWrite": 0
+          },
           "thinkingLevelMap": {
             "minimal": null,
             "low": null,
-            "medium": "high",
+            "medium": null,
             "high": "high",
             "xhigh": "max"
           },
@@ -80,11 +86,17 @@
             "text"
           ],
           "contextWindow": 1048576,
-          "maxTokens": 131072,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cacheRead": 0.0028,
+            "cacheWrite": 0
+          },
           "thinkingLevelMap": {
             "minimal": null,
             "low": null,
-            "medium": "high",
+            "medium": null,
             "high": "high",
             "xhigh": "max"
           },
