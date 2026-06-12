@@ -9,11 +9,29 @@
         {
           "id": "deepseek/deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
+          "reasoning": true,
           "input": [
             "text"
           ],
-          "contextWindow": 128000,
-          "maxTokens": 16384
+          "contextWindow": 1048576,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.435,
+            "output": 0.87,
+            "cacheRead": 0.0036,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "xhigh": "max"
+          },
+          "compat": {
+            "thinkingFormat": "deepseek",
+            "requiresReasoningContentOnAssistantMessages": true
+          }
         },
         {
           "id": "z-ai/glm-5.1",
@@ -63,11 +81,29 @@
         {
           "id": "deepseek/deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
+          "reasoning": true,
           "input": [
             "text"
           ],
           "contextWindow": 1048576,
-          "maxTokens": 131072
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cacheRead": 0.0028,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "xhigh": "max"
+          },
+          "compat": {
+            "thinkingFormat": "deepseek",
+            "requiresReasoningContentOnAssistantMessages": true
+          }
         }
       ]
     }
