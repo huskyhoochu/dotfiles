@@ -115,6 +115,8 @@ def cmd_search(args: list[str]):
         "arguments": {
             "query": query,
             "source": source,
+            "limit": limit,
+            "semanticWeight": 1.0,
         },
     }, session_id=session_id)
 
