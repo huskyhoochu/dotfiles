@@ -42,17 +42,9 @@ Use this as a structural guide. Adapt sections to the project. Delete sections t
 
 ## Architecture
 
-[Directory map — only top 2 levels, only meaningful directories]
+[OPTIONAL — include only the *non-obvious* parts. A plain directory tree the agent can produce with `ls` is inferable content (see Principle 0) and should be omitted. Keep this section only for structure that surprises: an unusual layout, a non-obvious boundary, where a key concept actually lives.]
 
-\`\`\`
-src/
-├── components/    # [brief purpose]
-├── services/      # [brief purpose]
-├── utils/         # [brief purpose]
-└── types/         # [brief purpose]
-\`\`\`
-
-[Key architectural patterns — 3-5 bullets max]
+[Key architectural patterns the agent can't infer from the tree — 3-5 bullets max]
 
 ## Code Conventions
 
@@ -92,6 +84,8 @@ These should NEVER appear in a generated CLAUDE.md:
 - Instructions for how to use Git (Claude already knows)
 - Listing every single file in the project
 - Duplicating README content
+- Any fact derivable from `package.json`/config/code (dependency lists, scripts the agent can read directly) — inferable content measurably hurts (Principle 0)
+- Copying content that belongs in AGENTS.md instead of referencing it (Principle 8)
 
 ## Sizing Guide
 
