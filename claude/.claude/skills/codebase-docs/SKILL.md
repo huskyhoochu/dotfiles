@@ -20,13 +20,15 @@ Explore a workspace and produce high-quality CLAUDE.md and `.claude/rules/` file
 
 ## Core Principles
 
-This skill applies context engineering best practices:
+This skill applies context engineering best practices. Ordered by evidential strength (see `references/context-engineering-principles.md` for the 2026 evidence behind each):
 
-- **CLAUDE.md as index**: Teach Claude *how to find* information, not exhaustive docs. Keep under 200 lines.
-- **English instructions**: Rules and directives in English for higher compliance. Comments and descriptions may use the user's language.
-- **Progressive disclosure**: Core identity and must/never rules at top. Detailed guides linked via file references.
-- **Identity over negation**: "You are a X that does Y" > "Don't do Z"
-- **Surgical precision**: Every line must earn its place. No filler, no obvious statements.
+- **Non-inferable content only** (first principle): A context file should contain only what the agent *cannot* discover by reading the repo itself — special tooling (`uv`, custom build steps), repo-specific conventions, and explicit "done" criteria. Restating directory structure, dependency lists, or anything derivable from `package.json`/code is not neutral filler — controlled studies (ETH Zurich, 2026) found such content *lowers* task success and raises inference cost ~20%. Every line must pass: "could the agent figure this out on its own? If yes, delete it."
+- **CLAUDE.md as index**: Teach Claude *how to find* information, not exhaustive docs. Keep under ~200 lines — but treat that as a symptom check, not the goal. The real target is non-redundancy; a 60-line file full of inferable content is worse than a 150-line file of pure non-inferable constraints.
+- **Concrete tooling/commands**: Verified build/test/lint commands and specific conventions are the highest-value content — often the *only* thing worth keeping. Verify every command against config files.
+- **English instructions**: Rules and directives in English — complex instruction-following empirically favors English on instruction-tuned models (NAACL 2025). Comments, descriptions, and output-language directives may use the user's language.
+- **Progressive disclosure**: Core identity and must/never rules at top; detailed, path-specific guides in `.claude/rules/`. Always-on context is costly, so push anything not universally needed into scoped rules loaded on demand.
+- **Identity over negation**: "You are a X that does Y" > "Don't do Z". A heuristic (not yet directly measured), but it lowers interpretation load by giving an actionable default.
+- **Cross-tool awareness**: `AGENTS.md` has become the cross-tool standard. When generating fresh docs, prefer the hybrid layout in Step 3 rather than locking everything into CLAUDE.md.
 
 ## Workflow
 
@@ -36,7 +38,7 @@ If argument provided, use that path. Otherwise, use the current working director
 
 Confirm the target workspace path with the user before proceeding. If the workspace is the same repo where this skill lives (dotfiles), warn and confirm — the user likely wants to target a different project.
 
-Detect the user's language from conversation context. The generated CLAUDE.md body (rules, directives, commands) should be in English for higher LLM compliance. Project description and inline comments may use the user's language if the team is non-English.
+Detect the user's language from conversation context. The generated CLAUDE.md body (rules, directives, commands) should be in English for stronger instruction-following (see principles §2 — the advantage is task-dependent, not absolute). Project description and inline comments may use the user's language if the team is non-English.
 
 ### Step 1 — Codebase Exploration
 
@@ -81,7 +83,7 @@ From Step 1 results, determine:
 | **Git workflow** | Commit message format, branch strategy, active areas |
 | **Runtime versions** | Node/Python/Go versions pinned via version files |
 
-**If `.cursorrules` found:** Parse and map existing rules into CLAUDE.md sections and `.claude/rules/` files. Present a migration plan showing where each rule maps to before proceeding. Delete `.cursorrules` only after user confirms the migration is complete.
+**If `.cursorrules` found:** Parse and map existing rules. By 2026, `AGENTS.md` is the cross-tool standard, so a one-way migration into CLAUDE.md alone strands every other tool (Cursor, Codex, Gemini CLI). Prefer migrating shared content into `AGENTS.md` as the canonical file, with CLAUDE.md as a thin Claude-specific layer (see Step 3 hybrid layout). Present a migration plan showing where each rule maps before proceeding. Delete `.cursorrules` only after user confirms.
 
 Classify the codebase:
 
@@ -97,6 +99,16 @@ Classify the codebase:
 ### Step 3 — Document Generation
 
 Check if CLAUDE.md or `.claude/rules/` already exist.
+
+> **Why this step is the riskiest one.** Controlled studies (ETH Zurich, 2026) found that *LLM-generated* context files measurably *reduced* agent task success (~2-3pp on AGENTbench) while raising inference cost ~20%, whereas sparse human-written files gave a small gain. This skill generates docs with an LLM — exactly the failure mode. The mitigation is built into the steps below: generate sparsely, run the non-inferability filter, and force a human review/deletion pass before writing. Bias toward omission. When unsure whether a line earns its place, leave it out.
+
+#### CLAUDE.md vs AGENTS.md layout
+
+For **fresh docs**, default to the hybrid layout (the cross-tool standard plus a Claude-specific layer):
+- `AGENTS.md` — canonical, tool-agnostic content (commands, conventions, "done" criteria).
+- `CLAUDE.md` — a thin file that references it (`See @AGENTS.md`) plus any Claude-only additions (skills, `.claude/rules/` pointers). A relative-path symlink `CLAUDE.md -> AGENTS.md` is the simplest equivalent when there's no Claude-specific content.
+
+Offer the single-file CLAUDE.md layout instead when the project is Claude-only or the user prefers it. Note: Claude Code does not yet load `AGENTS.md` natively, so the `@AGENTS.md` reference (or symlink) is what makes the hybrid work today — confirm the reference is present.
 
 **If no existing docs** → generate fresh using `references/claude-md-template.md`.
 
@@ -163,10 +175,12 @@ If files already existed, show the diff before overwriting.
 
 Before presenting output, verify:
 
-- [ ] CLAUDE.md is under 200 lines
+- [ ] **Non-inferability pass**: every line names something the agent couldn't derive from the repo itself. Deleted anything restating directory structure, dependency lists, or config-file content.
+- [ ] CLAUDE.md is under ~200 lines (symptom check — non-redundancy is the real target)
 - [ ] All build/test/lint commands are real (verified from config files, not guessed)
 - [ ] No obvious/generic advice ("write clean code", "follow best practices")
 - [ ] Instructions are in English, concrete, and actionable
 - [ ] File references point to files that actually exist
-- [ ] Rules files have appropriate `paths` scopes
-- [ ] No duplication between CLAUDE.md and rules files
+- [ ] Rules files have appropriate `paths` scopes; behavior-correcting checks (security, code-quality review) are pushed to skills/hooks, not always-on rules
+- [ ] No duplication between CLAUDE.md and rules files (or between CLAUDE.md and AGENTS.md — CLAUDE.md should reference, not copy)
+- [ ] Presented the draft to the user as a *deletion* review ("what here is inferable and should be cut?"), not just an additive one
