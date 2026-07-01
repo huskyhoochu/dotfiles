@@ -1,13 +1,13 @@
 ---
 name: web-research
-description: "Research any keyword/topic by orchestrating parallel subagents across Perplexity, Tavily, and Brave Search API to produce a comprehensive Korean-language report. Each research phase runs as independent subagents for true parallel execution and context isolation. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
+description: "Research any keyword/topic by orchestrating parallel subagents across Perplexity, Tavily, Brave Search API, and Exa to produce a comprehensive Korean-language report. Each research phase runs as independent subagents for true parallel execution and context isolation. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
 user_invocable: true
 argument: "<keyword_or_topic> [--brief]"
 ---
 
 # Web Research Orchestrator
 
-Orchestrates parallel subagents (via the Agent tool) across **Perplexity**, **Tavily**, and **Brave Search API** to produce a comprehensive Korean-language research report. Each pipeline phase spawns focused subagents that communicate through a shared workspace directory.
+Orchestrates parallel subagents (via the Agent tool) across **Perplexity**, **Tavily**, **Brave Search API**, and **Exa** to produce a comprehensive Korean-language research report. Each pipeline phase spawns focused subagents that communicate through a shared workspace directory.
 
 **Goal**: Not "summarize what the sources say about the topic" but "given the best available evidence, reach the most defensible answer, lay out the competing views, and judge which is stronger and why." The report must end in a synthesized **stance**, not a catalogue of sources.
 
@@ -24,9 +24,10 @@ Orchestrates parallel subagents (via the Agent tool) across **Perplexity**, **Ta
 ## Architecture
 
 ```
-Phase 1: Discovery ─────────── 2 subagents in parallel
+Phase 1: Discovery ─────────── 3 subagents in parallel
   ├─ Perplexity Discovery       (AI overview + entity extraction)
-  └─ Brave Discovery            (web + video + conditional news)
+  ├─ Brave Discovery            (web + video + conditional news)
+  └─ Exa Discovery              (neural search — semantic matches keyword search misses)
               │
               ▼  workspace JSON handoff
 Phase 2: Classification ────── orchestrator inline (lightweight)
@@ -60,7 +61,8 @@ $WORKSPACE/
 │   ├── perplexity.json      # {overview, citations[], entities[], is_news_topic}
 │   ├── brave_web.json       # raw Brave web API response
 │   ├── brave_video.json     # raw Brave video API response
-│   └── brave_news.json      # raw Brave news API response (if applicable)
+│   ├── brave_news.json      # raw Brave news API response (if applicable)
+│   └── exa.json             # raw Exa neural search response
 ├── source_matrix.json       # {articles[], videos[], community[]}
 ├── refinement.json          # refinement search results (if applicable)
 └── extraction/
@@ -82,7 +84,7 @@ $WORKSPACE/
 
 ### Phase 1: Parallel Discovery
 
-Spawn **two subagents simultaneously** using the Agent tool. Read each agent template from `agents/`, construct the prompt with the variables below, and launch both in a single message.
+Spawn **three subagents simultaneously** using the Agent tool. Read each agent template from `agents/`, construct the prompt with the variables below, and launch all three in a single message.
 
 **Subagent A — Perplexity Discovery:**
 
@@ -106,20 +108,30 @@ Read `agents/discoverer-brave.md`. Spawn with these variables:
 
 This agent runs Brave web, video, and conditionally news searches.
 
-**Wait for both subagents to complete before proceeding.**
+**Subagent C — Exa Discovery:**
+
+Read `agents/discoverer-exa.md`. Spawn with these variables:
+- `{query}`: the research keyword
+- `{workspace}`: workspace path
+- `{script_dir}`: path to this skill's `scripts/` directory
+
+This agent runs Exa neural search for semantic matches keyword search can miss.
+
+**Wait for all three subagents to complete before proceeding.**
 
 ### Phase 2: Classification & Refinement (inline)
 
 This phase is lightweight enough to run inline in the orchestrator. No subagent needed.
 
-1. Read `discovery/perplexity.json` and `discovery/brave_web.slim.json` (the compact projection the Brave agent emits; fall back to `brave_web.json` only if the slim file is missing) from workspace
+1. Read `discovery/perplexity.json`, `discovery/brave_web.slim.json` (the compact projection the Brave agent emits; fall back to `brave_web.json` only if the slim file is missing), and `discovery/exa.json` from workspace
 2. Classify all URLs by pattern matching (refer to `references/source-classification.md`):
    - Video: `youtube.com/watch`, `youtu.be/`, etc.
    - Community: `reddit.com`, `forum`, `stackoverflow`, etc.
    - Article: everything else
 3. Merge video sources: video URLs from web search + `discovery/brave_video.json`. Deduplicate.
 4. If `discovery/brave_news.json` exists, merge news results into articles (leverage date metadata)
-5. Deduplicate across all sources
+5. Merge Exa results into `source_matrix` alongside Brave's — same classification rules apply. Exa's value is surfacing URLs Brave's keyword search missed, so don't drop overlapping hits before dedup; dedup by URL across all sources first.
+6. Deduplicate across all sources
 
 **Refinement decision**: Read `discovery/perplexity.json` entities. Test each entity string against the titles/URLs in `source_matrix`. If **2 or more entities are unmatched** (raised by Perplexity but absent from collected sources), run **one** refinement search on the top unmatched entity. Pick the branch deterministically:
 
@@ -227,7 +239,7 @@ The synthesizer outputs the complete report text.
 Simplified pipeline — no extraction or deep synthesis:
 
 1. **Phase 0**: Setup (same as full mode)
-2. **Phase 1**: Parallel Discovery (same — spawn both subagents)
+2. **Phase 1**: Parallel Discovery (same — spawn all three subagents)
 3. **Skip Phases 2-3**
 4. **Quick Synthesis**: Read discovery results. The orchestrator synthesizes directly (no subagent needed for brief mode — the data volume is small enough). Generate output following `references/brief-template.md`. Even here, end with a **잠정 판단** — a one-line provisional stance (which way the evidence leans + what deeper research would confirm it), not just a restated summary. Mark it provisional, since brief mode skips deep extraction and disconfirming search.
 5. **Output & Save**: Same as Phase 5

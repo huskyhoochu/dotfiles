@@ -16,6 +16,7 @@ All scripts are in `scripts/` and run via the Bash tool. Each requires its corre
 | Fallback research | `tavily_search.py research` | Single-call alternative when main pipeline fails |
 | Video discovery | `brave_search.py video` | Video results with metadata (title, duration, views) |
 | News discovery (Step 1 conditional + Step 2c) | `brave_search.py news` | Date metadata for time-sensitive topics |
+| Semantic URL discovery (Step 1) | `exa_search.py search` | Neural/embedding search — finds conceptually relevant pages keyword search misses |
 | Timestamp | `perplexity_search.py timestamp` | Report date and recency awareness |
 
 ## Tool Details
@@ -84,3 +85,23 @@ Requires `BRAVE_API_KEY` environment variable. Run with Bash tool.
 - **Example**: `scripts/brave_search.py news "AI regulation" --count=5`
 - **Options**: `--count=` (default 5), `--country=`, `--lang=`
 - **Returns**: JSON with news results containing title, URL, description, date
+
+### Exa (via `scripts/exa_search.py`)
+
+Requires `EXA_API_KEY` environment variable. Run with Bash tool.
+
+#### `exa_search.py search`
+- **Purpose**: Step 1 discovery, run in parallel with Brave. Neural/embedding-based search surfaces conceptually relevant pages that keyword matching (Brave) misses — same query, different retrieval mechanism, not a replacement.
+- **Example**: `scripts/exa_search.py search "Claude Code CLI" --type=neural --count=10 --highlights`
+- **Options**: `--type=` (auto/neural/keyword, default: "auto"), `--count=` (default 10), `--highlights` (include relevant excerpt snippets)
+- **Returns**: JSON with results containing title, url, highlights (if requested)
+- **Caveat**: No locale flags (unlike Brave's `--country`/`--lang`) — Exa's neural model handles cross-lingual matching natively, so pass the same query text regardless of scope.
+
+#### `exa_search.py findsimilar`
+- **Purpose**: Given a known-good URL, find pages with similar content/meaning. Useful for expanding a strong source found elsewhere in the pipeline.
+- **Example**: `scripts/exa_search.py findsimilar "https://example.com/article" --count=10`
+- **Options**: `--count=` (default 10), `--highlights`
+
+#### `exa_search.py answer`
+- **Purpose**: Direct answer generation for a single factual query, no source list needed. Not used in the standard pipeline; available for ad-hoc lookups.
+- **Example**: `scripts/exa_search.py answer "What is the latest valuation of SpaceX?"`
