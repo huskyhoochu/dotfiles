@@ -81,8 +81,7 @@ export FZF_DEFAULT_OPTS=" \
 # Aliases
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
-alias claude-mem='bun "$HOME/.claude/plugins/marketplaces/thedotmack/plugin/scripts/worker-service.cjs"'
-alias yt-wall='f() { yt-dlp -f "bestvideo[height<=2160]+bestaudio/best" --merge-output-format mp4 -o "$HOME/Downloads/%(title)s.mp4" "https://www.youtube.com/watch?v=$1"; }; f'
+alias yt-wall='f() { yt-dlp --cookies-from-browser vivaldi --remote-components ejs:github -S "res:2160,hdr:sdr,vcodec:vp9" -o "$HOME/Videos/Wallpapers/%(title)s.%(ext)s" "https://www.youtube.com/watch?v=$1"; }; f'
 
 # Shell integrations
 # fzf
