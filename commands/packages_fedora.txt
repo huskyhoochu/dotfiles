@@ -1,8 +1,13 @@
-# Fedora Workstation packages for dnf installation
-# Lines starting with # are comments and will be ignored
-# Empty lines will be skipped
+# Fedora 44 Workstation packages
+# Sections:
+#   dnf:   Fedora official repos (dnf install)
+#   brew:  Homebrew on Linux (brew install)
+#   repo:  extra repositories required — line format: <repo-spec> <package>
+#          copr:<user>/<project> <package>   → dnf copr enable
+#          <url-to-.repo-file> <package>     → dnf config-manager addrepo
+# Lines starting with # and blank lines are skipped.
 
-# NOTE: Fedora Workstation uses GNOME desktop environment
+dnf:
 
 # Core utilities (modern alternatives preferred)
 cmatrix
@@ -10,7 +15,6 @@ eza
 fzf
 git
 btop
-lazygit
 less
 fastfetch
 ripgrep
@@ -26,6 +30,9 @@ neovim
 lua
 luarocks
 
+# Prompt theme (official repo since Fedora 44 — COPR no longer needed)
+oh-my-posh
+
 # Korean input (fcitx5)
 fcitx5
 fcitx5-hangul
@@ -40,17 +47,27 @@ google-noto-color-emoji-fonts
 
 # Browsers
 firefox
-vivaldi
 
 # Media
 mupdf
 
-# Manual installation required (not in default repos):
-# - ghostty (build from source or COPR)
-# - oh-my-posh (COPR: sudo dnf copr enable chronoscrat/oh-my-posh)
-# - spicetify-cli (npm install -g spicetify-cli or manual)
+brew:
+
+# Not in Fedora official repos; Homebrew ships Linux bottles for these
+lazygit
+spicetify-cli
+
+repo:
+
+# Ghostty terminal — community COPR (not in official repos as of Fedora 44)
+copr:scottames/ghostty ghostty
+
+# Vivaldi browser — vendor repo (package name is vivaldi-stable, not vivaldi)
+https://repo.vivaldi.com/stable/vivaldi-fedora.repo vivaldi-stable
+
+# Manual installation required (no repo / GUI apps):
+# - 1password (download RPM from 1password.com, or their yum repo)
 # - dropbox (download RPM from dropbox.com)
-# - 1password (download RPM from 1password.com)
-# - obsidian (Flatpak or download from obsidian.md)
-# - spotify (Flatpak or RPMFusion)
-# - nerd-fonts (individual packages or manual install to ~/.local/share/fonts/)
+# - obsidian (Flatpak: md.obsidian.Obsidian)
+# - spotify (Flatpak: com.spotify.Client)
+# - nerd-fonts (download to ~/.local/share/fonts/, then fc-cache -fv)

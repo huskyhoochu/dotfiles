@@ -82,7 +82,7 @@ Used across tmux and zsh. When adding new tool configs, prefer Catppuccin Mocha 
 
 - Always run `stow -n <package>` before deploying new configs to check for conflicts.
 - Identify the target platform before editing: macOS-only (`aerospace/`), Linux-only (`deskflow-linux/`), or cross-platform.
-- Some packages need COPR repos: `oh-my-posh` (chronoscrat).
+- Fedora packages needing extra repos (COPR/vendor) are declared in the `repo:` section of `commands/packages_fedora.txt` — do not hardcode repo setup in scripts.
 
 ## File References
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Fedora 패키지 설치 스크립트
-# dnf를 사용하여 packages_fedora.txt의 패키지들을 설치합니다
+# Fedora 44 패키지 설치 스크립트
+# packages_fedora.txt의 섹션(dnf: / brew: / repo:)별로 패키지를 설치합니다
 
 # 로그 파일 설정
 LOG_FILE="fedora_install_$(date +%Y%m%d_%H%M%S).log"
@@ -33,6 +33,17 @@ check_input_file() {
   fi
 }
 
+# packages_fedora.txt에서 특정 섹션의 항목만 추출
+# 섹션 헤더는 "dnf:", "brew:", "repo:" 형식
+parse_section() {
+  local section="$1"
+  awk -v target="$section" '
+    /^[a-z]+:$/ { current = substr($0, 1, length($0) - 1); next }
+    /^#/ || /^[[:space:]]*$/ { next }
+    current == target { print }
+  ' packages_fedora.txt
+}
+
 # 시스템 업데이트
 update_system() {
   log "시스템 업데이트를 시작합니다..."
@@ -56,107 +67,127 @@ enable_rpmfusion() {
   fi
 }
 
-# 패키지 설치 함수
-install_packages() {
+# dnf 패키지 하나 설치 (이미 설치됐으면 건너뜀). 실패 시 1 반환
+dnf_install_one() {
+  local package="$1"
+  if dnf list installed "$package" &>/dev/null; then
+    log "이미 설치됨: $package"
+    return 0
+  fi
+  if sudo dnf install -y "$package"; then
+    log "설치 완료: $package"
+  else
+    log "경고: $package 설치 실패"
+    return 1
+  fi
+}
+
+# dnf: 섹션 — Fedora 공식 리포지토리 패키지
+install_dnf_packages() {
   local failed_packages=()
-  local skipped_packages=()
+  local packages
+  packages=$(parse_section dnf)
 
-  # 패키지 개수 확인
-  local total_packages=$(grep -v '^#' packages_fedora.txt | grep -v '^$' | wc -l)
-  log "총 $total_packages 개의 패키지를 설치합니다."
+  local total
+  total=$(echo "$packages" | grep -c .)
+  log "==================== dnf (공식 리포) ===================="
+  log "총 $total 개의 패키지를 설치합니다."
 
-  # 각 패키지 설치
-  while IFS= read -r package || [[ -n "$package" ]]; do
-    # 주석과 빈 줄 건너뛰기
-    [[ -z "$package" || "$package" =~ ^#.*$ ]] && continue
-
-    # 앞뒤 공백 제거
+  while IFS= read -r package; do
+    [ -z "$package" ] && continue
     package=$(echo "$package" | xargs)
+    log "설치 중: $package"
+    dnf_install_one "$package" || failed_packages+=("$package")
+  done <<<"$packages"
+
+  if [ ${#failed_packages[@]} -gt 0 ]; then
+    log "dnf 설치 실패 (${#failed_packages[@]}개):"
+    printf '  - %s\n' "${failed_packages[@]}" | tee -a "$LOG_FILE"
+  else
+    log "dnf 패키지가 모두 설치되었습니다."
+  fi
+}
+
+# repo: 섹션 — 추가 리포지토리 등록 후 dnf 설치
+# 줄 형식: "copr:<user>/<project> <package>" 또는 "<repo파일 URL> <package>"
+install_repo_packages() {
+  log "==================== repo (추가 리포지토리) ===================="
+
+  while read -r spec package; do
+    [ -z "$package" ] && continue
+
+    if [[ "$spec" == copr:* ]]; then
+      local copr_repo="${spec#copr:}"
+      log "COPR 활성화: $copr_repo"
+      if ! sudo dnf copr enable -y "$copr_repo"; then
+        log "경고: COPR 활성화 실패: $copr_repo ($package 건너뜀)"
+        continue
+      fi
+    else
+      local repo_file="/etc/yum.repos.d/$(basename "$spec")"
+      if [ -f "$repo_file" ]; then
+        log "리포지토리 이미 등록됨: $(basename "$spec")"
+      else
+        log "리포지토리 등록: $spec"
+        # dnf5 (Fedora 41+) 문법
+        if ! sudo dnf config-manager addrepo --from-repofile="$spec"; then
+          log "경고: 리포지토리 등록 실패: $spec ($package 건너뜀)"
+          continue
+        fi
+      fi
+    fi
 
     log "설치 중: $package"
+    dnf_install_one "$package" || true
+  done < <(parse_section repo)
+}
 
-    # 패키지가 이미 설치되어 있는지 확인
-    if dnf list installed "$package" &>/dev/null; then
-      log "이미 설치됨: $package"
-      skipped_packages+=("$package")
+# brew: 섹션 — Homebrew on Linux
+install_brew_packages() {
+  log "==================== brew (linuxbrew) ===================="
+
+  if ! command -v brew &>/dev/null; then
+    log "경고: brew가 설치되어 있지 않습니다. 다음 섹션 패키지를 건너뜁니다:"
+    parse_section brew | sed 's/^/  - /' | tee -a "$LOG_FILE"
+    log "설치: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+    return 0
+  fi
+
+  while IFS= read -r package; do
+    [ -z "$package" ] && continue
+    if brew list "$package" &>/dev/null; then
+      log "이미 설치됨 (brew): $package"
       continue
     fi
-
-    # 패키지 설치 시도
-    if sudo dnf install -y "$package"; then
-      log "설치 완료: $package"
-    else
-      log "경고: $package 설치 실패"
-      failed_packages+=("$package")
-    fi
-  done <packages_fedora.txt
-
-  # 설치 결과 보고
-  echo ""
-  log "==================== 설치 완료 보고 ===================="
-
-  if [ ${#skipped_packages[@]} -gt 0 ]; then
-    log "이미 설치되어 있던 패키지 (${#skipped_packages[@]}개):"
-    printf '  - %s\n' "${skipped_packages[@]}" | tee -a "$LOG_FILE"
-    echo ""
-  fi
-
-  if [ ${#failed_packages[@]} -eq 0 ]; then
-    log "모든 패키지가 성공적으로 설치되었습니다."
-  else
-    log "다음 패키지들의 설치가 실패했습니다 (${#failed_packages[@]}개):"
-    printf '  - %s\n' "${failed_packages[@]}" | tee -a "$LOG_FILE"
-    echo ""
-    log "실패한 패키지들은 수동으로 설치하거나 대안을 찾아야 할 수 있습니다."
-  fi
-  log "======================================================="
+    log "설치 중 (brew): $package"
+    brew install "$package" || log "경고: $package 설치 실패 (brew)"
+  done < <(parse_section brew)
 }
 
 # 추가 수동 설치 안내
 print_manual_instructions() {
   log ""
   log "==================== 수동 설치 필요 ===================="
-  log "다음 패키지들은 Fedora 기본 리포지토리에 없어 수동 설치가 필요합니다:"
+  log "다음 패키지들은 리포지토리가 없어 수동 설치가 필요합니다:"
   log ""
-  log "1. oh-my-posh (프롬프트 테마):"
-  log "   sudo dnf copr enable chronoscrat/oh-my-posh"
-  log "   sudo dnf install oh-my-posh"
-  log ""
-  log "2. ghostty (터미널):"
-  log "   - GitHub에서 소스 빌드 또는 COPR 검색"
-  log "   - 대안: alacritty, kitty (dnf로 설치 가능)"
-  log ""
-  log "3. lazygit (Git TUI):"
-  log "   sudo dnf copr enable atim/lazygit"
-  log "   sudo dnf install lazygit"
-  log "   또는: https://github.com/jesseduffield/lazygit/releases"
-  log ""
-  log "4. Nerd Fonts (아이콘 폰트):"
+  log "1. Nerd Fonts (아이콘 폰트):"
   log "   - https://www.nerdfonts.com/font-downloads"
   log "   - 다운로드 후 ~/.local/share/fonts/ 에 복사"
   log "   - fc-cache -fv 실행"
   log ""
-  log "5. 1Password (비밀번호 관리자):"
+  log "2. 1Password (비밀번호 관리자):"
   log "   - https://1password.com/downloads/linux/"
   log "   - RPM 패키지 다운로드 및 설치"
-  log "   - (Fedora 43: XWayland를 통해 실행됨)"
   log ""
-  log "6. Dropbox:"
+  log "3. Dropbox:"
   log "   - https://www.dropbox.com/install-linux"
   log "   - Fedora RPM 다운로드"
-  log "   - (Fedora 43: XWayland를 통해 실행됨)"
   log ""
-  log "7. Obsidian (메모 앱):"
+  log "4. Obsidian (메모 앱):"
   log "   - Flatpak: flatpak install flathub md.obsidian.Obsidian"
-  log "   - 또는 AppImage 다운로드"
   log ""
-  log "8. Spotify:"
+  log "5. Spotify:"
   log "   - Flatpak: flatpak install flathub com.spotify.Client"
-  log "   - 또는 RPM Fusion: sudo dnf install lpf-spotify-client"
-  log ""
-  log "9. spicetify-cli (Spotify 테마):"
-  log "   - npm install -g spicetify-cli"
-  log "   - 또는: curl -fsSL https://raw.githubusercontent.com/spicetify/cli/main/install.sh | sh"
   log ""
   log "======================================================="
 }
@@ -177,7 +208,9 @@ main() {
   check_input_file
   update_system
   enable_rpmfusion
-  install_packages
+  install_dnf_packages
+  install_repo_packages
+  install_brew_packages
   print_manual_instructions
   clean_cache
 
