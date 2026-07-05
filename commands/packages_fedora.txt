@@ -1,9 +1,8 @@
-# Fedora 43 Workstation packages for dnf installation
+# Fedora Workstation packages for dnf installation
 # Lines starting with # are comments and will be ignored
 # Empty lines will be skipped
 
-# NOTE: Fedora 43 Workstation uses GNOME desktop environment
-# Sway/Wayland-specific packages are not needed (use packages_fedora_sway_atomic.txt for Sway)
+# NOTE: Fedora Workstation uses GNOME desktop environment
 
 # Core utilities (modern alternatives preferred)
 cmatrix

@@ -9,15 +9,13 @@ COMMON_PACKAGES=(zsh nvim tmux git ghostty fonts backgrounds claude pi)
 
 # 플랫폼별 패키지
 MACOS_PACKAGES=(aerospace)
-LINUX_PACKAGES=(sway waybar wofi swaylock deskflow-linux)
+LINUX_PACKAGES=(deskflow-linux)
 
 detect_os() {
   case "$(uname -s)" in
     Darwin) echo "macos" ;;
     Linux)
-      if command -v rpm-ostree &>/dev/null; then
-        echo "fedora-atomic"
-      elif [ -f /etc/fedora-release ]; then
+      if [ -f /etc/fedora-release ]; then
         echo "fedora"
       else
         echo "linux-unknown"
@@ -38,9 +36,6 @@ install_packages() {
     fedora)
       bash "$DOTFILES_DIR/commands/install_deps_fedora.sh"
       ;;
-    fedora-atomic)
-      bash "$DOTFILES_DIR/commands/install_deps_fedora_sway_atomic.sh"
-      ;;
     *)
       echo "경고: 지원되지 않는 OS입니다. 패키지 설치를 건너뜁니다."
       return 1
@@ -56,7 +51,7 @@ deploy_dotfiles() {
     macos)
       packages+=("${MACOS_PACKAGES[@]}")
       ;;
-    fedora | fedora-atomic)
+    fedora)
       packages+=("${LINUX_PACKAGES[@]}")
       ;;
   esac
@@ -78,13 +73,6 @@ deploy_dotfiles() {
     echo "실패한 패키지: ${failed[*]}"
     echo "stow -n <패키지>로 충돌을 확인하세요."
     return 1
-  fi
-
-  # greetd 안내
-  if [[ "$os" == fedora* ]] && [ -d "$DOTFILES_DIR/greetd" ]; then
-    echo ""
-    echo "참고: greetd는 /etc 타겟이므로 별도 설치가 필요합니다:"
-    echo "  sudo bash $DOTFILES_DIR/commands/setup_greetd.sh"
   fi
 
   echo "배포 완료."

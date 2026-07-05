@@ -1,6 +1,10 @@
 # AGENTS.md
 
-Personal dotfiles repository managing macOS and Linux (Fedora Sway Atomic) configurations via GNU Stow symlinks.
+Personal dotfiles repository managing macOS and Linux (Fedora) configurations via GNU Stow symlinks.
+
+## Machines
+
+Deployed on multiple machines — a MacBook Pro (Apple Silicon, macOS) and a Fedora Workstation 44 (GNOME) desktop, as of 2026-07. Never assume which one you are on; check `uname -s` before platform-specific work. Shared config (`zsh/`, `nvim/`, `tmux/`, etc.) must stay cross-platform: branch on `uname` inside the config rather than forking per-machine files.
 
 ## Commands
 
@@ -26,7 +30,6 @@ stow -n <package>     # dry-run — check for conflicts before deploying
 cd commands
 ./install_deps_mac.sh                    # macOS — Homebrew
 ./install_deps_fedora.sh                 # Fedora Workstation — dnf
-./install_deps_fedora_sway_atomic.sh     # Fedora Sway Atomic — rpm-ostree (reboot required)
 ```
 
 ## Directory Structure
@@ -53,22 +56,12 @@ Example: `zsh/.zshrc` → `~/.zshrc`, `nvim/.config/nvim/` → `~/.config/nvim/`
 |---------|---------|
 | `aerospace/` | AeroSpace tiling window manager |
 
-### Linux (Fedora Sway Atomic) only
-
-| Package | Purpose |
-|---------|---------|
-| `sway/` | Sway tiling WM (Wayland native) |
-| `waybar/` | Status bar |
-| `wofi/` | Application launcher |
-| `greetd/` | greetd + tuigreet display manager (deploys to `/etc`, not via stow) |
-| `swaylock/` | swaylock-effects screen lock |
-
 ### Other
 
 | Package | Purpose |
 |---------|---------|
 | `commands/` | Package install scripts and package lists |
-| `Codex/` | Codex settings and skills (stowed to `~/.Codex/`) |
+| `codex/` | Codex settings and skills (stowed to `~/.codex/`) |
 
 ## Architecture
 
@@ -79,23 +72,20 @@ fnm (Node.js), pyenv (Python), SDKMAN (JVM), pnpm. 1Password SSH agent integrati
 ### Platform-specific window managers
 
 - **macOS**: AeroSpace
-- **Linux**: Sway + Waybar + Wofi (Wayland-only, no X11 session)
+- **Linux**: GNOME (Fedora Workstation) — no WM config in this repo
 
 ### Catppuccin Mocha theme
 
-Used across tmux, zsh, swaylock. When adding new tool configs, prefer Catppuccin Mocha for consistency.
+Used across tmux and zsh. When adding new tool configs, prefer Catppuccin Mocha for consistency.
 
 ## Editing Rules
 
 - Always run `stow -n <package>` before deploying new configs to check for conflicts.
-- Identify the target platform before editing: macOS-only (`aerospace/`), Linux-only (`sway/`, `waybar/`, `wofi/`, `greetd/`, `swaylock/`), or cross-platform.
-- `greetd/` targets `/etc/greetd/`, not `~/.config/`. Use `commands/setup_greetd.sh` for deployment.
-- Fedora Sway Atomic uses rpm-ostree (requires reboot). SELinux is enabled — run `restorecon -Rv ~/` if permission issues arise after stow.
-- Some packages need COPR repos: `swaylock-effects` (eddsalkield), `oh-my-posh` (chronoscrat).
+- Identify the target platform before editing: macOS-only (`aerospace/`), Linux-only (`deskflow-linux/`), or cross-platform.
+- Some packages need COPR repos: `oh-my-posh` (chronoscrat).
 
 ## File References
 
-- Package lists: `commands/packages_homebrew.txt`, `commands/packages_fedora.txt`, `commands/packages_fedora_sway_atomic.txt`
-- Sway keybindings: `sway/.config/sway/config`
+- Package lists: `commands/packages_homebrew.txt`, `commands/packages_fedora.txt`
 - Neovim plugins: `nvim/.config/nvim/lua/plugins/`
-- Codex skills: `Codex/.Codex/skills/`
+- Codex skills: `codex/.codex/skills/`
