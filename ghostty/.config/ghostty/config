@@ -1,7 +1,7 @@
 theme = Rose Pine Moon
 font-size = 16
 background-opacity = 0.5
-background-blur = 20
+background-blur = 16
 gtk-titlebar = true
 macos-titlebar-style = hidden
 
