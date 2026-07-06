@@ -1,62 +1,8 @@
 {
   "permissions": {
-    "allow": [
-      "mcp__pencil"
-    ],
     "defaultMode": "auto"
   },
   "model": "claude-fable-5[1m]",
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME\"/.claude/hooks/cleanup-orphaned-claude.sh",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "\"$HOME\"/.claude/hooks/cleanup-claude-mem.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      }
-    ]
-  },
   "statusLine": {
     "type": "command",
     "command": "echo \"$(basename \"$(pwd)\") $(git -c core.useBuiltinFSMonitor=false branch --show-current 2>/dev/null | sed 's/^/on /')\""
@@ -72,15 +18,10 @@
     "pr-review-toolkit@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
-    "slack@claude-plugins-official": false,
-    "notion@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true,
-    "claude-md-management@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "pg@aiguide": true,
-    "ralph-loop@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true,
     "ai-action-tracker@ai-action-tracker": true
   },
   "extraKnownMarketplaces": {
@@ -89,22 +30,12 @@
         "source": "github",
         "repo": "timescale/pg-aiguide"
       }
-    },
-    "ecc": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/affaan-m/everything-claude-code.git"
-      }
-    },
-    "ai-action-tracker": {
-      "source": {
-        "source": "directory",
-        "path": "/home/cyprien/Documents/transcodes/ai-action-tracker"
-      }
     }
   },
   "language": "한국어",
-  "effortLevel": "low",
+  "alwaysThinkingEnabled": false,
+  "effortLevel": "medium",
+  "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "autoCompactEnabled": true,
