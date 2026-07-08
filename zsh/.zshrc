@@ -10,7 +10,13 @@ fi
 export PATH=$PATH:$HOME/.local/bin
 export PATH=$PATH:$HOME/.cargo/bin
 export PATH=$PATH:$HOME/Documents/external_packages/llama.cpp/build/bin
-eval "$(oh-my-posh init zsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/star.omp.json')"
+# 머신별 테마 분기 — 맥은 star, 리눅스 서버는 catppuccin_mocha(호스트명 상시 표시)
+if [[ "$(uname)" == "Darwin" ]]; then
+  _omp_config="$HOME/dotfiles/zsh/star.omp.json"
+else
+  _omp_config="$HOME/dotfiles/zsh/catppuccin_mocha.omp.json"
+fi
+eval "$(oh-my-posh init zsh --config "$_omp_config")"
 # Avoid baking the absolute binary path into precmd hooks — re-resolve via PATH each call
 # so brew/dnf upgrades don't break live sessions when the binary path changes.
 _omp_executable=oh-my-posh
