@@ -54,6 +54,16 @@ Before writing prose, build this stance object from all evidence. It is the anal
 
 You render this object into the "종합 판단" section in Step 2. Do not paste the JSON into the report.
 
+## Step 1.7: Construct the Outline (internal scratchpad — do NOT output)
+
+Before writing prose, design the 상세 분석 table of contents from the evidence. The report's depth lives or dies here: a fixed outline flattens every topic into the same shape, while an outline derived from the material surfaces the issues this topic actually turns on.
+
+1. List the 3-5 distinct issue axes the collected evidence actually addresses — the questions sources argue about, the mechanisms they explain, the practical decisions they inform.
+2. Turn each axis into a specific Korean subsection heading. A good heading states the issue, not a category: "몬트리올 의정서의 다층적 효과: 오존 보호와 온난화 억제" (good) vs "상세 분석 1" or "합의점" (bad).
+3. Assign every major extracted finding to exactly one subsection. A finding that fits nowhere means the outline is missing an axis; an empty subsection means the axis isn't supported by evidence — drop it.
+
+Pattern examples (adapt, never force): mechanism/principle → latest verification/data → real-world implications; or current state → competing approaches → step-by-step guide; or official facts → rumors/leaks → what happens next. Practical topics deserve implementation-guide-style sections; contested topics deserve issue-axis sections.
+
 ## Step 2: Generate Report
 
 Write the report following `{report_template}`. The entire report must be in **Korean**.
@@ -61,18 +71,19 @@ Write the report following `{report_template}`. The entire report must be in **K
 **Anti-summarization (the core rule):** 단순 요약 금지. 소스를 나열·종합하는 데서 멈추지 말고, 증거의 강도를 평가해 어느 입장이 가장 잘 뒷받침되는지 결정하고 그 이유를 설명하라. 증거가 정말로 불충분할 때만 판단을 유보하고, 그 경우 무엇이 부족한지 명시하라. 모든 핵심 주장은 출처에 연결되어야 한다(orphan claim 금지).
 
 Key rules:
-- The **"종합 판단" section is mandatory** — render your Step 1.5 stance there (선택한 입장 / 확신도 / 근거 / 반대 입장이 약한 이유 / 뒤집힐 조건). The 논쟁점 section must adjudicate (which view is better supported), not just note that opinions diverge.
-- Cross-reference findings across sources — don't just list what each source says.
+- **Use the Step 1.7 outline verbatim** as the 상세 분석 subsections. Cross-source agreement and disagreement are handled inside the subsection that owns that issue.
+- The **"종합 판단" section is mandatory** — render your Step 1.5 stance there (선택한 입장 / 확신도 / 근거 / 반대 입장이 약한 이유). Render flip_conditions as the numbered items of "한계와 반대 근거". The "쟁점과 관점 비교" section must adjudicate (which view is better supported and why), not just note that opinions diverge.
+- **Number your sources and cite inline** — every non-obvious claim carries `[n]` markers; the 출처 section maps numbers to clickable markdown links. Quantitative evidence goes into the sentence itself (숫자가 있는데 쓰지 않으면 실패).
+- **Inline honesty markers**: a claim the sources mention but the extractions don't substantiate gets `— 근거 부족` in place; a claim from your background knowledge gets `(출처 목록 외 일반 지식에 의존)`. See the report template.
 - Confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim). **Adjust for source quality, not just count**: same-origin or low-quality cluster → drop one level; a single primary/official source → raise above Low; conflicting or sparse evidence → drop. (See `source-classification.md` quality hierarchy.)
-- Include all source URLs as clickable markdown links.
 - If video results exist, include the video section. If none, omit entirely. When `{video_analysis}` has entries, treat those summaries as **first-class evidence** (same weight as extracted articles) — cite their claims in the argument, and use them to enrich the video section beyond title/metadata. Videos without analysis stay metadata-only.
 - If community results exist, include the community section. If none, omit entirely.
 - If `perplexity_search.py reason` was used, treat it as raw material — fold it into your stance, don't transcribe it.
 
-**Handling the "미비점" section — use `{extraction_coverage}` to distinguish gap types:**
-- **Skipped URLs are NOT gaps.** Sources in `extraction_coverage.skipped` were not deeply extracted due to pipeline limits, but their information is already covered via the Perplexity overview and Brave search metadata. Do not list them as limitations.
-- **Failed URLs are minor technical notes**, not research gaps. If `extraction_coverage.failed` has entries (e.g., bot-blocked sites like Naver Blog), mention them briefly as a footnote — not as a major gap.
-- **True research gaps** are topic areas where *no source at all* was found across the entire pipeline. These are the only items that belong in the "미비점" section. For example: "AI 영화의 박스오피스 실적에 대한 데이터를 찾을 수 없었다" is a real gap; "네이버 블로그 원문을 추출하지 못했다" is not (that's a technical failure, and the content was likely already summarized by Perplexity).
+**Handling the "한계와 반대 근거" section — what belongs and what doesn't:**
+- Its numbered items are **conditions under which the conclusion could be wrong**: assumptions the stance depends on, disconfirming evidence found in `{refinement_data}`, and true research gaps (topic areas where *no source at all* was found — e.g., "AI 영화의 박스오피스 실적 데이터를 찾을 수 없었다").
+- **Skipped URLs are NOT limitations.** Sources in `extraction_coverage.skipped` were not deeply extracted due to pipeline limits, but their information is already covered via the Perplexity overview and Brave search metadata.
+- **Failed URLs are minor technical notes**, not research limits. If `extraction_coverage.failed` has entries (e.g., bot-blocked sites like Naver Blog), mention them briefly as a footnote — never as a numbered item.
 
 ## Output
 

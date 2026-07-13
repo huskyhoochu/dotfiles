@@ -19,15 +19,21 @@ YOUTUBE_URL_RE = re.compile(
 )
 
 SUMMARY_PROMPT = """\
-Analyze the content of this video and write the summary in Korean. It will be used \
-as source material in a research pipeline.
+Analyze the content of this video and write a thorough digest in Korean. It will be \
+used as source material in a research pipeline, replacing the need to watch the video \
+— so err on the side of exhaustive, not brief. Length must scale with the video's \
+information density: a 10-minute talk or news segment merits 800+ words; never \
+compress a substantive video into a few headline sentences.
 
-Include:
-1. Core claims/conclusions (what the video is arguing)
-2. Concrete data and facts presented as evidence (numbers, demo results, quotes)
-3. The speaker's stance and assessment (positive/negative/neutral, and why)
-4. Information only available from the video itself (demo footage, interview remarks — \
-things a text article would not contain)
+Cover:
+1. Core claims/conclusions (what the video is arguing), following the video's own \
+narrative flow — how the argument builds, not just its endpoints
+2. EVERY concrete datum presented: numbers, dates, names, benchmarks, demo results. \
+Quote notable remarks verbatim (with speaker attribution)
+3. The speaker's stance and assessment (positive/negative/neutral, and why), including \
+hedges, caveats, and open questions they raise
+4. Information only available from the video itself: demo footage, on-screen data, \
+interview remarks, visuals — things a text article would not contain
 
 Do not invent content that is not in the video. Exclude ad/sponsor segments."""
 
