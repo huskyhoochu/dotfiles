@@ -7,8 +7,8 @@ description: |
   google-dev-knowledge MCP server. Use when writing code with Google products
   or services. Trigger on: Google Cloud/Firebase/Android questions,
   "google docs", GCP implementation questions, Google API usage.
-user_invocable: true
-argument: "<query> [--mode=answer|search]"
+user-invocable: true
+argument-hint: "<query> [--mode=answer|search]"
 ---
 
 # Google Developer Documentation

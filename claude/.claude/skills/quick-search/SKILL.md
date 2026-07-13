@@ -11,8 +11,8 @@ description: |
   Also use when the user provides a URL and wants its content extracted.
   For comprehensive multi-source research with cross-verification and
   synthesis, use web-research instead.
-user_invocable: true
-argument: "<query_or_url> [--news] [--limit=N] [--recency=week] [--exa]"
+user-invocable: true
+argument-hint: "<query_or_url> [--news] [--limit=N] [--recency=week] [--exa]"
 ---
 
 # Quick Search

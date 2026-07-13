@@ -1,8 +1,9 @@
 ---
 name: web-research
-description: "Research any keyword/topic by orchestrating parallel subagents across Perplexity, Tavily, Brave Search API, and Exa to produce a comprehensive Korean-language report. Each research phase runs as independent subagents for true parallel execution and context isolation. Suited for tech trends, product comparisons, latest news. Invoke with /research <keyword> [--brief]."
-user_invocable: true
-argument: "<keyword_or_topic> [--brief]"
+description: "Research any keyword/topic by orchestrating parallel subagents across Perplexity, Tavily, Brave Search API, and Exa to produce a comprehensive Korean-language report. Each research phase runs as independent subagents for true parallel execution and context isolation. Suited for tech trends, product comparisons, latest news. Invoke with /web-research <keyword> [--brief]."
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "<keyword_or_topic> [--brief]"
 ---
 
 # Web Research Orchestrator
@@ -33,9 +34,10 @@ Phase 1: Discovery ─────────── 3 subagents in parallel
 Phase 2: Classification ────── orchestrator inline (lightweight)
               │
               ▼
-Phase 3: Deep Extraction ───── 1-2 subagents in parallel
+Phase 3: Deep Extraction ───── 1-3 subagents in parallel
   ├─ Article Extractor          (top 8 article URLs)
-  └─ Community Extractor        (top 5 community URLs, if any)
+  ├─ Community Extractor        (top 5 community URLs, if any)
+  └─ Video Analyzer             (top 3 YouTube URLs via Gemini, if any)
               │
               ▼
 Phase 4: Synthesis ─────────── 1 subagent
@@ -67,7 +69,8 @@ $WORKSPACE/
 ├── refinement.json          # refinement search results (if applicable)
 └── extraction/
     ├── articles.json        # {results[{url, title, content}]}
-    └── community.json       # {results[{url, platform, content}]}
+    ├── community.json       # {results[{url, platform, content}]}
+    └── videos.json          # {results[{url, summary}]} — Gemini native video analysis
 ```
 
 ## Full Report Mode — Orchestration Pipeline
@@ -178,7 +181,15 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
 
-Video metadata is already available from Brave search results — no extraction subagent needed.
+**Subagent E — Video Analyzer** (only if YouTube URLs exist in source_matrix videos AND `GEMINI_API_KEY` is set — check with `[ -n "$GEMINI_API_KEY" ]`; if unset, skip and rely on Brave video metadata alone):
+
+Read `agents/video-analyzer.md`. Spawn with these variables:
+- `{video_urls}`: top 3 **YouTube** URLs from source_matrix videos (comma-separated). Only `youtube.com`/`youtu.be` URLs — Gemini's native video input supports YouTube only. Prefer videos whose title/description most directly address the query.
+- `{query}`: research topic (focuses the Gemini summary)
+- `{workspace}`: workspace path
+- `{script_dir}`: script directory path
+
+This agent gets native content summaries (spoken claims, demos, data shown on screen) via Gemini — far richer than the title/description metadata Brave provides. Non-YouTube videos keep metadata-only treatment.
 
 **Wait for all extraction subagents to complete.**
 
@@ -211,6 +222,7 @@ Provide the synthesizer with:
 - `{extracted_articles}`: contents of `extraction/articles.json`
 - `{extracted_community}`: contents of `extraction/community.json` (if exists)
 - `{video_metadata}`: video entries from source_matrix
+- `{video_analysis}`: contents of `extraction/videos.json` (if exists) — Gemini native summaries
 - `{refinement_data}`: contents of `refinement.json` (if exists)
 - `{extraction_coverage}`: the extraction coverage summary built in Phase 3 (extracted/failed/skipped URLs)
 
@@ -257,4 +269,5 @@ Use `scripts/tavily_search.py research "<query>" --model=mini` as a single-call 
 - If a subagent fails or times out, proceed with results from the successful subagent(s)
 - If a specific script call fails within a subagent, the subagent should note the failure and continue
 - If no video results found, skip video section entirely
+- If the Video Analyzer fails or is skipped (no `GEMINI_API_KEY`, quota, private videos), fall back to Brave video metadata — never block the pipeline on video analysis
 - A single subagent failure should never stop the entire pipeline — degrade gracefully

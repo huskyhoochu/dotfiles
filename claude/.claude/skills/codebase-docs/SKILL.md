@@ -10,8 +10,9 @@ description: |
   or mentions "codebase docs", "claude docs", "셋업", "문서화" in context
   of Claude configuration — even if they don't say "codebase-docs" explicitly.
   Invoke with /codebase-docs [path].
-user_invocable: true
-argument: "[workspace-path]"
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "[workspace-path]"
 ---
 
 # Codebase Documentation Generator

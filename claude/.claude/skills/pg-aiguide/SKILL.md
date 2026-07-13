@@ -8,8 +8,8 @@ description: |
   writing PostgreSQL schemas, queries, migrations, or working with TimescaleDB/PostGIS.
   Trigger on: PostgreSQL questions, schema design, table creation, indexing,
   hypertable setup, PostGIS, pgvector, PostgreSQL performance.
-user_invocable: true
-argument: "<query_or_skill> [--mode=search|skill] [--source=postgres_17|tiger|postgis_3.4]"
+user-invocable: true
+argument-hint: "<query_or_skill> [--mode=search|skill] [--source=postgres_17|tiger|postgis_3.4]"
 ---
 
 # pg-aiguide — PostgreSQL Best Practices & Documentation

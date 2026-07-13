@@ -1,8 +1,8 @@
 ---
 name: tsdoc
 description: "Add TSDoc comments to exported symbols across the project. By default scans uncommitted/untracked files; use --all to scan the entire codebase. Use when the user wants to document TypeScript code, add comments or documentation to functions/types/exports, write JSDoc/TSDoc, or mentions code documentation for .ts/.tsx files — even if they just say 'add comments', 'document this', or 'JSDoc'. Also triggers on /tsdoc."
-user_invocable: true
-argument: "[--all] [--update] [file-or-directory-path]"
+user-invocable: true
+argument-hint: "[--all] [--update] [file-or-directory-path]"
 ---
 
 # TSDoc Documentation Skill

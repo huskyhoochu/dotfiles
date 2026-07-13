@@ -8,8 +8,8 @@ description: |
   "이 글 자연스럽게", "교정해줘", "polish korean", "이 문서 한국어 손봐줘",
   또는 사용자가 한국어 텍스트 파일 경로(.md, .txt 등)를 주며 글을 개선해 달라고 할 때.
   단순 맞춤법 검사가 아니라 문장·담화 차원의 윤문이 필요할 때 적극 사용하라.
-user_invocable: true
-argument: "<file_path> [--conservative|--balanced|--aggressive] [--in-place|--new-file|--report]"
+user-invocable: true
+argument-hint: "<file_path> [--conservative|--balanced|--aggressive] [--in-place|--new-file|--report]"
 ---
 
 # 한국어 윤문 (Korean Polish)

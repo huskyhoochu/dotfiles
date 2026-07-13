@@ -5,6 +5,9 @@ description: |
   single-page HTML through interactive design consultation. Tuned for Claude's
   strengths: deep instruction following, hierarchical reference processing,
   and consistent multi-section code generation.
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "[design brief or page description]"
 ---
 
 # Web Design Skill — Claude Optimized

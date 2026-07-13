@@ -2,8 +2,9 @@
 name: uiux-review
 description: |
   Perform a comprehensive UI/UX review of frontend code in the current codebase or a specified directory/file. Use this skill when the user asks to review UI, UX, design quality, visual hierarchy, color usage, accessibility, micro-interactions, affordance, component states, responsive design, or web performance in frontend code. Also use this skill when the user mentions "audit design", "check components", "review animations", "check accessibility", "review responsive", or asks about visual consistency — even if they don't explicitly say "UI/UX review". Triggers on: "review UI", "check UX", "audit design", "review accessibility", "check component states", "review animations", "responsive check", "/uiux-review".
-user_invocable: true
-argument: "[path] — directory or file to review. Defaults to current working directory."
+user-invocable: true
+disable-model-invocation: true
+argument-hint: "[path] — directory or file to review. Defaults to current working directory."
 ---
 
 # UI/UX Review
