@@ -57,5 +57,3 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 5. Output language
 
 **Always answer in Korean.**
-
-@RTK.md
