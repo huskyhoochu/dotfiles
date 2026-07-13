@@ -28,3 +28,4 @@ claude/.claude/*
 !claude/.claude/rules/
 claude/**/CLAUDE.md
 !claude/.claude/CLAUDE.md
+__pycache__/

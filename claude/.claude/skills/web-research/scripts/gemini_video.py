@@ -7,13 +7,10 @@ Commands:
   summarize <youtube_url> [--query=topic] [--model=gemini-2.5-flash] [--timeout=240]
 """
 
-import json
-import os
 import re
 import sys
-import urllib.error
-import urllib.request
-from typing import NoReturn
+
+from _http import api_post, dump, error_exit, get_api_key, parse_args, run_cli
 
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -33,35 +30,6 @@ Include:
 things a text article would not contain)
 
 Do not invent content that is not in the video. Exclude ad/sponsor segments."""
-
-
-def get_api_key():
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        error_exit("GEMINI_API_KEY environment variable not set")
-    return key
-
-
-def error_exit(msg) -> NoReturn:
-    json.dump({"error": msg}, sys.stdout)
-    print()
-    sys.exit(1)
-
-
-def parse_args(args):
-    """Parse --key=value and --flag style arguments."""
-    opts = {}
-    positional = []
-    for arg in args:
-        if arg.startswith("--"):
-            if "=" in arg:
-                k, v = arg[2:].split("=", 1)
-                opts[k] = v
-            else:
-                opts[arg[2:]] = True
-        else:
-            positional.append(arg)
-    return positional, opts
 
 
 def cmd_summarize(args):
@@ -95,39 +63,15 @@ def cmd_summarize(args):
             }
         ]
     }
-    req = urllib.request.Request(
-        f"{BASE_URL}/models/{model}:generateContent",
-        data=json.dumps(body).encode(),
-        headers={
-            "x-goog-api-key": get_api_key(),
-            "Content-Type": "application/json",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode()
-        try:
-            detail = json.loads(detail)
-        except json.JSONDecodeError:
-            pass
-        error_exit({"status": e.code, "detail": detail})
-    except (urllib.error.URLError, TimeoutError) as e:
-        error_exit(f"Request failed: {e}")
+    headers = {"x-goog-api-key": get_api_key("GEMINI_API_KEY")}
+    data = api_post(f"{BASE_URL}/models/{model}:generateContent", headers, body, timeout=timeout)
 
     try:
         summary = data["candidates"][0]["content"]["parts"][0]["text"]
     except (KeyError, IndexError):
         error_exit({"unexpected_response": data})
 
-    json.dump(
-        {"url": url, "model": model, "summary": summary},
-        sys.stdout,
-        ensure_ascii=False,
-        indent=2,
-    )
-    print()
+    dump({"url": url, "model": model, "summary": summary})
 
 
 COMMANDS = {
@@ -135,10 +79,4 @@ COMMANDS = {
 }
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print(__doc__.strip())
-        sys.exit(0)
-    cmd = sys.argv[1]
-    if cmd not in COMMANDS:
-        error_exit(f"Unknown command: {cmd}. Available: {', '.join(COMMANDS)}")
-    COMMANDS[cmd](sys.argv[2:])
+    run_cli(__doc__, COMMANDS, sys.argv)
