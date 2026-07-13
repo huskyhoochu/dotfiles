@@ -17,6 +17,7 @@ All scripts are in `scripts/` and run via the Bash tool. Each requires its corre
 | Video discovery | `brave_search.py video` | Video results with metadata (title, duration, views) |
 | News discovery (Step 1 conditional + Step 2c) | `brave_search.py news` | Date metadata for time-sensitive topics |
 | Semantic URL discovery (Step 1) | `exa_search.py search` | Neural/embedding search — finds conceptually relevant pages keyword search misses |
+| YouTube content analysis (Step 3) | `gemini_video.py summarize` | Native video understanding — summarizes actual video content, not just metadata |
 | Timestamp | `perplexity_search.py timestamp` | Report date and recency awareness |
 
 ## Tool Details
@@ -101,6 +102,17 @@ Requires `EXA_API_KEY` environment variable. Run with Bash tool.
 - **Purpose**: Given a known-good URL, find pages with similar content/meaning. Useful for expanding a strong source found elsewhere in the pipeline.
 - **Example**: `scripts/exa_search.py findsimilar "https://example.com/article" --count=10`
 - **Options**: `--count=` (default 10), `--highlights`
+
+### Gemini (via `scripts/gemini_video.py`)
+
+Requires `GEMINI_API_KEY` environment variable. Run with Bash tool.
+
+#### `gemini_video.py summarize`
+- **Purpose**: Step 3 YouTube video content analysis. Passes the URL to Gemini as native multimodal input (`file_data.file_uri`) — Gemini watches the video directly, so the summary covers spoken claims, on-screen demos, and data, not just title/description.
+- **Usage**: `scripts/gemini_video.py summarize "<youtube_url>" [--query=topic] [--model=gemini-2.5-flash] [--timeout=240]`
+- **Options**: `--query` (research topic — focuses the summary), `--model` (default: "gemini-2.5-flash"), `--timeout` (seconds, default: 240)
+- **Returns**: JSON with `url`, `model`, `summary` (Korean)
+- **Caveats**: YouTube URLs only (`youtube.com`/`youtu.be`); public videos only (private/unlisted fail). One video per call — loop for multiple, sequentially (slow: 30s-2min per video; parallel calls risk rate limits). Free tier caps YouTube input at ~8 hours of video per day; on HTTP 429 stop and fall back to Brave metadata.
 
 #### `exa_search.py answer`
 - **Purpose**: Direct answer generation for a single factual query, no source list needed. Not used in the standard pipeline; available for ad-hoc lookups.

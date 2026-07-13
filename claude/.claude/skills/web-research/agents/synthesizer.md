@@ -10,6 +10,7 @@ You receive:
 - `{extracted_articles}`: extracted article content (may be empty)
 - `{extracted_community}`: extracted community content (may be empty)
 - `{video_metadata}`: video results from Brave search
+- `{video_analysis}`: Gemini native summaries of top YouTube videos (may be empty) — actual video content (claims, demos, data), not just metadata
 - `{refinement_data}`: additional refinement search results (may be empty)
 - `{extraction_coverage}`: which URLs were extracted, which failed, which were skipped
 - `{query}`: original research keyword
@@ -64,7 +65,7 @@ Key rules:
 - Cross-reference findings across sources — don't just list what each source says.
 - Confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim). **Adjust for source quality, not just count**: same-origin or low-quality cluster → drop one level; a single primary/official source → raise above Low; conflicting or sparse evidence → drop. (See `source-classification.md` quality hierarchy.)
 - Include all source URLs as clickable markdown links.
-- If video results exist, include the video section. If none, omit entirely.
+- If video results exist, include the video section. If none, omit entirely. When `{video_analysis}` has entries, treat those summaries as **first-class evidence** (same weight as extracted articles) — cite their claims in the argument, and use them to enrich the video section beyond title/metadata. Videos without analysis stay metadata-only.
 - If community results exist, include the community section. If none, omit entirely.
 - If `perplexity_search.py reason` was used, treat it as raw material — fold it into your stance, don't transcribe it.
 

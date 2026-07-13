@@ -12,7 +12,7 @@ argument-hint: "[design brief or page description]"
 
 # Web Design Skill — Claude Optimized
 
-Generate distinctive, production-grade single-page HTML through interactive design consultation. Every generation must look unique — never converge on common AI defaults.
+Generate distinctive, production-grade single-page HTML through interactive design consultation.
 
 ## Why Claude-Specific
 
@@ -24,11 +24,10 @@ This skill is tuned for Claude's processing characteristics:
 
 ## Constraints
 
-- **Output**: Single `.html` file. No build tools.
-- **CDNs only**: Tailwind CSS CDN + Google Fonts CDN.
-- **No external images**: Inline SVG, CSS gradients, emoji, Unicode.
-- **Self-contained**: Must render from local filesystem.
-- **Language**: Match user's language.
+- **Output**: a single self-contained `.html` file that renders straight from the local filesystem.
+- **Allowed externals**: Tailwind CSS CDN and Google Fonts CDN only.
+- **Imagery**: inline SVG, CSS gradients, emoji, and Unicode.
+- **Language**: match the user's language.
 
 ## Interactive Design Workflow
 
@@ -51,44 +50,17 @@ Adapt sections to the user's concept.
 
 ### Step 2 — Design Style Selection
 
-Read `references/styles.md`. Present the 6 categories with brief visual descriptions:
-
-1. **Morphism** — surface/depth (Glassmorphism, Neumorphism...)
-2. **Web Movements** — philosophies (Neobrutalism, Minimalism...)
-3. **Era-Based** — historical (Art Deco, Y2K, Japandi...)
-4. **Digital-Native** — internet-born (Vaporwave, Cyberpunk...)
-5. **Texture/Material** — tactile (Liquid, Grain, Chrome...)
-6. **Layout/Structural** — composition (Bento Grid, Asymmetric...)
-
-User picks 1–3 styles (one per axis: aesthetic + layout + texture).
+Read `references/styles.md` (the 6-category style taxonomy) and present the categories with brief visual descriptions. User picks 1–3 styles (one per axis: aesthetic + layout + texture).
 
 After selection, read `references/combinations.md` to validate. Flag anti-patterns. Suggest refinements if needed.
 
 ### Step 3 — Color Palette
 
-Read `references/palettes.md`. Suggest 3 palettes matching the chosen styles.
-
-Present each palette with visual blocks and context:
-```
-Palette: Earthbound Warmth
-█ #C18A63  █ #F4EBD2  █ #7E9C76  █ #4A3F36  █ #5E7B4C
-Best for: eco brands, wellness — pairs with Neobrutalism, Japandi
-```
-
-Ensure 4.5:1 contrast ratio between text and background. Define hierarchy: background, surface, primary, secondary, accent.
+Read `references/palettes.md`. Suggest 3 palettes matching the chosen styles, each presented in the reference's visual-block format (█ hex blocks + "Best for" context). Define hierarchy: background, surface, primary, secondary, accent.
 
 ### Step 4 — Font Pairing
 
-Read `references/fonts.md`. Suggest 3 font pairs matching styles.
-
-```
-Pair: Space Grotesk + Space Mono
-Heading: Space Grotesk (600, 700) — geometric, technical
-Body/Accent: Space Mono (400) — monospace contrast
-Best for: Neobrutalism, Dashboard
-```
-
-All fonts from Google Fonts CDN. Korean projects: always include Noto Sans KR.
+Read `references/fonts.md`. Suggest 3 font pairs matching the styles, with heading/body roles, weights, and character notes. All fonts from Google Fonts CDN. Korean projects: always include Noto Sans KR.
 
 ### Step 5 — Content Brief
 
@@ -195,7 +167,6 @@ Before outputting the final HTML, mentally verify:
 2. Is the mobile menu functional (JS toggle included)?
 3. Are scroll animations wired up (IntersectionObserver + CSS classes)?
 4. Does the page have visual rhythm — alternating section backgrounds, varied card sizes?
-5. Would a designer say "this has personality" rather than "this looks AI-generated"?
 
 ## Anti-Convergence Rules
 
@@ -210,10 +181,3 @@ Before outputting the final HTML, mentally verify:
 - Alternate between light/dark, warm/cool
 - Rotate layout patterns (Bento → Asymmetric → Swiss Grid)
 - Use different illustration styles each time
-
-### Quality Indicators
-A well-designed page should:
-- Feel handcrafted, not assembled from components
-- Have a coherent visual narrative from top to bottom
-- Surprise the viewer at least once
-- Work beautifully on both mobile and desktop

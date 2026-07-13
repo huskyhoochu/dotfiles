@@ -8,7 +8,7 @@ argument-hint: "<keyword_or_topic> [--brief]"
 
 # Web Research Orchestrator
 
-Orchestrates parallel subagents (via the Agent tool) across **Perplexity**, **Tavily**, **Brave Search API**, and **Exa** to produce a comprehensive Korean-language research report. Each pipeline phase spawns focused subagents that communicate through a shared workspace directory.
+Each pipeline phase spawns focused subagents (via the Agent tool) that communicate through a shared workspace directory.
 
 **Goal**: Not "summarize what the sources say about the topic" but "given the best available evidence, reach the most defensible answer, lay out the competing views, and judge which is stronger and why." The report must end in a synthesized **stance**, not a catalogue of sources.
 
@@ -127,14 +127,11 @@ This agent runs Exa neural search for semantic matches keyword search can miss.
 This phase is lightweight enough to run inline in the orchestrator. No subagent needed.
 
 1. Read `discovery/perplexity.json`, `discovery/brave_web.slim.json` (the compact projection the Brave agent emits; fall back to `brave_web.json` only if the slim file is missing), and `discovery/exa.json` from workspace
-2. Classify all URLs by pattern matching (refer to `references/source-classification.md`):
-   - Video: `youtube.com/watch`, `youtu.be/`, etc.
-   - Community: `reddit.com`, `forum`, `stackoverflow`, etc.
-   - Article: everything else
-3. Merge video sources: video URLs from web search + `discovery/brave_video.json`. Deduplicate.
+2. Classify every URL as video / community / article using the URL patterns in `references/source-classification.md`
+3. Merge video sources: video URLs from web search + `discovery/brave_video.json`
 4. If `discovery/brave_news.json` exists, merge news results into articles (leverage date metadata)
-5. Merge Exa results into `source_matrix` alongside Brave's — same classification rules apply. Exa's value is surfacing URLs Brave's keyword search missed, so don't drop overlapping hits before dedup; dedup by URL across all sources first.
-6. Deduplicate across all sources
+5. Merge Exa results into `source_matrix` alongside Brave's — same classification rules apply. Exa's value is surfacing URLs Brave's keyword search missed.
+6. Dedup by URL across all sources first, then keep every remaining hit
 
 **Refinement decision**: Read `discovery/perplexity.json` entities. Test each entity string against the titles/URLs in `source_matrix`. If **2 or more entities are unmatched** (raised by Perplexity but absent from collected sources), run **one** refinement search on the top unmatched entity. Pick the branch deterministically:
 
@@ -266,8 +263,7 @@ Use `scripts/tavily_search.py research "<query>" --model=mini` as a single-call 
 
 ## Error Handling
 
-- If a subagent fails or times out, proceed with results from the successful subagent(s)
-- If a specific script call fails within a subagent, the subagent should note the failure and continue
-- If no video results found, skip video section entirely
-- If the Video Analyzer fails or is skipped (no `GEMINI_API_KEY`, quota, private videos), fall back to Brave video metadata — never block the pipeline on video analysis
-- A single subagent failure should never stop the entire pipeline — degrade gracefully
+Degrade gracefully: a failed subagent or script call is noted and the pipeline continues with whatever succeeded. Specifics:
+
+- If no video results found, skip the video section entirely
+- If the Video Analyzer fails or is skipped (no `GEMINI_API_KEY`, quota, private videos), fall back to Brave video metadata

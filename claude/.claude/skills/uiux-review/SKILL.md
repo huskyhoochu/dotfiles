@@ -9,7 +9,7 @@ argument-hint: "[path] — directory or file to review. Defaults to current work
 
 # UI/UX Review
 
-Frontend UI/UX review using parallel specialist agents. Each agent self-scores findings so only high-confidence issues reach the final report.
+Frontend UI/UX review using parallel specialist agents.
 
 Pipeline: context discovery → 6 parallel specialist reviews (with self-scoring) → deduplicate → structured report.
 
@@ -66,56 +66,22 @@ false positive examples. Only return issues scoring 75+.
 ---
 
 **Agent 1 — Visual Hierarchy & Layout**
-Read `references/visual-hierarchy-checklist.md`.
-- Spacing and grid consistency (4px/8px grid adherence)
-- Visual hierarchy clarity (size, weight, color for importance signaling)
-- Typography scale consistency and line-height
-- Alignment and proximity grouping (Gestalt principles)
-- White space usage
+Apply every check in `references/visual-hierarchy-checklist.md`: grid/spacing consistency, hierarchy signaling, typography scale, Gestalt grouping, white space.
 
 **Agent 2 — Color & Theming**
-Read `references/color-theming-checklist.md`.
-- Hardcoded color values instead of design tokens/CSS variables
-- Missing semantic color roles (primary, error, success, warning, surface)
-- Dark mode implementation issues
-- Color-only state differentiation (no icon/text backup)
-- **Ownership boundary**: Do NOT check contrast ratios — Agent 5 (Accessibility) owns contrast.
+Apply every check in `references/color-theming-checklist.md`: design-token usage, semantic color roles, dark mode, color-only state differentiation. Contrast ratios belong to Agent 5.
 
 **Agent 3 — Interaction Design**
-Read `references/interaction-design-checklist.md`, **Parts A and B only**.
-- Interactive elements without clear signifiers (missing cursor, hover state, visual cue)
-- Primary action prominence and discoverability
-- Missing component states: hover, active, disabled, loading, error, success
-- Disabled state indistinguishable from enabled
-- No loading/skeleton states for async content
-- **Ownership boundary**: Do NOT check focus styles or `outline` removal — Agent 5 owns focus.
+Apply every check in **Parts A and B** of `references/interaction-design-checklist.md`: signifiers, primary-action prominence, component states (hover/active/disabled/loading/error/success), skeleton states. Focus styles belong to Agent 5.
 
 **Agent 4 — Motion & Animation**
-Read `references/interaction-design-checklist.md`, **Part C only**.
-- Abrupt state transitions without easing
-- Transition duration outside natural range (200–400ms for micro-interactions)
-- Missing `prefers-reduced-motion` media query for animations
-- Over-animation (excessive motion that distracts)
-- Missing feedback transitions (toggle/delete/navigation with no animation)
+Apply every check in **Part C** of `references/interaction-design-checklist.md`: easing, duration range (200–400ms micro-interactions), `prefers-reduced-motion`, over-animation, feedback transitions.
 
 **Agent 5 — Accessibility**
-Read `references/accessibility-checklist.md`.
-- **Owns all focus-related issues**: `outline: none` removal, missing focus indicators, `:focus` vs `:focus-visible`
-- **Owns all contrast issues**: WCAG AA 4.5:1 for text, 3:1 for large text and UI components
-- Missing `aria-*` attributes for dynamic content
-- Touch targets smaller than 44×44px
-- Interactive elements unreachable via keyboard
-- Images without alt text, icons without labels
-- Form accessibility (missing labels, required fields)
+Apply every check in `references/accessibility-checklist.md`. Sole owner of focus (outline removal, `:focus-visible`) and contrast (WCAG AA 4.5:1 text, 3:1 large text/UI); plus ARIA, keyboard reachability, 44×44px touch targets, alt text, form labels.
 
 **Agent 6 — Responsive Design & Performance**
-Read `references/responsive-performance-checklist.md`.
-- Missing or broken responsive breakpoints for key layouts
-- Fixed pixel widths that break on smaller screens
-- Images without explicit dimensions (causes layout shift / CLS)
-- Content overflow and text truncation issues
-- Missing viewport meta tag, zoom restriction
-- Hover-only interactions with no touch alternative
+Apply every check in `references/responsive-performance-checklist.md`: breakpoints, fixed widths, image dimensions (CLS), overflow, viewport meta, touch alternatives for hover.
 
 ### Step 3 — Deduplicate & Report
 
