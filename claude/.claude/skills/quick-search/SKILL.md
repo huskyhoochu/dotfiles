@@ -4,11 +4,9 @@ description: |
   Simple web search and page content extraction using Tavily API (or Exa neural
   search via --exa). Returns clean, organized results without deep analysis or
   cross-source verification.
-  Use when the user needs a quick web search, wants to look something up,
-  check recent news, or extract content from a specific URL. Trigger on:
-  "검색해줘", "찾아봐", "search for", "look up", "이거 좀 찾아봐",
-  "이 페이지 내용 가져와", or any simple information lookup request.
-  Also use when the user provides a URL and wants its content extracted.
+  Three triggers: a quick lookup ("검색해줘", "찾아봐", "search for", "look up"),
+  checking recent news, or extracting the content of a URL the user provides
+  ("이 페이지 내용 가져와").
   For comprehensive multi-source research with cross-verification and
   synthesis, use web-research instead.
 user-invocable: true
