@@ -1,21 +1,21 @@
 ---
 name: quick-search
 description: |
-  Simple web search and page content extraction using Tavily API (or Exa neural
-  search via --exa). Returns clean, organized results without deep analysis or
-  cross-source verification.
+  Simple web search and page content extraction. Searches Tavily (keyword) and
+  Exa (neural) concurrently and merges the results — clean, organized output
+  without deep analysis or cross-source verification.
   Three triggers: a quick lookup ("검색해줘", "찾아봐", "search for", "look up"),
   checking recent news, or extracting the content of a URL the user provides
   ("이 페이지 내용 가져와").
   For comprehensive multi-source research with cross-verification and
   synthesis, use web-research instead.
 user-invocable: true
-argument-hint: "<query_or_url> [--news] [--limit=N] [--recency=week] [--exa]"
+argument-hint: "<query_or_url> [--news] [--limit=N] [--recency=week]"
 ---
 
 # Quick Search
 
-Fast web search and page extraction via Tavily API. No subagents, no cross-verification — just clean results.
+Fast web search (Tavily + Exa in parallel) and page extraction. No subagents, no cross-verification — just clean merged results.
 
 ## Mode Detection
 
@@ -24,35 +24,30 @@ Fast web search and page extraction via Tavily API. No subagents, no cross-verif
 
 ## Search Mode
 
+Run both engines concurrently in a single Bash call — Tavily catches keyword matches, Exa catches semantic matches keyword search misses:
+
 ```bash
-python3 <skill_dir>/scripts/tavily_api.py search "<query>" --limit=5
+python3 <scripts>/tavily_search.py search "<query>" --depth=basic --max=5 --answer > /tmp/qs-tavily.json &
+python3 <scripts>/exa_search.py search "<query>" --count=5 --highlights > /tmp/qs-exa.json &
+wait
 ```
 
-**Flags passed through from user arguments:**
+**Flags passed through from user arguments (Tavily side only — Exa has no equivalents):**
 - `--news` → add `--news` (switches topic to news)
-- `--limit=N` → override default 5
+- `--limit=N` → map to Tavily `--max=N` and Exa `--count=N` (default 5)
 - `--recency=week` → time filter (day, week, month, year)
 - `--domains=a.com,b.com` → restrict to specific domains
-- `--exa` → use Exa neural search instead of Tavily (see below)
 
-The script returns JSON with an `answer` field (AI summary) and `results[]` array.
+Tavily returns an `answer` field (AI summary) and `results[]`; Exa returns `results[]` (use `highlights[0]` as the content snippet if present).
 
-### `--exa` flag
-
-For conceptual/semantic queries where keyword matching underperforms (e.g. "papers about X technique" rather than a specific product name), use Exa instead:
-
-```bash
-python3 <skill_dir>/scripts/exa_api.py search "<query>" --count=5 --highlights
-```
-
-`--limit=N` maps to `--count=N`; `--news` and `--recency` have no Exa equivalent and are ignored in this mode. Output format is the same as below, sourced from Exa's `results[]` (use `highlights[0]` as the content snippet if present).
+**Merge**: dedup by URL (normalize trailing slash), Tavily order first, then Exa-only finds appended. If one engine errors, present the other's results alone and note the failure in the footer.
 
 ### Output format
 
 ```markdown
 ## "<query>" 검색 결과
 
-{answer if available — 1-2 sentence summary}
+{Tavily answer if available — 1-2 sentence summary}
 
 1. **[Title](url)**
    Content snippet
@@ -61,15 +56,13 @@ python3 <skill_dir>/scripts/exa_api.py search "<query>" --count=5 --highlights
    Content snippet
 
 ---
-*Tavily Search · {N}건*
+*Tavily + Exa · {dedup 후 N}건*
 ```
-
-With `--exa`, use `*Exa Search · {N}건*` as the footer instead.
 
 ## Extract Mode
 
 ```bash
-python3 <skill_dir>/scripts/tavily_api.py extract "<url>"
+python3 <scripts>/tavily_search.py extract "<url>"
 ```
 
 For multiple URLs, comma-separate: `extract "<url1>,<url2>"`.
@@ -78,7 +71,7 @@ Present the extracted markdown directly. For very long content, summarize the ke
 
 ## Notes
 
-- `<skill_dir>` = this SKILL.md's parent directory
+- `<scripts>` = `<this SKILL.md's parent directory>/../web-research/scripts` — quick-search shares the web-research skill's API scripts (single source of truth for Tavily/Exa clients)
 - Output language: Korean for all summaries
-- TAVILY_API_KEY must be set in the environment (EXA_API_KEY for `--exa`)
+- TAVILY_API_KEY and EXA_API_KEY must be set in the environment
 - On error, the script returns `{"error": "..."}` — relay the message to the user

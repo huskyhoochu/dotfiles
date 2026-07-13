@@ -33,5 +33,6 @@ Skills live in `claude/.claude/skills/<skill-name>/` with a `SKILL.md` entry poi
 ## Editing rules
 
 - Keep `SKILL.md` files self-contained with references in `references/` subdirectory.
+- Exception: `quick-search` has no scripts of its own — it calls `web-research/scripts/` (Tavily/Exa clients, single source of truth). Interface changes to those scripts affect both skills.
 - The `.gitignore` pattern `claude/**/CLAUDE.md` excludes auto-generated files. Only `claude/.claude/CLAUDE.md` is tracked via negation.
 - Do not add secrets or API keys to tracked files. Use `.zshenv` (gitignored) for environment variables.

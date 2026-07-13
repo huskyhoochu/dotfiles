@@ -50,8 +50,9 @@ Requires `TAVILY_API_KEY` environment variable. Run with Bash tool.
 
 #### `tavily_search.py search`
 - **Purpose**: Step 2c refinement search. Assesses subtopic result quality via relevance score. Default `--depth=basic`.
-- **Usage**: `scripts/tavily_search.py search "<query>" [--depth=basic] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week]`
-- **Options**: `--depth` (basic/advanced, default: "basic"), `--max` (max results, default: 10), `--topic` (general/news/finance, default: "general"), `--domains` (include domains), `--exclude` (exclude domains), `--recency` (time_range: day/week/month/year)
+- **Usage**: `scripts/tavily_search.py search "<query>" [--depth=basic] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week] [--news] [--answer]`
+- **Options**: `--depth` (basic/advanced, default: "basic"), `--max` (max results, default: 10), `--topic` (general/news/finance, default: "general"), `--domains` (include domains), `--exclude` (exclude domains), `--recency` (time_range: day/week/month/year), `--news` (shortcut for topic=news), `--answer` (include AI answer summary — used by the quick-search skill)
+- **Shared**: the quick-search skill calls this script too — interface changes affect both skills.
 
 #### `tavily_search.py extract`
 - **Purpose**: Step 3 content extraction. URL list → markdown conversion.

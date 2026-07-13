@@ -4,7 +4,7 @@
 Usage: python3 scripts/tavily_search.py <command> [args...]
 
 Commands:
-  search <query> [--depth=advanced] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week]
+  search <query> [--depth=advanced] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week] [--news] [--answer]
   extract <urls> [--query=topic] [--depth=basic]
   research <query> [--model=mini] [--timeout=120]
 """
@@ -24,13 +24,15 @@ def _headers():
 def cmd_search(args):
     positional, opts = parse_args(args)
     if not positional:
-        error_exit("Usage: search <query> [--depth=advanced] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week]")
+        error_exit("Usage: search <query> [--depth=advanced] [--max=10] [--topic=general] [--domains=...] [--exclude=...] [--recency=week] [--news] [--answer]")
     payload = {
         "query": " ".join(positional),
         "search_depth": opts.get("depth", "advanced"),
         "max_results": int(opts.get("max", "10")),
-        "topic": opts.get("topic", "general"),
+        "topic": "news" if "news" in opts else opts.get("topic", "general"),
     }
+    if "answer" in opts:
+        payload["include_answer"] = True
     if "domains" in opts:
         payload["include_domains"] = opts["domains"].split(",")
     if "exclude" in opts:
