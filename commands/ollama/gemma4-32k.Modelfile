@@ -1,0 +1,7 @@
+# 일상업무·비전용 — 32K 컨텍스트, num_batch 128은 필수 튜닝.
+# 적용: ollama pull gemma4:31b && ollama create gemma4:31b-32k -f gemma4-32k.Modelfile
+# num_batch 512(기본)면 dense 31B의 연산 버퍼가 24GB VRAM을 넘쳐 시스템 메모리로
+# 스필되어 prefill이 578→69 tok/s로 붕괴한다 (2026-07-14 GEM12 실측).
+FROM gemma4:31b
+PARAMETER num_ctx 32768
+PARAMETER num_batch 128

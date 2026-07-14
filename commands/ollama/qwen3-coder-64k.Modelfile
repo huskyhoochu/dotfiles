@@ -1,0 +1,10 @@
+# pi 로컬 코딩 보조용 — 64K 컨텍스트 + Qwen3-Coder 공식 권장 샘플링.
+# 적용: ollama pull qwen3-coder:30b && ollama create qwen3-coder:30b-64k -f qwen3-coder-64k.Modelfile
+# 전제: RX 7900 XTX(24GB)에서 풀 GPU로 돌려면 서버에 OLLAMA_KV_CACHE_TYPE=q8_0 필요
+#       (systemd: /etc/systemd/system/ollama.service.d/override.conf)
+FROM qwen3-coder:30b
+PARAMETER num_ctx 65536
+PARAMETER temperature 0.7
+PARAMETER top_p 0.8
+PARAMETER top_k 20
+PARAMETER repeat_penalty 1.05
