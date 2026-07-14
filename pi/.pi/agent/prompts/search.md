@@ -7,8 +7,8 @@ Search the web for: $@
 Use the bash tool to run EXACTLY these two commands in one call. Do NOT use the web_search tool. Do NOT look for a tool named quick-search or search.
 
 ```bash
-python3 ~/.pi/agent/skills/web-research/scripts/tavily_search.py search "$@" --max=5 --answer
-python3 ~/.pi/agent/skills/web-research/scripts/exa_search.py search "$@" --count=5 --highlights
+python3 ~/dotfiles/claude/.claude/skills/web-research/scripts/tavily_search.py search "$@" --max=5 --answer
+python3 ~/dotfiles/claude/.claude/skills/web-research/scripts/exa_search.py search "$@" --count=5 --highlights
 ```
 
 Both commands print JSON. Write a Korean summary from that JSON:
