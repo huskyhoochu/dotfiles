@@ -87,6 +87,8 @@ export FZF_DEFAULT_OPTS=" \
 # Aliases
 alias l='eza --color=always --all --long --git --no-filesize --icons=always --no-time --no-user'
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
+# llama.cpp local LLM server (GEM12 only — script absent elsewhere)
+[[ -x "$HOME/dotfiles/commands/llamacpp/run-qcnext-server.sh" ]] && alias qcnext-server="$HOME/dotfiles/commands/llamacpp/run-qcnext-server.sh"
 function yt-wall {
   local sort="res:2160,hdr:sdr,vcodec:vp9"
   local -a extra=()
