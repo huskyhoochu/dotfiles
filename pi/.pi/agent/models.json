@@ -1,5 +1,27 @@
 {
   "providers": {
+    "llamacpp-local": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "none",
+      "models": [
+        {
+          "id": "qwen3-coder-next",
+          "name": "Qwen3 Coder Next 80B (Local llama.cpp)",
+          "input": [
+            "text"
+          ],
+          "contextWindow": 65536,
+          "maxTokens": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
     "ollama-local": {
       "baseUrl": "http://127.0.0.1:11434/v1",
       "api": "openai-completions",
