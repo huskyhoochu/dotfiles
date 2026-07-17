@@ -171,6 +171,35 @@
           }
         },
         {
+          "id": "moonshotai/kimi-k3-free",
+          "name": "Kimi K3 (Free)",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1048576,
+          "maxTokens": 131072,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "max",
+            "xhigh": "max"
+          },
+          "compat": {
+            "supportsReasoningEffort": true,
+            "thinkingFormat": "deepseek",
+            "requiresReasoningContentOnAssistantMessages": true
+          }
+        },
+        {
           "id": "minimax/minimax-m3",
           "name": "MiniMax M3",
           "input": [
