@@ -89,6 +89,46 @@ alias l='eza --color=always --all --long --git --no-filesize --icons=always --no
 alias lt='eza --tree --level=2 --color=always --all --long --git --no-filesize --icons=always --no-time --no-user --no-permissions'
 # llama.cpp local LLM server (GEM12 only — script absent elsewhere)
 [[ -x "$HOME/dotfiles/commands/llamacpp/run-qcnext-server.sh" ]] && alias qcnext-server="$HOME/dotfiles/commands/llamacpp/run-qcnext-server.sh"
+# Muse Glimmer 30B — 백그라운드로 띄우고(glimmer-up) 내리고(glimmer-down) 상태를 본다(glimmer-status).
+# 로그는 /tmp 에 남기고, 모델 적재에 20 초 남짓 걸리므로 up 은 health 가 뜰 때까지 기다린다.
+if [[ -x "$HOME/dotfiles/commands/llamacpp/run-muse-glimmer-server.sh" ]]; then
+  function glimmer-up {
+    if curl -sf --max-time 2 http://127.0.0.1:8081/health >/dev/null 2>&1; then
+      echo "이미 실행 중 (http://127.0.0.1:8081)"
+      return 0
+    fi
+    local log=/tmp/muse-glimmer.log
+    setsid nohup "$HOME/dotfiles/commands/llamacpp/run-muse-glimmer-server.sh" >"$log" 2>&1 </dev/null &
+    printf '적재 중'
+    for _ in {1..60}; do
+      curl -sf --max-time 2 http://127.0.0.1:8081/health >/dev/null 2>&1 && {
+        printf '\n준비 완료 — http://127.0.0.1:8081 (로그: %s)\n' "$log"
+        return 0
+      }
+      printf '.'; sleep 1
+    done
+    printf '\n60초 안에 뜨지 않았다. 로그를 확인하라: %s\n' "$log"
+    return 1
+  }
+  function glimmer-down {
+    if fuser -k 8081/tcp >/dev/null 2>&1; then
+      echo "중지됨"
+    else
+      echo "실행 중이 아니다"
+    fi
+  }
+  function glimmer-status {
+    if curl -sf --max-time 2 http://127.0.0.1:8081/health >/dev/null 2>&1; then
+      local used total
+      used=$(( $(cat /sys/class/drm/card1/device/mem_info_vram_used 2>/dev/null || echo 0) / 1048576 ))
+      total=$(( $(cat /sys/class/drm/card1/device/mem_info_vram_total 2>/dev/null || echo 0) / 1048576 ))
+      echo "실행 중 — http://127.0.0.1:8081"
+      (( total > 0 )) && echo "VRAM ${used}MiB / ${total}MiB (여유 $((total - used))MiB)"
+    else
+      echo "중지 상태"
+    fi
+  }
+fi
 function yt-wall {
   local sort="res:2160,hdr:sdr,vcodec:vp9"
   local -a extra=()
