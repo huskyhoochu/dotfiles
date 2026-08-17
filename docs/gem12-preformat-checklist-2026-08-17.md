@@ -90,7 +90,7 @@ Qwen3-Coder-Next는 CPU 오프로드 탓에 17 tok/s로 떨어져 실용 범위 
 
 | 항목 | 명령 | 보관처 | 상태 |
 |---|---|---|---|
-| Claude Code 장기 토큰 | `claude setup-token` | 1Password | **발급 완료 (맥북)** |
+| Claude Code 장기 토큰 | `claude setup-token` | 1Password Personal 금고 `CLAUDE_CODE_OAUTH_TOKEN` | **발급 완료 (맥북)** |
 | rclone Google Drive 토큰 | `rclone authorize "drive"` | 1Password | |
 | 맥북 SSH 공개키 | 맥북에서 `ssh-add -L` — 1Password 에이전트가 공개키를 출력한다 | 이미 1Password에 있음 | |
 | GitHub PAT (필요시) | github.com 설정 | 1Password | |
@@ -107,7 +107,7 @@ export CLAUDE_CODE_OAUTH_TOKEN="<맥북에서 발급한 토큰>"
 서버에 `op` CLI를 인증해두면 평문 대신 1Password에서 읽어올 수 있다. 설치와 인증 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`의 "1Password CLI" 절에 있다.
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/<항목 이름>/credential')"
+export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential')"
 ```
 
 **서버 밖에 둬야 하는 것** — 서버가 죽었을 때 필요한 정보다.

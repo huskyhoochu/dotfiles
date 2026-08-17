@@ -562,7 +562,7 @@ claude setup-token          # 구독 계정으로 장기 토큰을 발급한다
 export CLAUDE_CODE_OAUTH_TOKEN="<발급받은 토큰>"
 ```
 
-토큰은 `~/.bashrc.local` 이나 1Password에 두고 셸 시작 시 주입한다. 저장소에는 넣지 않는다.
+토큰은 1Password Personal 금고의 `CLAUDE_CODE_OAUTH_TOKEN` 항목에 있고, `~/.bashrc.local`에서 `op read`로 주입한다. 저장소에는 넣지 않는다. 설치와 인증 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`의 "Claude Code 설치" 절에 있다.
 
 `~/.claude/.credentials.json` 을 그대로 복사하는 방법도 되지만 쓰지 않는다. 기기에 묶인 세션 자격증명이라 갱신 동작이 예측하기 어렵고, 두 기기가 같은 파일을 쓰면 한쪽의 갱신이 다른 쪽을 무효화할 수 있다.
 

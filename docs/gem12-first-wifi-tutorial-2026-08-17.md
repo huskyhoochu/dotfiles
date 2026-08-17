@@ -1,4 +1,4 @@
-# 첫 연결 튜토리얼 — Fedora Server 설치 직후 Wi-Fi와 1Password CLI
+# 첫 부팅 튜토리얼 — Fedora Server 설치 직후 Wi-Fi · 1Password CLI · Claude Code
 
 > 날짜: 2026-08-17 (월)
 > 대상: GEM12 (Intel AX200 무선랜, 인터페이스 `wlp6s0`)
@@ -236,12 +236,73 @@ op read 'op://Personal/OPENROUTER_API_KEY/자격 증명'     # 읽히지 않는�
 | 항목 | 경로 | 용도 |
 |---|---|---|
 | `Github SSH` | `op://Personal/Github SSH/public key` | 맥북 공개키. `02-host.sh`의 `SSH_PUBKEY` |
+| `CLAUDE_CODE_OAUTH_TOKEN` | `op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential` | Claude Code 인증 (아래 절 참조) |
 | `OPENROUTER_API_KEY` | `op://Personal/OPENROUTER_API_KEY/credential` | AI 파이프라인 리뷰 모델 |
 | `ZENMUX_API_KEY` | `op://Personal/ZENMUX_API_KEY/credential` | `pi`의 zenmux 프로바이더 |
 | `HUGGING_FACE_API_KEY` | `op://Personal/HUGGING_FACE_API_KEY/credential` | 모델 재다운로드 |
 
-새 시크릿(Claude Code 장기 토큰, rclone Google Drive 토큰)을 만들 때는 Personal 금고에 **API 자격 증명** 유형으로, 위처럼 대문자 스네이크 케이스 이름을 붙여 저장한다. 그러면 경로가 `op://Personal/<이름>/credential`로 일관된다.
+새 시크릿(rclone Google Drive 토큰 등)을 만들 때는 Personal 금고에 **API 자격 증명** 유형으로, 위처럼 대문자 스네이크 케이스 이름을 붙여 저장한다. 그러면 경로가 `op://Personal/<이름>/credential`로 일관된다.
 
 ### 세션은 30분 뒤 만료된다
 
 비활성 30분이 지나면 세션이 끝나고, 다음 `op` 명령이 비밀번호를 다시 묻는다. 셸에 앉아 쓰는 용도로는 이대로 충분하다. `~/.bashrc.local`에서 `op read`로 토큰을 주입하는 경우, 셸을 열 때 비밀번호를 한 번 입력하는 흐름이 된다.
+
+---
+
+## Claude Code 설치
+
+코딩 작업이 이뤄지는 곳에 설치한다 — 기본은 apps 컨테이너다. 호스트든 컨테이너든 전부 Fedora이므로 설치 방법은 같다.
+
+### 저장소 등록과 설치
+
+Claude Code는 서명된 공식 dnf 저장소를 제공한다. `stable` 채널은 대략 1주 묵은 버전을 제공하며 큰 회귀가 있는 릴리스를 건너뛴다 — 서버에 맞는 채널이다.
+
+```bash
+sudo tee /etc/yum.repos.d/claude-code.repo <<'EOF'
+[claude-code]
+name=Claude Code
+baseurl=https://downloads.claude.ai/claude-code/rpm/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://downloads.claude.ai/keys/claude-code.asc
+EOF
+
+sudo dnf install claude-code
+```
+
+첫 설치 때 dnf가 서명 키 지문을 확인해 달라고 묻는다. 다음 값과 일치하는지 보고 수락한다.
+
+```text
+31DD DE24 DDFA B679 F42D 7BD2 BAA9 29FF 1A7E CACE
+```
+
+```bash
+claude --version    # "2.x.x (Claude Code)" 가 나오면 설치 완료
+```
+
+### 인증 — 브라우저 없이 토큰으로
+
+서버에는 브라우저가 없으므로 로그인 창을 띄우는 대신 **장기 토큰**을 환경변수로 넘긴다. 토큰은 맥북에서 `claude setup-token`으로 발급해 1Password에 저장돼 있다 (`CLAUDE_CODE_OAUTH_TOKEN` 항목, 2026-08-17 발급).
+
+`~/.bashrc.local`에 한 줄을 넣는다. 앞 절에서 인증해둔 `op`가 금고에서 읽어온다.
+
+```bash
+export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential')"
+```
+
+`02-host.sh`가 배포하는 bashrc가 마지막에 `~/.bashrc.local`을 읽으므로, 셸을 새로 열면 토큰이 주입된다. op 세션이 없으면 이때 1Password 비밀번호를 한 번 묻는다.
+
+### 검증
+
+```bash
+claude doctor       # 설치 상태 진단
+claude -p "1+1"     # 응답이 오면 인증까지 완료
+```
+
+### 업데이트
+
+dnf 저장소 설치는 자동 업데이트되지 않는다. 시스템 업데이트에 얹혀 간다.
+
+```bash
+sudo dnf upgrade claude-code
+```
