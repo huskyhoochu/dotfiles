@@ -58,6 +58,14 @@ fi
 
 # 키가 있을 때만 비밀번호 로그인을 끈다. 순서를 지키지 않으면 잠긴다.
 if [ -s /root/.ssh/authorized_keys ]; then
+  # Anaconda 에서 "비밀번호로 root SSH 허용"을 켰다면 그 설정을 걷어낸다.
+  # 키 인증이 준비된 지금부터는 필요 없다.
+  if [ -f /etc/ssh/sshd_config.d/01-permitrootlogin.conf ]; then
+    rm -f /etc/ssh/sshd_config.d/01-permitrootlogin.conf
+    systemctl reload sshd
+    log "Anaconda의 root 비밀번호 SSH 허용 설정 제거"
+  fi
+
   SSHD_CONF=/etc/ssh/sshd_config.d/10-hardening.conf
   if [ -f "$SSHD_CONF" ]; then
     skip "SSH 강화 설정이 이미 있다"

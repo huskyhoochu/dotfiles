@@ -12,6 +12,8 @@ https://github.com/huskyhoochu/dotfiles/blob/main/docs/gem12-first-wifi-tutorial
 
 모든 명령은 서버 앞에 앉아 모니터와 **유선 키보드**로 친다.
 
+**콘솔 작업은 `02-host.sh`가 끝나는 순간까지다.** 그 시점에 맥북 공개키가 등록되므로, `ssh root@<서버 IP>` 성공을 확인한 뒤에는 모니터와 키보드를 치워도 된다. Anaconda 설치 때 "비밀번호로 root SSH 로그인 허용"을 켰다면 첫 부팅부터 SSH가 되므로 콘솔 작업은 설치 자체로 끝난다 — 이 허용은 `02-host.sh`가 키 등록 후 자동으로 제거한다. 서버 IP는 콘솔에서 `ip -br addr show wlp6s0`으로 확인한다.
+
 ---
 
 ## 미리 알아둘 사실
