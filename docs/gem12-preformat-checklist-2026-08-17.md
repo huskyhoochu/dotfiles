@@ -10,46 +10,36 @@
 
 ## A. 데이터 — 잃으면 못 되찾는 것
 
-### A-1. 원격이 없는 저장소 4개
+### A-1. 원격이 없는 저장소 — 처리 완료
 
-Git 저장소이지만 원격이 없다. 포맷하면 커밋 이력째 사라진다.
+| 저장소 | 크기 | 처분 | 상태 |
+|---|---:|---|---|
+| `personal_labs/comfyui-playground` | 75G | private 저장소 생성 후 push | **완료** |
+| `transcodes/tc-ui-components` | 296M | 담당자가 관리 중 | 제외 |
+| `transcodes/tc-design-tokens` | 143M | 담당자가 관리 중 | 제외 |
+| `personal_labs/cghds_crawl` | 5.3M | 폐기 | 제외 |
 
-| 저장소 | 크기 | 커밋 | 최종 작업일 | 처분 |
-|---|---:|---:|---|---|
-| `personal_labs/comfyui-playground` | 75G | 12 | 2026-05-28 | 코드만 push, `data/` 는 제외 |
-| `transcodes/tc-ui-components` | 296M | 3 | 2025-12-10 | push 또는 폐기 판단 |
-| `transcodes/tc-design-tokens` | 143M | 8 | 2025-12-10 | push 또는 폐기 판단 |
-| `personal_labs/cghds_crawl` | 5.3M | ? | ? | push 또는 폐기 판단 |
+`comfyui-playground` 는 `.gitignore` 가 모델과 miniconda, ComfyUI 클론을 제외하고 있어 **실제로 올라간 것은 44개 파일뿐**이다. 75GB는 전부 재생성 가능한 런타임 데이터였다.
 
-`comfyui-playground` 의 75GB는 대부분 `data/models` 다. **모델은 재다운로드할 수 있으므로 push 대상이 아니다.** 워크플로와 커스텀 노드 설정만 올린다.
+올라간 것 중 서버 구축에 쓸 자산은 다음과 같다.
 
-```bash
-cd ~/Documents/personal_labs/comfyui-playground
-cat .gitignore              # data/ 가 제외돼 있는지 확인
-gh repo create comfyui-playground --private --source=. --push
-```
+- `Containerfile`, `run-self-build.sh` — ComfyUI 컨테이너 빌드. ai-lxc가 Podman이므로 그대로 쓴다
+- `patches/` — WAN22 I2V 감지 수정 등 실제로 겪은 문제의 해결책
+- `docs/research/2026-05-10_wan22-i2v-rocm-black-output.md` — ROCm 검은 출력 문제 기록
+- `download_*.sh`, `tools/download_models.sh` — 모델 재다운로드 스크립트
 
-나머지 셋은 지금도 쓸 것인지 판단한다. 안 쓴다면 그대로 두고 넘어가도 된다 — 다만 **판단을 미루면 그것이 곧 폐기다.**
+마지막 항목이 §A-5의 "모델 목록과 다운로드 스크립트를 남긴다"를 이미 충족한다.
 
-### A-2. 미푸시 커밋 4곳
+### A-2. 미푸시 커밋 — 처리 완료
 
-원격은 있는데 로컬 커밋이 올라가지 않았다.
+| 저장소 | 미푸시 | 내용 | 상태 |
+|---|---:|---|---|
+| `personal_labs/reelmi` | 4 | ComfyUI Podman+ROCm 런타임, SOTA 모델 리서치 | **완료** |
+| `personal_labs/ssiat` | 1 | package.json 정리 | **완료** |
+| `obsidian/cyprien_vault` | 1 | vault backup | 이미 최신 |
+| `bfai/bgs_modeling` | 1 | 회사 작업, 맥북에서 관리 중 | 제외 |
 
-| 저장소 | 미푸시 | 내용 |
-|---|---:|---|
-| `personal_labs/reelmi` | 4 | ComfyUI Podman+ROCm 런타임, SOTA 모델 리서치 |
-| `personal_labs/ssiat` | 1 | package.json 정리 |
-| `bfai/bgs_modeling` | 1 | Photo → AI Prompt → Text-to-3D 파이프라인 |
-| `obsidian/cyprien_vault` | 1 | vault backup 2026-08-06 |
-
-```bash
-for d in ~/Documents/personal_labs/reelmi ~/Documents/personal_labs/ssiat \
-         ~/Documents/bfai/bgs_modeling ~/Documents/obsidian/cyprien_vault; do
-  echo "--- $d"; git -C "$d" push
-done
-```
-
-`reelmi` 의 ComfyUI ROCm 기록은 **ai-lxc 구축에 직접 쓰인다.** 반드시 올린다.
+`reelmi` 의 ComfyUI ROCm 기록은 ai-lxc 구축에 직접 쓰인다.
 
 ### A-3. 미커밋 변경 25곳
 
@@ -73,17 +63,19 @@ done
 | `~/.gemini`, `~/.codex`, `~/.claude-mem` | 대화 이력 중 남길 것이 있는지 |
 | 브라우저 프로필 | 북마크와 확장 설정 |
 
-### A-5. 모델 목록 저장
+### A-5. 모델 재다운로드 경로 — 처리 완료
 
-가중치 128GB는 백업하지 않는다. 대신 **무엇을 받았는지** 기록을 남긴다.
+가중치는 백업하지 않는다. 대신 **어디서 받았는지**를 스크립트로 남긴다.
 
-```bash
-find ~/Documents/models \
-     ~/Documents/personal_labs/comfyui-playground/data/models \
-     \( -name "*.gguf" -o -name "*.safetensors" \) -printf '%s\t%p\n' \
-  | sort -rn > ~/dotfiles/docs/models-manifest.txt
-git -C ~/dotfiles add docs/models-manifest.txt && git -C ~/dotfiles commit -m "docs: 모델 목록 스냅샷"
-```
+| 대상 | 재다운로드 경로 |
+|---|---|
+| Muse Glimmer 30B + drafter (17GB) | `commands/llamacpp/download-muse-glimmer.sh` |
+| ComfyUI 모델 (65GB) | `comfyui-playground` 의 `download_*.sh` |
+| Qwen3-Coder-Next (46GB) | 받지 않는다 |
+
+Qwen3-Coder-Next는 CPU 오프로드 탓에 17 tok/s로 떨어져 실용 범위 밖이었다. **이 장비에서 작동이 확인된 로컬 모델은 Glimmer뿐이다.**
+
+이 판단으로 포맷 후 재다운로드 용량이 128GB에서 82GB로 줄었다.
 
 ---
 
@@ -91,12 +83,27 @@ git -C ~/dotfiles add docs/models-manifest.txt && git -C ~/dotfiles commit -m "d
 
 포맷 후 서버에는 브라우저가 없다. 발급은 전부 지금 이 기기에서 끝낸다.
 
-| 항목 | 명령 | 보관처 |
-|---|---|---|
-| Claude Code 장기 토큰 | `claude setup-token` | 1Password |
-| rclone Google Drive 토큰 | `rclone authorize "drive"` | 1Password |
-| 맥북 SSH 공개키 | 맥북에서 `cat ~/.ssh/id_ed25519.pub` | 메모 또는 1Password |
-| GitHub PAT (필요시) | github.com 설정 | 1Password |
+| 항목 | 명령 | 보관처 | 상태 |
+|---|---|---|---|
+| Claude Code 장기 토큰 | `claude setup-token` | 1Password | **발급 완료 (맥북)** |
+| rclone Google Drive 토큰 | `rclone authorize "drive"` | 1Password | |
+| 맥북 SSH 공개키 | 맥북에서 `cat ~/.ssh/id_ed25519.pub` | 메모 또는 1Password | |
+| GitHub PAT (필요시) | github.com 설정 | 1Password | |
+
+**발급은 맥북에서 하는 편이 낫다.** 토큰은 기기에 묶이지 않으므로 발급 위치와 사용 위치가 달라도 되고, 이 기기에서 발급하면 포맷과 함께 잃는다.
+
+서버에서는 환경변수로 넘긴다. `bashrc.template` 이 마지막에 `~/.bashrc.local` 을 읽으므로 그 파일에 둔다. 저장소에서 관리하지 않는 파일이다.
+
+```bash
+# 서버의 ~/.bashrc.local
+export CLAUDE_CODE_OAUTH_TOKEN="<맥북에서 발급한 토큰>"
+```
+
+나중에 서버에 `op` CLI를 인증해두면 평문 대신 1Password에서 읽어올 수 있다.
+
+```bash
+export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Private/Claude Code GEM12/credential')"
+```
 
 **서버 밖에 둬야 하는 것** — 서버가 죽었을 때 필요한 정보다.
 
