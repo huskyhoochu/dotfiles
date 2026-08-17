@@ -22,14 +22,14 @@
         }
       ]
     },
-    "muse-glimmer-local": {
-      "baseUrl": "http://127.0.0.1:8081/v1",
+    "muse-glimmer-gem12": {
+      "baseUrl": "http://10.10.10.14:8081/v1",
       "api": "openai-completions",
       "apiKey": "none",
       "models": [
         {
           "id": "muse-glimmer",
-          "name": "Muse Glimmer 30B (Local llama.cpp)",
+          "name": "Muse Glimmer 30B (GEM12 ai 컨테이너)",
           "reasoning": true,
           "input": [
             "text"
