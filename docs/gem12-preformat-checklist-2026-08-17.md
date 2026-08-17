@@ -92,7 +92,7 @@ Qwen3-Coder-Next는 CPU 오프로드 탓에 17 tok/s로 떨어져 실용 범위 
 |---|---|---|---|
 | Claude Code 장기 토큰 | `claude setup-token` | 1Password | **발급 완료 (맥북)** |
 | rclone Google Drive 토큰 | `rclone authorize "drive"` | 1Password | |
-| 맥북 SSH 공개키 | 맥북에서 `cat ~/.ssh/id_ed25519.pub` | 메모 또는 1Password | |
+| 맥북 SSH 공개키 | 맥북에서 `ssh-add -L` — 1Password 에이전트가 공개키를 출력한다 | 이미 1Password에 있음 | |
 | GitHub PAT (필요시) | github.com 설정 | 1Password | |
 
 **발급은 맥북에서 하는 편이 낫다.** 토큰은 기기에 묶이지 않으므로 발급 위치와 사용 위치가 달라도 되고, 이 기기에서 발급하면 포맷과 함께 잃는다.

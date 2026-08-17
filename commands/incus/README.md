@@ -68,7 +68,7 @@ Fedora의 로그인 셸은 bash다. 모든 스크립트는 `#!/usr/bin/env bash`
 
 | 항목 | 발급 방법 | 서버에서 쓰는 법 |
 |---|---|---|
-| 맥북 SSH 공개키 | `cat ~/.ssh/id_ed25519.pub` | `SSH_PUBKEY=... ./02-host.sh` |
+| 맥북 SSH 공개키 | `ssh-add -L` (1Password 에이전트가 출력) | `SSH_PUBKEY=... ./02-host.sh` |
 | Claude Code 토큰 | `claude setup-token` | `CLAUDE_CODE_OAUTH_TOKEN` 환경변수 |
 | rclone Google Drive | `rclone authorize "drive"` | `rclone config` 에 붙여넣기 |
 

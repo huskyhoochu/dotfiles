@@ -512,7 +512,7 @@ Forgejo의 push mirror 기능을 쓰면 이 복제가 자동으로 이뤄진다.
 6. **dotfiles 커밋과 push** — 이것을 빠뜨리면 부트스트랩 스크립트째 잃는다
 7. 서버에서 쓸 자격증명을 미리 발급해 1Password에 보관
    - `claude setup-token` 으로 Claude Code 장기 토큰
-   - 맥북 SSH 공개키 (`cat ~/.ssh/id_ed25519.pub`) — `02-host.sh` 에 넘긴다
+   - 맥북 SSH 공개키 (`ssh-add -L` — 1Password 에이전트가 출력) — `02-host.sh` 에 넘긴다
 
 **검증**: 이 장비를 지금 잃어도 잃는 것이 없는 상태인가?
 

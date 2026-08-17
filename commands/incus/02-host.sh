@@ -43,7 +43,7 @@ if [ -z "${SSH_PUBKEY:-}" ]; then
     skip "authorized_keys 가 이미 있다"
   else
     warn "SSH 공개키가 없다. 비밀번호 로그인을 끄면 접속할 수 없게 된다."
-    echo "맥북에서 확인: cat ~/.ssh/id_ed25519.pub"
+    echo "맥북에서 확인: ssh-add -L   (1Password 에이전트가 공개키를 출력한다)"
     read -rp "공개키를 붙여넣어라 (건너뛰려면 빈 줄): " SSH_PUBKEY
   fi
 fi
