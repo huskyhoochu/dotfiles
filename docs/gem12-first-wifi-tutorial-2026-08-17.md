@@ -16,6 +16,19 @@ https://github.com/huskyhoochu/dotfiles/blob/main/docs/gem12-first-wifi-tutorial
 
 ---
 
+## 설치 관리자에서 놓치면 안 되는 것 — btrfs 파티셔닝
+
+Anaconda의 설치 대상 화면에서 디스크만 선택하고 넘어가면 **자동 파티셔닝(LVM + xfs, 루트 16GB)**이 적용된다. 이 경로에는 파일시스템 선택지가 화면에 나타나지 않으므로, btrfs를 받으려면 능동적으로 들어가야 한다.
+
+1. **설치 대상** 화면에서 NVMe 디스크 선택
+2. 저장소 구성에서 **"사용자 정의(Custom)"** 를 선택하고 완료(Done)
+3. 수동 파티셔닝 화면에서 **파티셔닝 스킴 드롭다운을 "Btrfs"로 변경**
+4. **"자동으로 마운트 지점 생성"** 을 눌러 btrfs 기준 레이아웃을 만들게 한 뒤 완료
+
+`02-host.sh`가 루트 파일시스템을 검사해서 btrfs가 아니면 중단하므로, 여기서 놓치면 부트스트랩 단계에서 걸린다.
+
+---
+
 ## 미리 알아둘 사실
 
 **Fedora Server는 Wi-Fi를 기본 지원한다.** `NetworkManager-wifi`와 `wpa_supplicant`가 Fedora 28부터 Server 기본 구성에 들어 있고, AX200 펌웨어도 기본 설치되는 `linux-firmware`에 포함돼 있다. 즉 **아무것도 설치하지 않고 `nmcli` 명령만으로 연결할 수 있다.**

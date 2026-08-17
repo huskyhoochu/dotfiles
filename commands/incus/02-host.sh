@@ -113,8 +113,10 @@ else
     incus storage create "$POOL_NAME" btrfs source="$POOL_PATH"
     log "btrfs 스토리지 풀 생성: $POOL_PATH"
   else
-    warn "/var/lib 가 btrfs 가 아니다. dir 드라이버로 만든다 (스냅샷이 느려진다)."
-    incus storage create "$POOL_NAME" dir
+    # btrfs 는 이 계획의 전제 조건이다 (스냅샷 백업, 체크섬, Incus CoW 풀).
+    # Fedora Server 설치 기본값(LVM+xfs, 루트 16GB)으로 잘못 설치된 경우
+    # 여기서 멈춰야 한다 — 계속 가면 16GB 루트에 컨테이너가 쌓인다.
+    die "루트가 btrfs 가 아니다. Anaconda 에서 사용자 정의 파티셔닝으로 Btrfs 를 지정해 재설치하라. (docs/gem12-first-wifi-tutorial 의 파티셔닝 절 참조)"
   fi
 fi
 
