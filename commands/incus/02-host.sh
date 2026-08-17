@@ -7,6 +7,10 @@
 # SSH 공개키는 저장소에 넣지 않는다. 아래 둘 중 하나로 넘긴다.
 #   SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
 #   ./02-host.sh   (입력 요청을 받는다)
+#
+# ADMIN_USER=<이름> 을 함께 넘기면 그 사용자에게도 SSH 키 인증을 열고
+# incus 관리 권한을 준다. 부트스트랩 이후 일상 접속은 이 사용자로 한다.
+#   ADMIN_USER=b95 SSH_PUBKEY="..." ./02-host.sh
 
 source "$(dirname "$0")/lib.sh"
 
@@ -141,6 +145,32 @@ if command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>
     firewall-cmd --reload >/dev/null
     log "firewalld: ${BRIDGE_NAME} 을 trusted 존에 추가"
   fi
+fi
+
+# ── 4.5 관리자 사용자 ───────────────────────────────────────────────
+# 부트스트랩은 root 로 하고, 이후 일상 접속은 이 사용자로 한다.
+
+if [ -n "${ADMIN_USER:-}" ]; then
+  id "$ADMIN_USER" >/dev/null 2>&1 || die "사용자 ${ADMIN_USER} 가 없다"
+
+  if [ -s /root/.ssh/authorized_keys ]; then
+    ADMIN_HOME=$(getent passwd "$ADMIN_USER" | cut -d: -f6)
+    ADMIN_GROUP=$(id -gn "$ADMIN_USER")
+    install -d -m 700 -o "$ADMIN_USER" -g "$ADMIN_GROUP" "${ADMIN_HOME}/.ssh"
+    install -m 600 -o "$ADMIN_USER" -g "$ADMIN_GROUP" \
+      /root/.ssh/authorized_keys "${ADMIN_HOME}/.ssh/authorized_keys"
+    log "${ADMIN_USER}: SSH 키 인증 등록"
+  fi
+
+  # incus-admin 그룹이면 sudo 없이 incus 를 다룬다. 이 권한은 사실상
+  # 호스트 root 와 같으므로 관리자 사용자에게만 준다.
+  usermod -aG incus-admin "$ADMIN_USER"
+  log "${ADMIN_USER}: incus-admin 그룹 추가 (재로그인 후 적용)"
+
+  # sudo 가능 여부는 여기서 만들지 않고 확인만 한다. Anaconda 에서
+  # 관리자로 지정했다면 wheel 에 이미 들어 있다.
+  id -nG "$ADMIN_USER" | grep -qw wheel \
+    || warn "${ADMIN_USER} 가 wheel 그룹에 없다. sudo 가 필요하면: usermod -aG wheel ${ADMIN_USER}"
 fi
 
 # ── 5. 셸 환경 ──────────────────────────────────────────────────────
