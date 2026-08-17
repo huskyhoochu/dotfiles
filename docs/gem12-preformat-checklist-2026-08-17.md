@@ -41,17 +41,22 @@
 
 `reelmi` 의 ComfyUI ROCm 기록은 ai-lxc 구축에 직접 쓰인다.
 
-### A-3. 미커밋 변경 25곳
+### A-3. 미커밋 변경 — 처리 완료
 
-`git status` 에 잡히는 변경이 있는 저장소가 25곳이다. 대부분 빌드 산출물이나 로컬 설정일 것이므로 일괄 커밋하지 않는다. 다음으로 실제 소스 변경만 가려낸다.
+25곳을 훑어 실제 작업물만 가려냈다. 나머지는 도구 부산물(`.serena/`, `.claude/`, `CLAUDE.md`, `package-lock.json`)이거나 담당자가 관리하는 transcodes 저장소다.
 
-```bash
-for d in ~/Documents/*/*/; do
-  [ -d "$d/.git" ] || continue
-  n=$(git -C "$d" status --porcelain 2>/dev/null | grep -vE '\.(log|lock)$|node_modules|dist/|build/' | wc -l)
-  [ "$n" -gt 0 ] && { echo "=== $d"; git -C "$d" status --short | head -10; }
-done
-```
+| 저장소 | 커밋한 것 |
+|---|---|
+| `personal_labs/reelmi` | 로컬 LLM 런타임 비교 리서치 — **ai-lxc 설계 근거** |
+| `personal_labs/moon_bird` | 마이크로 SaaS·RAG·솔로프리너 트렌드 리서치 3건 |
+| `personal_labs/seolhap` | Google ADK 심층 분석, Pydantic AI 비교 |
+| `moon_bird/automation` | Linear 작업 조회 Python 재작성 |
+| `personal_labs/funes_days_alter` | OG 이미지 시안과 브리프 |
+| `personal_labs/seolhap_archived` | 자동화 여정 PRD, 킥오프 문서 |
+
+`reelmi` 의 런타임 비교 문서가 특히 중요하다. 7900 XTX에서 Vulkan이 ROCm보다 빠른 사례가 기록돼 있고, 이것이 §4에서 llama.cpp를 Vulkan 백엔드로 쓰는 근거다.
+
+`external_packages/llama.cpp` 의 미추적 스크립트 2개는 dotfiles `commands/llamacpp/` 원본과 동일한 사본이라 조치하지 않았다.
 
 ### A-4. Git 밖의 데이터
 
@@ -115,11 +120,11 @@ export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Private/Claude Code GEM12/creden
 
 ## C. 하드웨어 확인
 
-### C-1. `U93` 슬롯 물리 확인
+### C-1. 확장 슬롯 — 확인 완료, 조치 없음
 
-`dmidecode` 는 빈 슬롯 `U93` 를 보고하지만, M.2인지 OCuLink인지 Wi-Fi인지 구분하지 못한다. **케이스를 열어 눈으로 본다.**
+AOOSTAR 공식 사양이 **M.2 2280 NVMe 2슬롯(PCIe 4.0 x4, 최대 8TB)**이고 "OCuLink 포트는 M.2 슬롯을 점유하지 않는다"고 명시한다. 지금 1슬롯만 쓰고 있으므로 `dmidecode` 가 보고한 빈 슬롯 `U93` 가 M.2다. 케이스를 열 필요가 없다.
 
-M.2로 확인되면 2TB 추가를 검토한다. 모델 230GB를 별도 디스크로 옮기면 1TB의 용량 압박이 사라진다.
+**당분간 하드웨어를 추가하지 않기로 했으므로 이번 포맷에서는 조치하지 않는다.** 나중에 용량이 부족해지면 2TB를 꽂는다.
 
 ### C-2. 입력 장치
 
@@ -134,21 +139,11 @@ M.2로 확인되면 2TB 추가를 검토한다. 모델 230GB를 별도 디스크
 
 ---
 
-## D. 되돌릴 수 없는 결정 — 미리 시험할 것
+## D. 일정
 
-### D-1. 맥북 단독 작업 시험
+포맷부터 서비스 재가동까지 **최소 며칠**이 걸린다. 그동안 이 장비의 GPU와 로컬 LLM을 쓸 수 없다. 급한 일정이 없는 시점을 고른다.
 
-Proxmox로 전환하면 이 장비에서 GNOME 데스크톱은 사라진다. **며칠 맥북만으로 평소 작업을 해보고 문제가 없는지 확인한다.**
-
-특히 확인할 것은 다음과 같다.
-
-- 로컬 LLM 없이 작업이 되는가 (서버 구축 전까지 Glimmer를 못 쓴다)
-- ComfyUI 작업을 얼마나 자주 하는가
-- 맥북 성능으로 충분한 작업인가
-
-### D-2. 다운타임 감당 여부
-
-포맷부터 서비스 재가동까지 **최소 며칠**이 걸린다. 그 사이 이 장비의 GPU와 로컬 LLM을 쓸 수 없다. 급한 일정이 없는 시점을 고른다.
+데스크톱 이관은 판단이 끝났다. 평소 작업은 맥북에서 하므로 이 장비에서 GNOME이 사라져도 문제되지 않는다.
 
 ---
 
