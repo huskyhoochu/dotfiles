@@ -18,12 +18,17 @@ Proxmox VE 설치를 마치고 콘솔에 로그인한 상태에서 시작한다.
 
 ```bash
 # 1. 네트워크 — Wi-Fi 연결과 NAT 브리지
+#    저장소를 아직 받을 수 없으므로 USB로 옮기거나 손으로 친다
 ./01-network.sh
 
-# 여기서 인터넷이 되면 저장소를 clone 하고 나머지를 실행한다
+# 인터넷이 연결되면 저장소를 받는다. 공개 저장소이므로 HTTPS로 받으면
+# 인증이 필요 없다 — SSH 키는 1Password 에이전트에 있어 서버에서 바로 쓸 수 없다.
+git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
+cd ~/dotfiles/commands/proxmox
 
-# 2. 호스트 기본 설정 — 저장소, 시간대, SSH, 방화벽
-./02-host.sh
+# 2. 호스트 기본 설정 — 저장소, 시간대, SSH, 셸
+#    맥북 공개키를 미리 넘기면 입력을 건너뛴다
+SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
 
 # 3. LXC 5개 생성
 ./03-containers.sh
@@ -50,6 +55,18 @@ Proxmox VE 설치를 마치고 콘솔에 로그인한 상태에서 시작한다.
 Proxmox와 Debian 13 모두 로그인 셸은 bash이고 `/bin/sh`는 dash다. 모든 스크립트는 `#!/usr/bin/env bash`로 시작하며 bash 문법을 쓴다.
 
 서버에 zsh은 설치하지 않는다. 이 저장소의 `zsh/` 설정은 zinit과 oh-my-posh, 런타임 관리자(fnm/pyenv/SDKMAN)를 전제하는 개발 환경용이라 서버에서는 시작 시간만 늘린다.
+
+## 자격증명
+
+서버에서 쓸 것은 **포맷 전에 맥북에서 발급해 1Password에 넣어둔다.** 발급 자체에 브라우저가 필요하기 때문이다.
+
+| 항목 | 발급 방법 | 서버에서 쓰는 법 |
+|---|---|---|
+| 맥북 SSH 공개키 | `cat ~/.ssh/id_ed25519.pub` | `SSH_PUBKEY=... ./02-host.sh` |
+| Claude Code 토큰 | `claude setup-token` | `CLAUDE_CODE_OAUTH_TOKEN` 환경변수 |
+| rclone Google Drive | `rclone authorize "drive"` | `rclone config` 에 붙여넣기 |
+
+토큰은 `~/.bashrc.local` 에 두거나 1Password에서 주입한다. 이 저장소에 넣지 않는다.
 
 ## 주의
 

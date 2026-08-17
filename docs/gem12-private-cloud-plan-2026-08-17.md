@@ -491,9 +491,14 @@ Forgejo의 push mirror 기능을 쓰면 이 복제가 자동으로 이뤄진다.
    find ~/Documents/models ~/Documents/personal_labs/comfyui-playground/data/models \
      -name "*.gguf" -o -name "*.safetensors" | sort > models-manifest.txt
    ```
-7. dotfiles 커밋과 push
+7. **dotfiles 커밋과 push** — 이것을 빠뜨리면 부트스트랩 스크립트째 잃는다
+8. 서버에서 쓸 자격증명을 미리 발급해 1Password에 보관
+   - `claude setup-token` 으로 Claude Code 장기 토큰
+   - 맥북 SSH 공개키 (`cat ~/.ssh/id_ed25519.pub`) — `02-host.sh` 에 넘긴다
 
 **검증**: 이 장비를 지금 잃어도 잃는 것이 없는 상태인가?
+
+8번을 포맷 전에 하는 이유는 발급 자체에 브라우저가 필요해서다. 포맷 후에는 맥북으로 옮겨가야 하므로 지금 해두는 편이 낫다.
 
 ### 1단계 — Proxmox 설치
 
@@ -509,7 +514,46 @@ systemctl enable --now wpa_supplicant@wlp6s0
 
 그다음 `/etc/network/interfaces`에 `wlp6s0`(DHCP)와 NAT 브리지 `vmbr0`(`10.10.10.1/24`)를 설정한다.
 
+이 과정은 `commands/proxmox/01-network.sh` 가 자동으로 한다. 다만 저장소를 받으려면 인터넷이 먼저 필요하므로, **첫 실행만 USB로 옮기거나 손으로 친다.**
+
 **검증**: 재부팅해도 Wi-Fi가 자동 연결되고, 맥북에서 LAN SSH 접속과 웹 UI 접근 성공
+
+### 1.5단계 — 저장소와 도구
+
+인터넷이 연결되면 dotfiles를 받는다.
+
+```bash
+git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
+cd ~/dotfiles/commands/proxmox
+./02-host.sh
+```
+
+**HTTPS로 받는다.** 이 저장소는 공개이므로 인증이 필요 없다. SSH로 받으려면 GitHub 키가 있어야 하는데, 이 기기의 키는 1Password 에이전트에 있고 서버에서 그것을 쓰려면 `op` CLI 인증이 먼저 필요하다. 첫 clone만 HTTPS로 하면 이 순환을 피한다.
+
+나중에 서버에서 push가 필요해지면 두 방법이 있다.
+
+- 맥북에서 `ssh -A`로 접속해 맥북의 1Password 에이전트를 빌려 쓴다. 서버에 키를 두지 않아 더 안전하다
+- 원격을 SSH로 바꾸고 서버 전용 배포 키를 발급한다
+
+**서버에서 `stow`로 전체를 배포하지 않는다.** 서버에 필요한 것은 `commands/proxmox/` 스크립트뿐이고, `nvim`·`tmux`·`ghostty`·`aerospace` 는 데스크톱 설정이다. 셸 환경은 `02-host.sh` 가 별도로 배포한다.
+
+#### Claude Code
+
+서버에서 Claude Code를 쓰려면 인증 토큰이 필요하다. 브라우저가 없으므로 **맥북에서 발급해 옮긴다.**
+
+```bash
+# 맥북 (브라우저 있음)
+claude setup-token          # 구독 계정으로 장기 토큰을 발급한다
+
+# 서버
+export CLAUDE_CODE_OAUTH_TOKEN="<발급받은 토큰>"
+```
+
+토큰은 `~/.bashrc.local` 이나 1Password에 두고 셸 시작 시 주입한다. 저장소에는 넣지 않는다.
+
+`~/.claude/.credentials.json` 을 그대로 복사하는 방법도 되지만 쓰지 않는다. 기기에 묶인 세션 자격증명이라 갱신 동작이 예측하기 어렵고, 두 기기가 같은 파일을 쓰면 한쪽의 갱신이 다른 쪽을 무효화할 수 있다.
+
+**검증**: 서버에서 `claude -p "1+1"` 이 응답
 
 ### 2단계 — core-lxc
 
