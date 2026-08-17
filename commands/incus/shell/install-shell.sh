@@ -24,11 +24,11 @@ while [ $# -gt 0 ]; do
     --name)  NAME="$2"; shift 2 ;;
     --color) COLOR="$2"; shift 2 ;;
     --dev)   WITH_DEV=true; shift ;;
-    *) echo "알 수 없는 옵션: $1" >&2; exit 1 ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
 
-[ -f "$TEMPLATE" ] || { echo "$TEMPLATE 를 찾을 수 없다" >&2; exit 1; }
+[ -f "$TEMPLATE" ] || { echo "$TEMPLATE not found" >&2; exit 1; }
 
 # 색상을 치환한 내용을 만든다.
 RENDERED="$(sed "s/@COLOR@/${COLOR}/g" "$TEMPLATE")"
@@ -53,25 +53,25 @@ fi
 # ── 배포 ────────────────────────────────────────────────────────────
 
 install_to_host() {
-  echo "[셸] Fedora Server 호스트에 배포 (색상 ${COLOR})"
+  echo "[shell] Deploying to host (color ${COLOR})"
 
   [ -f /root/.bashrc ] && [ ! -f /root/.bashrc.orig ] && cp -a /root/.bashrc /root/.bashrc.orig
 
   printf '%s\n' "$RENDERED" >/root/.bashrc
   $WITH_DEV && printf '%s\n' "$DEV_SNIPPET" >>/root/.bashrc
 
-  echo "[셸] /root/.bashrc 배포 완료"
+  echo "[shell] /root/.bashrc deployed"
 }
 
 install_to_container() {
   local name="$1"
-  echo "[셸] 컨테이너 ${name} 에 배포 (색상 ${COLOR}, 개발도구 ${WITH_DEV})"
+  echo "[shell] Deploying to container ${name} (color ${COLOR}, dev tools ${WITH_DEV})"
 
-  incus info "$name" >/dev/null 2>&1 || { echo "컨테이너 ${name} 이 없다" >&2; exit 1; }
+  incus info "$name" >/dev/null 2>&1 || { echo "Container ${name} not found" >&2; exit 1; }
   [ "$(incus list "$name" -c s -f csv)" = "RUNNING" ] || incus start "$name"
 
   if $WITH_DEV; then
-    echo "[셸] 개발 도구 설치 중"
+    echo "[shell] Installing dev tools"
     incus exec "$name" -- bash -c "dnf install -y -q ${DEV_PACKAGES}" >/dev/null
   fi
 
@@ -83,7 +83,7 @@ install_to_container() {
   incus file push "$tmp" "${name}/root/.bashrc"
   rm -f "$tmp"
 
-  echo "[셸] 컨테이너 ${name} 배포 완료"
+  echo "[shell] Container ${name} deployed"
 }
 
 if $TARGET_HOST; then
@@ -91,6 +91,6 @@ if $TARGET_HOST; then
 elif [ -n "$NAME" ]; then
   install_to_container "$NAME"
 else
-  echo "--host 또는 --name 중 하나가 필요하다" >&2
+  echo "Either --host or --name is required" >&2
   exit 1
 fi

@@ -19,14 +19,14 @@ install_docker() {
   local name="$1"
 
   if incus exec "$name" -- command -v docker >/dev/null 2>&1; then
-    skip "${name}: Docker 가 이미 있다"
+    skip "${name}: Docker already installed"
     # 설치는 됐는데 데몬이 죽어 있던 경우(재실행 시나리오)를 살린다.
     incus exec "$name" -- systemctl enable --now docker >/dev/null 2>&1 \
-      || warn "${name}: docker.service 기동 실패 — journalctl -u docker 를 확인하라"
+      || warn "${name}: docker.service failed to start - check journalctl -u docker"
     return
   fi
 
-  log "${name}: Docker 설치"
+  log "${name}: Installing Docker"
 
   incus exec "$name" -- bash -c '
     set -e
@@ -49,9 +49,9 @@ install_podman() {
   local name="$1" gpu="$2"
 
   if incus exec "$name" -- command -v podman >/dev/null 2>&1; then
-    skip "${name}: Podman 이 이미 있다"
+    skip "${name}: Podman already installed"
   else
-    log "${name}: Podman 설치"
+    log "${name}: Installing Podman"
     # Podman 은 Fedora 의 1급 시민이다. 저장소 추가 없이 바로 깔린다.
     incus exec "$name" -- bash -c 'dnf install -y -q podman podman-compose >/dev/null'
   fi
@@ -64,7 +64,7 @@ install_podman() {
 
   # ── GPU 컨테이너 추가 설정 ──────────────────────────────────────
   if [ "$gpu" != "none" ]; then
-    log "${name}: GPU 사용자 공간 설치 (${gpu})"
+    log "${name}: Installing GPU userspace (${gpu})"
 
     # Vulkan 백엔드를 쓰므로 Mesa RADV 와 로더만 있으면 된다.
     # ROCm 전체 스택은 필요하지 않다 — llama.cpp 가 -dev Vulkan0 로 돈다.
@@ -78,7 +78,7 @@ install_podman() {
     # 780M VAAPI 트랜스코딩(H.264/HEVC)은 코덱이 빠진 Fedora 기본 Mesa 로는
     # 안 된다. RPM Fusion 의 freeworld 드라이버로 바꾼다.
     if [ "$gpu" = "igpu" ]; then
-      log "${name}: RPM Fusion freeworld VAAPI 드라이버 설치"
+      log "${name}: Installing RPM Fusion freeworld VAAPI driver"
       # RPM Fusion 이 Fedora 의 mesa 업데이트를 리빌드로 따라잡기 전에는
       # 버전 불일치로 실패한다. 트랜스코딩은 Jellyfin 구축 시점에나 필요하므로
       # 실패해도 진행하고, 나중에 이 명령을 다시 실행한다.
@@ -87,16 +87,16 @@ install_podman() {
         dnf install -y -q \
           "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" >/dev/null
         dnf swap -y -q mesa-va-drivers mesa-va-drivers-freeworld >/dev/null
-      ' || warn "${name}: freeworld 교체 실패 — RPM Fusion 리빌드 시차. Jellyfin 구축 전에 재시도하라: dnf swap mesa-va-drivers mesa-va-drivers-freeworld"
+      ' || warn "${name}: freeworld swap failed - RPM Fusion rebuild lag. Retry before setting up Jellyfin: dnf swap mesa-va-drivers mesa-va-drivers-freeworld"
     fi
 
-    log "${name}: GPU 인식 확인"
+    log "${name}: Verifying GPU"
     if incus exec "$name" -- sh -c 'ls /dev/dri/renderD* >/dev/null 2>&1'; then
       incus exec "$name" -- vulkaninfo --summary 2>/dev/null \
         | grep -E 'deviceName|driverName' | head -4 \
-        || warn "${name}: vulkaninfo 실패 — 03-containers.sh 의 GPU 설정을 확인하라"
+        || warn "${name}: vulkaninfo failed - check GPU config in 03-containers.sh"
     else
-      warn "${name}: /dev/dri 렌더 노드가 없다. 컨테이너 설정을 확인하라."
+      warn "${name}: no /dev/dri render node. Check container config."
     fi
   fi
 }
@@ -107,23 +107,23 @@ install_podman() {
 # 다음 줄을 삼켜버리기 때문이다 (03-containers.sh 와 동일).
 while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
   echo
-  log "── ${NAME} ──"
+  log "-- ${NAME} --"
 
-  container_exists "$NAME" || { warn "${NAME} 이 없다. 03-containers.sh 를 먼저 실행하라."; continue; }
+  container_exists "$NAME" || { warn "${NAME} missing. Run 03-containers.sh first."; continue; }
   ensure_running "$NAME"
 
   case "$RUNTIME" in
     docker) install_docker "$NAME" ;;
     podman) install_podman "$NAME" "$GPU" ;;
-    *) warn "${NAME}: 알 수 없는 런타임 '${RUNTIME}'" ;;
+    *) warn "${NAME}: unknown runtime '${RUNTIME}'" ;;
   esac
 done 3< <(read_containers "${SCRIPT_DIR}/containers.conf")
 
 echo
-log "완료."
+log "Done."
 echo
-echo "다음 단계는 각 컨테이너에 서비스를 올리는 것이다."
-echo "  incus exec core -- bash    # core  — Forgejo, Headscale"
-echo "  incus exec ai -- bash      # ai    — llama.cpp, ComfyUI"
+echo "Next: deploy services inside each container."
+echo "  incus exec core -- bash    # core  - Forgejo, Headscale"
+echo "  incus exec ai -- bash      # ai    - llama.cpp, ComfyUI"
 echo
-echo "구축 순서는 docs/gem12-private-cloud-plan-2026-08-17.md §8 을 따른다."
+echo "Build order: docs/gem12-private-cloud-plan-2026-08-17.md section 8."

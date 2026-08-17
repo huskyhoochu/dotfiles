@@ -7,18 +7,18 @@ set -euo pipefail
 # ── 로깅 ────────────────────────────────────────────────────────────
 
 log()  { printf '\033[34m[%s]\033[0m %s\n' "$(date '+%H:%M:%S')" "$1"; }
-warn() { printf '\033[33m[경고]\033[0m %s\n' "$1" >&2; }
-die()  { printf '\033[31m[오류]\033[0m %s\n' "$1" >&2; exit 1; }
-skip() { printf '\033[90m[건너뜀]\033[0m %s\n' "$1"; }
+warn() { printf '\033[33m[WARN]\033[0m %s\n' "$1" >&2; }
+die()  { printf '\033[31m[ERROR]\033[0m %s\n' "$1" >&2; exit 1; }
+skip() { printf '\033[90m[SKIP]\033[0m %s\n' "$1"; }
 
 # ── 실행 전 검사 ────────────────────────────────────────────────────
 
 require_root() {
-  [ "$(id -u)" -eq 0 ] || die "root로 실행해야 한다. sudo를 쓰거나 root로 로그인하라."
+  [ "$(id -u)" -eq 0 ] || die "Must run as root. Use sudo or log in as root."
 }
 
 require_incus() {
-  command -v incus >/dev/null 2>&1 || die "incus 명령을 찾을 수 없다. 02-host.sh 를 먼저 실행하라."
+  command -v incus >/dev/null 2>&1 || die "incus command not found. Run 02-host.sh first."
 }
 
 # 사용자에게 확인을 받는다. 되돌리기 어려운 작업 앞에 둔다.
@@ -45,7 +45,7 @@ backup_once() {
   [ -f "$file" ] || return 0
   [ -f "${file}.orig" ] && return 0
   cp -a "$file" "${file}.orig"
-  log "원본을 ${file}.orig 에 보관했다"
+  log "Original saved to ${file}.orig"
 }
 
 # 컨테이너가 이미 있는지 본다.
@@ -65,6 +65,6 @@ ensure_running() {
 # 사용: while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do ... done < <(read_containers)
 read_containers() {
   local conf="${1:-$(dirname "${BASH_SOURCE[0]}")/containers.conf}"
-  [ -f "$conf" ] || die "$conf 를 찾을 수 없다"
+  [ -f "$conf" ] || die "$conf not found"
   grep -vE '^\s*(#|$)' "$conf"
 }

@@ -31,16 +31,16 @@ mkdir -p "$DATA_ROOT"
 
 while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
   echo
-  log "── ${NAME} ──"
+  log "-- ${NAME} --"
 
   if container_exists "$NAME"; then
-    skip "이미 있다"
+    skip "already exists"
     continue
   fi
 
   mkdir -p "${DATA_ROOT}/${NAME}"
 
-  log "생성 중: ${CORES} vCPU / ${MEM}MB / ${IP}"
+  log "Creating: ${CORES} vCPU / ${MEM}MB / ${IP}"
 
   # init → 장치 구성 → start 순서. IP 를 시작 전에 정해야 첫 부팅부터
   # 고정 주소로 DHCP 임대를 받는다.
@@ -59,7 +59,7 @@ while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
       security.syscalls.intercept.setxattr=true
   fi
 
-  incus config set "$NAME" user.comment "${RUNTIME} / $(date +%Y-%m-%d) / commands/incus 가 생성"
+  incus config set "$NAME" user.comment "${RUNTIME} / $(date +%Y-%m-%d) / created by commands/incus"
 
   # 고정 IP — incusbr0 의 dnsmasq 가 이 주소로 임대한다.
   incus config device override "$NAME" eth0 ipv4.address="$IP"
@@ -77,19 +77,19 @@ while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
     case "$GPU" in
       dgpu) PCI="$PCI_DGPU" ;;
       igpu) PCI="$PCI_IGPU" ;;
-      *) die "${NAME}: 알 수 없는 GPU '${GPU}'" ;;
+      *) die "${NAME}: unknown GPU '${GPU}'" ;;
     esac
-    log "GPU 장치 연결 (${GPU} → ${PCI})"
+    log "Attaching GPU device (${GPU} -> ${PCI})"
     incus config device add "$NAME" gpu gpu gputype=physical pci="$PCI"
   fi
 
-  log "시작"
+  log "Starting"
   incus start "$NAME"
   sleep 5
 
   # ── 컨테이너 초기 설정 ────────────────────────────────────────────
 
-  log "기본 패키지 설치"
+  log "Installing base packages"
   incus exec "$NAME" -- bash -c "dnf install -y -q curl ca-certificates openssh-server >/dev/null"
   incus exec "$NAME" -- systemctl enable --now sshd
   incus exec "$NAME" -- timedatectl set-timezone Asia/Seoul 2>/dev/null || true
@@ -98,7 +98,7 @@ while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
   if [ -s /root/.ssh/authorized_keys ]; then
     incus exec "$NAME" -- mkdir -p /root/.ssh
     incus file push /root/.ssh/authorized_keys "${NAME}/root/.ssh/authorized_keys" --mode 600
-    log "SSH 공개키 전달"
+    log "SSH public key pushed"
   fi
 
   # ── 셸 환경 ───────────────────────────────────────────────────────
@@ -110,14 +110,14 @@ while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
     bash "${SCRIPT_DIR}/shell/install-shell.sh" --name "$NAME" --color "$COLOR"
   fi
 
-  log "${NAME} 완료"
+  log "${NAME} done"
 done 3< <(read_containers "${SCRIPT_DIR}/containers.conf")
 
 # ── 결과 ────────────────────────────────────────────────────────────
 
 echo
-log "컨테이너 목록"
+log "Container list"
 incus list
 
 echo
-log "완료. 다음은 04-runtime.sh 다."
+log "Done. Next: 04-runtime.sh"
