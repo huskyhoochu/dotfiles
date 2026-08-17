@@ -136,6 +136,17 @@ incus profile device show default | grep -q '^root:' \
 incus profile device show default | grep -q '^eth0:' \
   || incus profile device add default eth0 nic network="$BRIDGE_NAME" name=eth0
 
+# Docker CE(ci/apps 컨테이너)는 iptables-legacy 를 쓰는데, legacy nat
+# 테이블은 이 커널 모듈이 있어야 생긴다. 컨테이너는 모듈을 로드할 수
+# 없으므로 호스트가 올려준다 — 로드되면 모든 netns 에 테이블이 생긴다.
+modprobe -a iptable_nat ip6table_nat 2>/dev/null \
+  || warn "iptable_nat 모듈 로드 실패 — 컨테이너 안 Docker 가 뜨지 않는다"
+MODULES_CONF=/etc/modules-load.d/docker-legacy-iptables.conf
+if [ ! -f "$MODULES_CONF" ]; then
+  printf 'iptable_nat\nip6table_nat\n' >"$MODULES_CONF"
+  log "legacy iptables 모듈 부팅 시 로드 등록"
+fi
+
 # firewalld 가 브리지의 DHCP/DNS 를 막지 않게 trusted 존에 넣는다.
 if command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
   if firewall-cmd --zone=trusted --list-interfaces | grep -qw "$BRIDGE_NAME"; then
