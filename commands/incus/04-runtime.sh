@@ -11,70 +11,53 @@ source "$(dirname "$0")/lib.sh"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 require_root
-require_proxmox
+require_incus
 
 # ── Docker ──────────────────────────────────────────────────────────
 
 install_docker() {
-  local id="$1" name="$2"
+  local name="$1"
 
-  if pct exec "$id" -- command -v docker >/dev/null 2>&1; then
+  if incus exec "$name" -- command -v docker >/dev/null 2>&1; then
     skip "${name}: Docker 가 이미 있다"
     return
   fi
 
   log "${name}: Docker 설치"
 
-  pct exec "$id" -- bash -c '
+  incus exec "$name" -- bash -c '
     set -e
-    apt-get update -qq
-    apt-get install -y -qq ca-certificates curl gnupg >/dev/null
-
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg \
-      -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-
-    cat >/etc/apt/sources.list.d/docker.sources <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/debian
-Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
-Components: stable
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
-
-    apt-get update -qq
-    apt-get install -y -qq \
+    dnf install -y -q dnf-plugins-core >/dev/null
+    dnf config-manager addrepo \
+      --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo \
+      --overwrite >/dev/null
+    dnf install -y -q \
       docker-ce docker-ce-cli containerd.io \
       docker-buildx-plugin docker-compose-plugin >/dev/null
-
     systemctl enable --now docker
   '
 
-  log "${name}: Docker $(pct exec "$id" -- docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+  log "${name}: Docker $(incus exec "$name" -- docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 }
 
 # ── Podman ──────────────────────────────────────────────────────────
 
 install_podman() {
-  local id="$1" name="$2" gpu="$3"
+  local name="$1" gpu="$2"
 
-  if pct exec "$id" -- command -v podman >/dev/null 2>&1; then
+  if incus exec "$name" -- command -v podman >/dev/null 2>&1; then
     skip "${name}: Podman 이 이미 있다"
   else
     log "${name}: Podman 설치"
-    pct exec "$id" -- bash -c '
-      set -e
-      apt-get update -qq
-      apt-get install -y -qq podman podman-compose uidmap slirp4netns >/dev/null
-    '
+    # Podman 은 Fedora 의 1급 시민이다. 저장소 추가 없이 바로 깔린다.
+    incus exec "$name" -- bash -c 'dnf install -y -q podman podman-compose >/dev/null'
   fi
 
   # Quadlet 디렉토리 — .container 파일을 두면 systemd 가 서비스로 다룬다.
-  pct exec "$id" -- mkdir -p /etc/containers/systemd
+  incus exec "$name" -- mkdir -p /etc/containers/systemd
 
   # 컨테이너를 systemd 가 관리하므로 부팅 시 자동 기동된다.
-  pct exec "$id" -- systemctl enable podman-restart >/dev/null 2>&1 || true
+  incus exec "$name" -- systemctl enable podman-restart >/dev/null 2>&1 || true
 
   # ── GPU 컨테이너 추가 설정 ──────────────────────────────────────
   if [ "$gpu" != "none" ]; then
@@ -82,36 +65,48 @@ install_podman() {
 
     # Vulkan 백엔드를 쓰므로 Mesa RADV 와 로더만 있으면 된다.
     # ROCm 전체 스택은 필요하지 않다 — llama.cpp 가 -dev Vulkan0 로 돈다.
-    pct exec "$id" -- bash -c '
+    incus exec "$name" -- bash -c '
       set -e
-      apt-get install -y -qq \
-        mesa-vulkan-drivers vulkan-tools libvulkan1 \
-        mesa-va-drivers vainfo >/dev/null
+      dnf install -y -q \
+        mesa-vulkan-drivers vulkan-tools \
+        mesa-va-drivers libva-utils >/dev/null
     '
 
+    # 780M VAAPI 트랜스코딩(H.264/HEVC)은 코덱이 빠진 Fedora 기본 Mesa 로는
+    # 안 된다. RPM Fusion 의 freeworld 드라이버로 바꾼다.
+    if [ "$gpu" = "igpu" ]; then
+      log "${name}: RPM Fusion freeworld VAAPI 드라이버 설치"
+      incus exec "$name" -- bash -c '
+        set -e
+        dnf install -y -q \
+          "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" >/dev/null
+        dnf swap -y -q mesa-va-drivers mesa-va-drivers-freeworld >/dev/null
+      '
+    fi
+
     log "${name}: GPU 인식 확인"
-    if pct exec "$id" -- test -e /dev/dri/renderD128; then
-      pct exec "$id" -- vulkaninfo --summary 2>/dev/null \
+    if incus exec "$name" -- sh -c 'ls /dev/dri/renderD* >/dev/null 2>&1'; then
+      incus exec "$name" -- vulkaninfo --summary 2>/dev/null \
         | grep -E 'deviceName|driverName' | head -4 \
         || warn "${name}: vulkaninfo 실패 — 03-containers.sh 의 GPU 설정을 확인하라"
     else
-      warn "${name}: /dev/dri/renderD128 이 없다. 컨테이너 설정을 확인하라."
+      warn "${name}: /dev/dri 렌더 노드가 없다. 컨테이너 설정을 확인하라."
     fi
   fi
 }
 
 # ── 실행 ────────────────────────────────────────────────────────────
 
-while read -r ID NAME CORES MEM IP RUNTIME GPU COLOR; do
+while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do
   echo
-  log "── ${NAME} (ID ${ID}) ──"
+  log "── ${NAME} ──"
 
-  container_exists "$ID" || { warn "${NAME} 이 없다. 03-containers.sh 를 먼저 실행하라."; continue; }
-  pct status "$ID" | grep -q running || pct start "$ID"
+  container_exists "$NAME" || { warn "${NAME} 이 없다. 03-containers.sh 를 먼저 실행하라."; continue; }
+  ensure_running "$NAME"
 
   case "$RUNTIME" in
-    docker) install_docker "$ID" "$NAME" ;;
-    podman) install_podman "$ID" "$NAME" "$GPU" ;;
+    docker) install_docker "$NAME" ;;
+    podman) install_podman "$NAME" "$GPU" ;;
     *) warn "${NAME}: 알 수 없는 런타임 '${RUNTIME}'" ;;
   esac
 done < <(read_containers "${SCRIPT_DIR}/containers.conf")
@@ -120,7 +115,7 @@ echo
 log "완료."
 echo
 echo "다음 단계는 각 컨테이너에 서비스를 올리는 것이다."
-echo "  pct enter 111    # core  — Forgejo, Headscale"
-echo "  pct enter 114    # ai    — llama.cpp, ComfyUI"
+echo "  incus exec core -- bash    # core  — Forgejo, Headscale"
+echo "  incus exec ai -- bash      # ai    — llama.cpp, ComfyUI"
 echo
 echo "구축 순서는 docs/gem12-private-cloud-plan-2026-08-17.md §8 을 따른다."

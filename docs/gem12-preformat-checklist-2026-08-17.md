@@ -1,8 +1,8 @@
 # 포맷 전 체크리스트
 
 > 날짜: 2026-08-17 (월) 점검 기준
-> 대상: GEM12 (Fedora Workstation → Proxmox VE 전환)
-> 관련 문서: `gem12-private-cloud-plan-2026-08-17.md`, `gem12-ai-pipeline-2026-08-17.md`
+> 대상: GEM12 (Fedora Workstation → Fedora Server + Incus 전환)
+> 관련 문서: `gem12-private-cloud-plan-2026-08-17.md`, `gem12-ai-pipeline-2026-08-17.md`, `gem12-first-wifi-tutorial-2026-08-17.md`
 
 포맷은 되돌릴 수 없다. 이 목록을 순서대로 지우면서 진행한다. **A와 B를 끝내기 전에는 포맷하지 않는다.**
 
@@ -23,7 +23,7 @@
 
 올라간 것 중 서버 구축에 쓸 자산은 다음과 같다.
 
-- `Containerfile`, `run-self-build.sh` — ComfyUI 컨테이너 빌드. ai-lxc가 Podman이므로 그대로 쓴다
+- `Containerfile`, `run-self-build.sh` — ComfyUI 컨테이너 빌드. ai 컨테이너가 Podman이므로 그대로 쓴다
 - `patches/` — WAN22 I2V 감지 수정 등 실제로 겪은 문제의 해결책
 - `docs/research/2026-05-10_wan22-i2v-rocm-black-output.md` — ROCm 검은 출력 문제 기록
 - `download_*.sh`, `tools/download_models.sh` — 모델 재다운로드 스크립트
@@ -39,7 +39,7 @@
 | `obsidian/cyprien_vault` | 1 | vault backup | 이미 최신 |
 | `bfai/bgs_modeling` | 1 | 회사 작업, 맥북에서 관리 중 | 제외 |
 
-`reelmi` 의 ComfyUI ROCm 기록은 ai-lxc 구축에 직접 쓰인다.
+`reelmi` 의 ComfyUI ROCm 기록은 ai 컨테이너 구축에 직접 쓰인다.
 
 ### A-3. 미커밋 변경 — 처리 완료
 
@@ -47,7 +47,7 @@
 
 | 저장소 | 커밋한 것 |
 |---|---|
-| `personal_labs/reelmi` | 로컬 LLM 런타임 비교 리서치 — **ai-lxc 설계 근거** |
+| `personal_labs/reelmi` | 로컬 LLM 런타임 비교 리서치 — **ai 컨테이너 설계 근거** |
 | `personal_labs/moon_bird` | 마이크로 SaaS·RAG·솔로프리너 트렌드 리서치 3건 |
 | `personal_labs/seolhap` | Google ADK 심층 분석, Pydantic AI 비교 |
 | `moon_bird/automation` | Linear 작업 조회 Python 재작성 |
@@ -114,7 +114,7 @@ export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Private/Claude Code GEM12/creden
 
 - 1Password 자체 복구 키 → **종이로 오프라인 보관**
 - Google 계정 복구 정보
-- Wi-Fi SSID와 비밀번호 (설치 직후 콘솔에서 손으로 입력한다)
+- Wi-Fi SSID와 비밀번호 (Anaconda 설치 관리자의 네트워크 화면에서 입력한다)
 
 ---
 
@@ -135,7 +135,7 @@ AOOSTAR 공식 사양이 **M.2 2280 NVMe 2슬롯(PCIe 4.0 x4, 최대 8TB)**이�
 
 ### C-3. USB 부팅 디스크
 
-준비 완료. Proxmox VE 9.2-1, SHA256 검증 통과, `/dev/sda` 에 기록됨.
+**다시 만들어야 한다.** 현재 USB(`/dev/sda`)에는 Proxmox VE 9.2-1이 들어 있다 — Incus 전환 이전에 만든 것이다. **Fedora Server 44 ISO**를 받아 SHA256 검증 후 다시 굽는다.
 
 ---
 
@@ -180,7 +180,7 @@ done
 
 `gem12-private-cloud-plan-2026-08-17.md` §8 의 1단계부터 진행한다.
 
-1. Proxmox VE 설치 (네트워크 없이 완료)
-2. 콘솔에서 Wi-Fi 연결 — `commands/proxmox/01-network.sh` 를 손으로 옮겨 실행
+1. Fedora Server 설치 — Anaconda 네트워크 화면에서 Wi-Fi 연결, 수동 파티셔닝으로 btrfs 지정
+2. 첫 부팅 후 네트워크 확인 — 안 붙어 있으면 `gem12-first-wifi-tutorial-2026-08-17.md` 를 따라 `nmcli` 로 연결
 3. `git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles`
-4. `SSH_PUBKEY="..." ./02-host.sh`
+4. `cd ~/dotfiles/commands/incus && SSH_PUBKEY="..." ./02-host.sh`

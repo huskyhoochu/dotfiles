@@ -1,124 +1,86 @@
 #!/usr/bin/env bash
-# Wi-Fi 연결과 NAT 브리지 구성
+# Wi-Fi 연결 확인과 복구
 #
-# 반드시 콘솔(모니터+키보드)에서 실행한다. SSH로 실행하면 네트워크가 바뀌는
-# 순간 연결이 끊기고 되돌릴 수 없다.
+# 설치 직후 네트워크가 전혀 없는 첫 연결은 이 스크립트로 못 한다 — 저장소를
+# 받을 네트워크가 없기 때문이다. 첫 연결은 사람이 콘솔에서 직접 한다:
+#   docs/gem12-first-wifi-tutorial-2026-08-17.md (맥북이나 휴대폰으로 연다)
 #
-# 무선에서는 일반 브리지를 쓸 수 없다. 802.11 규격상 무선 클라이언트는 자기
-# MAC 주소로만 프레임을 보낼 수 있어서, 컨테이너의 다른 MAC이 붙은 프레임을
-# 공유기가 버리기 때문이다. 그래서 컨테이너를 사설망에 두고 호스트가
-# 마스커레이딩한다.
+# 이 스크립트는 clone 이후에 같은 절차를 멱등하게 재실행하는 용도다.
+# 연결이 깨졌을 때의 복구, 재설치 후 재현에 쓴다.
+#
+# Fedora Server 는 NetworkManager-wifi 와 wpa_supplicant 를 기본 포함하고
+# (F28부터) AX200 펌웨어도 linux-firmware 에 들어 있으므로, 추가 설치 없이
+# nmcli 만으로 연결된다.
+#
+# 컨테이너용 NAT 브리지는 여기서 만들지 않는다. Incus가 incusbr0 을 직접
+# 만들고 마스커레이딩까지 관리한다 (02-host.sh). 무선에서는 802.11 규격상
+# 일반 브리지가 동작하지 않으므로 이 NAT 구조가 필수다.
 
 source "$(dirname "$0")/lib.sh"
 
-WIFI_IF="wlp6s0"
-BRIDGE_NET="10.10.10.0/24"
-BRIDGE_IP="10.10.10.1/24"
-WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-${WIFI_IF}.conf"
-
 require_root
 
-# ── 실행 환경 확인 ──────────────────────────────────────────────────
+command -v nmcli >/dev/null 2>&1 || die "nmcli 가 없다. Fedora Server 가 맞는지 확인하라."
 
-if [ -n "${SSH_CONNECTION:-}" ]; then
-  warn "SSH 세션에서 실행하고 있다. 네트워크 설정이 바뀌면 연결이 끊긴다."
-  confirm "그래도 계속하겠는가?" || die "콘솔에서 다시 실행하라."
+# 표준 Server 설치에는 들어 있다. 없다면 최소 구성으로 설치한 경우다.
+if ! rpm -q NetworkManager-wifi wpa_supplicant >/dev/null 2>&1; then
+  die "NetworkManager-wifi / wpa_supplicant 가 없다. 튜토리얼 문서의 'USB 테더링' 절차로 설치하라."
 fi
 
-ip link show "$WIFI_IF" >/dev/null 2>&1 || die "$WIFI_IF 를 찾을 수 없다. 인터페이스 이름을 확인하라: ip -br link"
+# ── 1. 무선 인터페이스 탐지 ─────────────────────────────────────────
+# GEM12 에서는 wlp6s0 이지만 하드코딩하지 않는다. 장비를 옮겨도 돌게 한다.
 
-# ── 1. Wi-Fi 펌웨어와 도구 ──────────────────────────────────────────
+WIFI_IF="${WIFI_IF:-$(nmcli -t -f DEVICE,TYPE device | awk -F: '$2=="wifi"{print $1; exit}')}"
+[ -n "$WIFI_IF" ] || die "wifi 장치가 없다. rfkill list 와 'dmesg | grep iwlwifi' 로 원인을 보라."
 
-log "Wi-Fi 패키지 확인"
+log "무선 인터페이스: $WIFI_IF"
 
-if ! dpkg -s wpasupplicant >/dev/null 2>&1 || ! dpkg -s firmware-iwlwifi >/dev/null 2>&1; then
-  # 인터넷이 없는 상태이므로 설치는 실패할 수 있다.
-  # Proxmox ISO에 wpasupplicant는 들어 있고, firmware-iwlwifi는 non-free 저장소가 필요하다.
-  log "wpasupplicant / firmware-iwlwifi 설치 시도"
-  apt-get install -y wpasupplicant firmware-iwlwifi 2>/dev/null || {
-    warn "설치에 실패했다. 인터넷이 없으면 정상이다."
-    warn "다른 기기에서 .deb 를 받아 USB로 옮기거나, 유선을 임시로 연결하라."
-    dpkg -s wpasupplicant >/dev/null 2>&1 || die "wpasupplicant 없이는 진행할 수 없다."
-  }
-fi
+nmcli radio wifi | grep -q enabled || { nmcli radio wifi on; log "무선을 켰다"; }
+command -v rfkill >/dev/null 2>&1 && rfkill unblock wifi 2>/dev/null || true
 
-# ── 2. Wi-Fi 자격증명 ───────────────────────────────────────────────
+# ── 2. 연결 ─────────────────────────────────────────────────────────
 
-if [ -f "$WPA_CONF" ]; then
-  skip "$WPA_CONF 가 이미 있다"
+if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1; then
+  log "인터넷이 이미 연결돼 있다"
 else
-  log "Wi-Fi 자격증명을 입력하라 (저장소에 남기지 않는다)"
-  read -rp "  SSID: " WIFI_SSID
-  read -rsp "  비밀번호: " WIFI_PASS
-  echo
+  if [ -n "${SSH_CONNECTION:-}" ]; then
+    warn "SSH 세션에서 실행하고 있다. 네트워크 설정이 바뀌면 연결이 끊긴다."
+    confirm "그래도 계속하겠는가?" || die "콘솔에서 다시 실행하라."
+  fi
 
+  log "주변 네트워크 검색"
+  nmcli device wifi rescan 2>/dev/null || true
+  sleep 3
+
+  read -rp "  SSID: " WIFI_SSID
   [ -n "$WIFI_SSID" ] || die "SSID가 비어 있다"
 
-  mkdir -p /etc/wpa_supplicant
-  # wpa_passphrase 는 평문 비밀번호를 주석으로 남기므로 지운다.
-  wpa_passphrase "$WIFI_SSID" "$WIFI_PASS" | grep -v '^\s*#psk=' >"$WPA_CONF"
-  chmod 600 "$WPA_CONF"
-  unset WIFI_PASS
-  log "$WPA_CONF 생성 (권한 600)"
+  # --ask 는 비밀번호를 화면에 보이지 않게 따로 묻는다. 히스토리와 ps 출력에
+  # 비밀번호가 남지 않는다.
+  nmcli --ask device wifi connect "$WIFI_SSID" ifname "$WIFI_IF" \
+    || die "연결에 실패했다. nmcli device wifi list 로 SSID를 확인하라."
 fi
 
-systemctl enable "wpa_supplicant@${WIFI_IF}" >/dev/null 2>&1 || true
+# ── 3. 부팅 시 자동 연결 ────────────────────────────────────────────
+# 서버는 무인으로 재부팅되므로 자동 연결이 꺼져 있으면 안 된다.
 
-# ── 3. 네트워크 인터페이스 ──────────────────────────────────────────
+ACTIVE_CONN=$(nmcli -t -f GENERAL.CONNECTION device show "$WIFI_IF" | cut -d: -f2)
+if [ -n "$ACTIVE_CONN" ]; then
+  nmcli connection modify "$ACTIVE_CONN" connection.autoconnect yes
+  log "자동 연결 설정: $ACTIVE_CONN"
+fi
 
-log "/etc/network/interfaces 구성"
-backup_once /etc/network/interfaces
-
-cat >/etc/network/interfaces <<EOF
-# Proxmox 부트스트랩이 생성 — commands/proxmox/01-network.sh
-# 원본은 /etc/network/interfaces.orig 에 있다.
-
-auto lo
-iface lo inet loopback
-
-# Wi-Fi (상위 연결)
-auto ${WIFI_IF}
-iface ${WIFI_IF} inet dhcp
-    wpa-conf ${WPA_CONF}
-
-# 컨테이너용 NAT 브리지 — 물리 포트 없음
-auto vmbr0
-iface vmbr0 inet static
-    address ${BRIDGE_IP}
-    bridge-ports none
-    bridge-stp off
-    bridge-fd 0
-    post-up   echo 1 > /proc/sys/net/ipv4/ip_forward
-    post-up   iptables -t nat -A POSTROUTING -s ${BRIDGE_NET} -o ${WIFI_IF} -j MASQUERADE
-    post-down iptables -t nat -D POSTROUTING -s ${BRIDGE_NET} -o ${WIFI_IF} -j MASQUERADE
-
-# 유선을 연결하면 아래 주석을 풀고 위 ${WIFI_IF} 블록을 지운다.
-# MASQUERADE 의 -o 인터페이스도 함께 바꾼다.
-#auto eno1
-#iface eno1 inet dhcp
-EOF
-
-# ── 4. 적용 ─────────────────────────────────────────────────────────
-
-log "설정을 적용한다"
-systemctl restart "wpa_supplicant@${WIFI_IF}" || warn "wpa_supplicant 재시작 실패"
-ifreload -a 2>/dev/null || systemctl restart networking
-
-sleep 5
-
-# ── 5. 검증 ─────────────────────────────────────────────────────────
+# ── 4. 검증 ─────────────────────────────────────────────────────────
 
 echo
 log "결과"
 ip -br addr show "$WIFI_IF" || true
-ip -br addr show vmbr0 || true
 echo
 
-if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1; then
-  log "인터넷 연결 확인"
-else
-  warn "인터넷에 닿지 않는다. 'journalctl -u wpa_supplicant@${WIFI_IF}' 로 원인을 보라."
-  exit 1
-fi
+ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 \
+  || { warn "인터넷에 닿지 않는다. 'nmcli device' 와 'journalctl -u NetworkManager' 로 원인을 보라."; exit 1; }
+getent hosts github.com >/dev/null 2>&1 \
+  || { warn "DNS가 풀리지 않는다. 튜토리얼 문서의 문제 해결 표를 보라."; exit 1; }
 
-log "완료. 이제 저장소를 clone 하고 02-host.sh 를 실행하라."
+log "인터넷과 DNS 연결 확인"
+log "완료. 다음은 02-host.sh 다."

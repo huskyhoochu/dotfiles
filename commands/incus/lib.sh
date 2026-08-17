@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Proxmox 부트스트랩 스크립트 공통 함수
+# Incus 부트스트랩 스크립트 공통 함수
 # 각 스크립트에서 source 해서 쓴다. 단독 실행하지 않는다.
 
 set -euo pipefail
@@ -17,8 +17,8 @@ require_root() {
   [ "$(id -u)" -eq 0 ] || die "root로 실행해야 한다. sudo를 쓰거나 root로 로그인하라."
 }
 
-require_proxmox() {
-  command -v pct >/dev/null 2>&1 || die "Proxmox VE가 아니다. pct 명령을 찾을 수 없다."
+require_incus() {
+  command -v incus >/dev/null 2>&1 || die "incus 명령을 찾을 수 없다. 02-host.sh 를 먼저 실행하라."
 }
 
 # 사용자에게 확인을 받는다. 되돌리기 어려운 작업 앞에 둔다.
@@ -48,15 +48,21 @@ backup_once() {
   log "원본을 ${file}.orig 에 보관했다"
 }
 
-# LXC가 이미 있는지 본다.
+# 컨테이너가 이미 있는지 본다.
 container_exists() {
-  pct status "$1" >/dev/null 2>&1
+  incus info "$1" >/dev/null 2>&1
 }
 
-# ── LXC 정의 읽기 ───────────────────────────────────────────────────
+# 컨테이너가 실행 중인지 보고, 아니면 시작한다.
+ensure_running() {
+  local name="$1"
+  [ "$(incus list "$name" -c s -f csv)" = "RUNNING" ] || incus start "$name"
+}
+
+# ── 컨테이너 정의 읽기 ──────────────────────────────────────────────
 
 # containers.conf 를 한 줄씩 넘긴다. 주석과 빈 줄은 건너뛴다.
-# 사용: while read_containers id name cores mem ip runtime gpu; do ... done
+# 사용: while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do ... done < <(read_containers)
 read_containers() {
   local conf="${1:-$(dirname "${BASH_SOURCE[0]}")/containers.conf}"
   [ -f "$conf" ] || die "$conf 를 찾을 수 없다"

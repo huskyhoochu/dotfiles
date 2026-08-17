@@ -2,7 +2,7 @@
 
 > 날짜: 2026-08-17 (월)
 > 전제 인프라: `gem12-private-cloud-plan-2026-08-17.md`
-> 상태: 설계. Proxmox 설치 전이라 실행 검증은 하지 않았다.
+> 상태: 설계. Fedora Server 설치 전이라 실행 검증은 하지 않았다.
 
 ## 한줄 요약
 
@@ -83,7 +83,7 @@ Wayfinder로 큰 작업을 지도로 만든다. 이 층은 사람이 주도하�
 구현 이슈에 implement 라벨이 붙음
    │
    ▼
-Forgejo Actions 기동 (ci-lxc)
+Forgejo Actions 기동 (ci 컨테이너)
    │
    │  flue run implement
    │
@@ -117,8 +117,8 @@ Forgejo Actions 기동 (ci-lxc)
 현재 `run-muse-glimmer-server.sh`는 `--host 127.0.0.1`로 뜬다. 데스크톱에서 혼자 쓸 때는 맞지만, **CI가 다른 컨테이너에서 호출하므로 사설망 주소로 바꿔야 한다.**
 
 ```text
-ai-lxc (10.10.10.14)          ci-lxc (10.10.10.12)
-  llama.cpp                     Forgejo Runner
+ai 컨테이너 (10.10.10.14)      ci 컨테이너 (10.10.10.12)
+  llama.cpp                       Forgejo Runner
   --host 10.10.10.14   ◄────────  pi --provider muse-glimmer
   --port 8081                     baseUrl: http://10.10.10.14:8081/v1
 ```
@@ -251,7 +251,7 @@ useModel('local/muse-glimmer', {
 
 인프라 구축(`gem12-private-cloud-plan` §8)이 4단계까지 끝난 뒤 시작한다.
 
-1. **Glimmer 바인드 주소 변경** → 검증: ci-lxc에서 `curl 10.10.10.14:8081/v1/models` 응답
+1. **Glimmer 바인드 주소 변경** → 검증: ci 컨테이너에서 `curl 10.10.10.14:8081/v1/models` 응답
 2. **`pi`로 먼저 손으로 돌려본다** — 이슈 하나를 골라 `pi -p --provider muse-glimmer` 실행 → 검증: 코드 수정이 말이 되는가. **여기서 Glimmer의 완주율을 처음 확인한다**
 3. **flue 프로젝트 생성, Glimmer를 커스텀 프로바이더로 등록** → 검증: `flue run` 으로 간단한 프롬프트가 돌고 `reasoning`이 실제로 전달되는가
 4. **구현 에이전트 하나만 작성** → 검증: 이슈 번호를 넘기면 PR이 생성됨

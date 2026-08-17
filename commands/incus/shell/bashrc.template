@@ -1,4 +1,4 @@
-# 서버용 bash 설정 — commands/proxmox/shell/ 에서 배포
+# 서버용 bash 설정 — commands/incus/shell/ 에서 배포
 #
 # 맥북의 zsh 설정은 SSH로 들어와도 따라오지 않는다. 서버 셸은 잠깐 들어와
 # 명령 몇 개 치는 용도이므로 zsh과 zinit을 옮기는 대신 필요한 것만 둔다.
@@ -12,8 +12,8 @@ case $- in
 esac
 
 # ── 프롬프트 ────────────────────────────────────────────────────────
-# 호스트명을 색으로 표시한다. SSH 창을 여러 개 띄웠을 때 core-lxc 에서
-# 칠 명령을 ci-lxc 에 치는 사고를 막는 것이 목적이다.
+# 호스트명을 색으로 표시한다. SSH 창을 여러 개 띄웠을 때 core 에서
+# 칠 명령을 ci 에 치는 사고를 막는 것이 목적이다.
 
 PS1='\[\e[1;3@COLOR@m\]\h\[\e[0m\] \[\e[34m\]\w\[\e[0m\]\$ '
 
@@ -67,12 +67,12 @@ elif command -v podman >/dev/null 2>&1; then
   alias plog='podman logs -f --tail=100'
 fi
 
-# ── Proxmox 호스트 전용 ─────────────────────────────────────────────
+# ── Incus 호스트 전용 ───────────────────────────────────────────────
 
-if command -v pct >/dev/null 2>&1; then
-  alias lxls='pct list'
-  # 컨테이너에 들어간다: lxe 113
-  lxe() { pct enter "$1"; }
+if command -v incus >/dev/null 2>&1; then
+  alias lxls='incus list'
+  # 컨테이너에 들어간다: lxe apps
+  lxe() { incus exec "$1" -- bash; }
 fi
 
 # ── 로컬 확장 ───────────────────────────────────────────────────────

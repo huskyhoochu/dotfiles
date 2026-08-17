@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Proxmox 호스트 기본 설정
+# Fedora Server 호스트 기본 설정
 #
-# 무료 저장소 전환, 시간대, SSH 키 인증, 셸 환경.
+# 시간대, 기본 패키지, SSH 키 인증, Incus 설치와 초기화, 셸 환경.
 # 01-network.sh 로 인터넷이 연결된 뒤 실행한다.
 #
 # SSH 공개키는 저장소에 넣지 않는다. 아래 둘 중 하나로 넘긴다.
@@ -10,42 +10,14 @@
 
 source "$(dirname "$0")/lib.sh"
 
+BRIDGE_NAME="incusbr0"
+BRIDGE_IP="10.10.10.1/24"
+POOL_NAME="default"
+POOL_PATH="/var/lib/incus-pool"
+
 require_root
-require_proxmox
 
-# ── 1. 저장소 — 구독 없이 쓰는 무료 저장소로 바꾼다 ─────────────────
-
-log "APT 저장소 설정"
-
-ENTERPRISE_LIST=/etc/apt/sources.list.d/pve-enterprise.sources
-CEPH_LIST=/etc/apt/sources.list.d/ceph.sources
-NO_SUB_LIST=/etc/apt/sources.list.d/pve-no-subscription.sources
-
-# 구독이 없으면 enterprise 저장소는 401을 낸다. 꺼둔다.
-for f in "$ENTERPRISE_LIST" "$CEPH_LIST"; do
-  if [ -f "$f" ] && ! grep -q '^Enabled: false' "$f"; then
-    ensure_line "$f" "Enabled: false"
-    log "$(basename "$f") 비활성화"
-  fi
-done
-
-if [ -f "$NO_SUB_LIST" ]; then
-  skip "no-subscription 저장소가 이미 있다"
-else
-  cat >"$NO_SUB_LIST" <<'EOF'
-Types: deb
-URIs: http://download.proxmox.com/debian/pve
-Suites: trixie
-Components: pve-no-subscription
-Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
-EOF
-  log "no-subscription 저장소 추가"
-fi
-
-log "패키지 목록 갱신"
-apt-get update -qq
-
-# ── 2. 시간대와 기본 패키지 ─────────────────────────────────────────
+# ── 1. 시간대와 기본 패키지 ─────────────────────────────────────────
 
 if [ "$(timedatectl show -p Timezone --value)" != "Asia/Seoul" ]; then
   timedatectl set-timezone Asia/Seoul
@@ -55,14 +27,14 @@ else
 fi
 
 log "기본 패키지 설치"
-apt-get install -y -qq \
+dnf install -y -q \
   curl git vim htop tmux \
   rclone restic \
   smartmontools \
-  iptables-persistent \
-  >/dev/null
+  btrfs-progs \
+  incus
 
-# ── 3. SSH 키 인증 ──────────────────────────────────────────────────
+# ── 2. SSH 키 인증 ──────────────────────────────────────────────────
 
 log "SSH 설정"
 
@@ -91,25 +63,86 @@ if [ -s /root/.ssh/authorized_keys ]; then
     skip "SSH 강화 설정이 이미 있다"
   else
     cat >"$SSHD_CONF" <<'EOF'
-# Proxmox 부트스트랩이 생성 — commands/proxmox/02-host.sh
+# Incus 부트스트랩이 생성 — commands/incus/02-host.sh
 PasswordAuthentication no
 PermitRootLogin prohibit-password
 EOF
-    systemctl reload ssh 2>/dev/null || systemctl reload sshd
+    systemctl reload sshd
     log "비밀번호 로그인 차단 (키 인증만 허용)"
   fi
 else
   warn "공개키가 없어 비밀번호 로그인을 그대로 둔다."
 fi
 
-# ── 4. 셸 환경 ──────────────────────────────────────────────────────
+# ── 3. Cockpit ──────────────────────────────────────────────────────
+# Fedora Server 에 기본 포함된 웹 관리 UI. 웹 터미널이 있어 SSH가 막혀도
+# 브라우저에서 호스트 셸에 들어갈 수 있다. https://<서버>:9090
+
+systemctl enable --now cockpit.socket >/dev/null 2>&1 || warn "cockpit.socket 활성화 실패"
+
+# ── 4. Incus 초기화 ─────────────────────────────────────────────────
+
+log "Incus 초기화"
+
+# unprivileged 컨테이너의 uid/gid 매핑 범위. Fedora 패키지는 이것을
+# 자동으로 만들지 않는다.
+ensure_line /etc/subuid "root:1000000:1000000000"
+ensure_line /etc/subgid "root:1000000:1000000000"
+
+systemctl enable --now incus.service
+
+# 스토리지 풀 — 루트가 btrfs 이므로 서브볼륨을 풀로 쓴다. CoW 스냅샷이
+# 순간이고 loop 이미지 파일을 거치지 않는다.
+if incus storage show "$POOL_NAME" >/dev/null 2>&1; then
+  skip "스토리지 풀 ${POOL_NAME} 이 이미 있다"
+else
+  if [ "$(stat -f -c %T /var/lib)" = "btrfs" ]; then
+    [ -d "$POOL_PATH" ] || btrfs subvolume create "$POOL_PATH"
+    incus storage create "$POOL_NAME" btrfs source="$POOL_PATH"
+    log "btrfs 스토리지 풀 생성: $POOL_PATH"
+  else
+    warn "/var/lib 가 btrfs 가 아니다. dir 드라이버로 만든다 (스냅샷이 느려진다)."
+    incus storage create "$POOL_NAME" dir
+  fi
+fi
+
+# NAT 브리지 — Incus 가 dnsmasq(DHCP/DNS)와 마스커레이딩을 직접 관리한다.
+# Wi-Fi 상위 연결에서도 동작한다. 802.11 규격상 일반 브리지는 쓸 수 없다.
+if incus network show "$BRIDGE_NAME" >/dev/null 2>&1; then
+  skip "브리지 ${BRIDGE_NAME} 이 이미 있다"
+else
+  incus network create "$BRIDGE_NAME" \
+    ipv4.address="$BRIDGE_IP" \
+    ipv4.nat=true \
+    ipv6.address=none
+  log "NAT 브리지 생성: $BRIDGE_NAME ($BRIDGE_IP)"
+fi
+
+# 기본 프로파일에 루트 디스크와 NIC 을 연결한다.
+incus profile device show default | grep -q '^root:' \
+  || incus profile device add default root disk path=/ pool="$POOL_NAME"
+incus profile device show default | grep -q '^eth0:' \
+  || incus profile device add default eth0 nic network="$BRIDGE_NAME" name=eth0
+
+# firewalld 가 브리지의 DHCP/DNS 를 막지 않게 trusted 존에 넣는다.
+if command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+  if firewall-cmd --zone=trusted --list-interfaces | grep -qw "$BRIDGE_NAME"; then
+    skip "firewalld: ${BRIDGE_NAME} 이 이미 trusted 존에 있다"
+  else
+    firewall-cmd --permanent --zone=trusted --change-interface="$BRIDGE_NAME" >/dev/null
+    firewall-cmd --reload >/dev/null
+    log "firewalld: ${BRIDGE_NAME} 을 trusted 존에 추가"
+  fi
+fi
+
+# ── 5. 셸 환경 ──────────────────────────────────────────────────────
 # 서버에는 zsh을 깔지 않는다. 프롬프트에 호스트명을 색으로 박아
 # SSH 창을 여러 개 띄웠을 때 어디에 있는지 헷갈리지 않게 한다.
 
 log "셸 환경 배포"
 bash "$(dirname "$0")/shell/install-shell.sh" --host --color 1
 
-# ── 5. GPU 확인 ─────────────────────────────────────────────────────
+# ── 6. GPU 확인 ─────────────────────────────────────────────────────
 
 log "GPU 장치 확인"
 if [ -d /dev/dri ]; then
