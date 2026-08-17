@@ -190,7 +190,7 @@ GEM12 / Proxmox VE (베어메탈)
 │   ├── n8n
 │   ├── 업무기록 / 지식저장소 / 온톨로지 백엔드
 │   ├── SQLite (서비스별 파일 분리)
-│   └── Litestream → Google Drive / S3 호환
+│   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §6 참조)
 │
 ├── ai-lxc            6 vCPU / 24GB   ← /dev/dri (7900 XTX)
 │   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter)
@@ -305,11 +305,13 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 
 **반드시 백업** — 서버가 유일한 사본이다
 
-- Forgejo 저장소 전체
-- SQLite DB (업무기록 / 지식저장소 / 온톨로지) — Litestream 실시간 복제
+- Forgejo 설정 DB (Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅). 저장소 내용 자체는 GitHub 미러가 맡으므로 제외한다
+- SQLite DB (업무기록 / 지식저장소 / 온톨로지)
 - n8n 워크플로와 자격증명
 - 각 서비스 설정과 compose 파일 (Forgejo에도 있지만 이중화)
 - Headscale DB와 프리어스키
+
+**Forgejo 저장소 내용은 백업하지 않는다.** GitHub 미러가 이미 사본이므로 Drive까지 올리면 3중이 된다. 다만 미러가 옮기는 것은 Git 저장소뿐이고 Issue와 Actions 설정은 넘어가지 않으므로, **설정 DB만** 백업한다.
 
 **여유가 되면 백업** — 다른 곳에 사본이 있다
 
@@ -317,11 +319,34 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 
 **백업하지 않음** — 재생성하거나 다시 받을 수 있다
 
+- Forgejo 저장소 내용. GitHub 미러가 사본이다
 - LLM / ComfyUI 모델 가중치. 128GB나 되고 재다운로드할 수 있다. **다만 목록과 다운로드 스크립트는 Git에 남긴다.** 이것이 실질적인 백업이다.
 - Jellyfin 미디어. 원본이 외장 SSD에 있다.
 - CI 캐시, Docker 레이어
 - Jellyfin 메타데이터, 트랜스코딩 임시파일
 - Immich 썸네일
+
+### Litestream은 Google Drive에 직접 쓸 수 없다
+
+Litestream이 지원하는 대상은 S3 API 계열(S3, GCS, Azure Blob, SFTP)이고 **Google Drive는 여기에 없다.** WAL 프레임을 초 단위로 증분 업로드하며 세대를 관리하려면 객체 스토리지의 조건부 쓰기가 필요한데, 파일 동기화용인 Drive API는 이를 제공하지 않는다.
+
+`rclone mount`로 Drive를 파일시스템처럼 붙이는 우회는 **쓰지 않는다.** 네트워크 마운트 위에서 SQLite 잠금이 깨지면 DB가 손상된다. 백업하려다 원본을 망가뜨리는 구조다.
+
+대신 두 단계로 나눈다.
+
+```text
+SQLite (apps-lxc)
+   │ Litestream — 초 단위 증분 복제
+   ▼
+서버 내 별도 경로 (/mnt/data/litestream)
+   │ rclone sync — 시간 단위, 암호화
+   ▼
+Google Drive
+```
+
+Litestream은 로컬 경로(`file://`)로 복제하고, `rclone sync`가 그 결과를 주기적으로 Drive에 올린다. Drive 반영이 시간 단위로 늦어지지만 개인 업무 기록에서 그 정도 손실은 감당할 수 있고 비용이 들지 않는다.
+
+실시간 오프사이트 복제가 필요해지면 Cloudflare R2 같은 S3 호환 서비스를 붙인다. 월 1~2달러 수준이고 Litestream이 직접 쓸 수 있다. **서버 안에 MinIO를 띄우는 방식은 의미가 없다** — 복제본이 원본과 같은 디스크에 남아 재해 복구가 되지 않는다.
 
 ### 3단계 — 오프라인 사본
 
@@ -363,6 +388,8 @@ GitHub (개인)     ← 서버가 죽어도 코드는 남아 있음
 이 구조의 실익은 **장비를 옮길 때 나타난다.** GEM12를 포맷하고 새 장비를 설치하는 동안에도 GitHub에 모든 코드와 인프라 설정이 있으므로, 새 장비에서 `clone` 받아 재구축하면 된다. Obsidian vault가 이미 GitHub에 있는 것과 같은 원리다.
 
 Forgejo의 push mirror 기능을 쓰면 이 복제가 자동으로 이뤄진다.
+
+**미러가 옮기는 것은 Git 저장소뿐이다.** Issue, PR, Actions 설정, 사용자와 조직 설정, 웹훅은 GitHub로 넘어가지 않는다. 그래서 §6에서 저장소 내용은 백업 대상에서 빼고 **Forgejo 설정 DB만** 백업한다.
 
 인프라 재구축에 필요한 설정은 가능한 한 Forgejo에 저장한다. 다만 시크릿은 Git에 넣지 않는다.
 
@@ -425,9 +452,9 @@ Headscale 먼저, 그다음 Forgejo.
 
 ### 4단계 — ci-lxc + apps-lxc
 
-Forgejo Runner 등록, n8n, SQLite와 Litestream.
+Forgejo Runner 등록, n8n, SQLite와 Litestream, `rclone sync` 스케줄.
 
-**검증**: 저장소에 push하면 Actions가 자동 실행되고 배포까지 완료. Litestream 복제 상태 정상.
+**검증**: 저장소에 push하면 Actions가 자동 실행되고 배포까지 완료. Litestream이 로컬 경로에 복제하고 `rclone sync`가 Drive에 올린 것까지 확인. GitHub 미러에 커밋이 반영되는지도 함께 본다.
 
 ### 5단계 — media-lxc + ComfyUI
 
@@ -450,8 +477,9 @@ RAM 사용량 > 90%
 Wi-Fi 연결 끊김
 
 Forgejo 응답 없음
-Litestream 복제 실패
-Google Drive 백업 실패
+Litestream 로컬 복제 실패
+rclone sync 실패 (Drive 반영 중단)
+GitHub 미러 push 실패
 ```
 
 btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 1개라 자동 복구가 불가능하므로, 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다.
