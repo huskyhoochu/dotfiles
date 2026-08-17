@@ -16,9 +16,10 @@ Image=codeberg.org/forgejo/forgejo:16
 ContainerName=forgejo
 Volume=/mnt/data/forgejo:/data
 Volume=/etc/localtime:/etc/localtime:ro
-# HTTP 웹 UI / API — 호스트의 tailscale serve 가 443 을 여기로 프록시한다:
-#   tailscale serve --bg http://10.10.10.11:3000
-# (설정은 tailscaled 상태에 저장돼 재부팅 후에도 유지된다)
+# HTTP 웹 UI / API — 호스트의 tailscale serve 가 같은 번호의 HTTPS 포트로 프록시한다:
+#   tailscale serve --https=3000 --bg http://10.10.10.11:3000
+# (설정은 tailscaled 상태에 저장돼 재부팅 후에도 유지된다.
+#  서비스마다 컨테이너 포트 번호를 그대로 tailnet 도메인에 노출하는 규약이다)
 PublishPort=3000:3000
 # Git SSH — core 자체 sshd 가 22 를 쓰므로 2222 로 내보낸다
 PublishPort=2222:22
@@ -26,7 +27,7 @@ Environment=USER_UID=1000
 Environment=USER_GID=1000
 Environment=FORGEJO__database__DB_TYPE=sqlite3
 Environment=FORGEJO__server__DOMAIN=gem12.tail4555a7.ts.net
-Environment=FORGEJO__server__ROOT_URL=https://gem12.tail4555a7.ts.net/
+Environment=FORGEJO__server__ROOT_URL=https://gem12.tail4555a7.ts.net:3000/
 Environment=FORGEJO__server__SSH_DOMAIN=10.10.10.11
 Environment=FORGEJO__server__SSH_PORT=2222
 Environment=FORGEJO__security__INSTALL_LOCK=true
