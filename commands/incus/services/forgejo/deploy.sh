@@ -8,7 +8,8 @@ source "$(dirname "$0")/../../lib.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ADMIN_USER="${ADMIN_USER:-b95labs}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-dev@bfai.ai}"
+# 개인 인프라이므로 개인 이메일을 쓴다. 회사 이메일(dev@bfai.ai)을 넣지 않는다.
+ADMIN_EMAIL="${ADMIN_EMAIL:-dfg1499@gmail.com}"
 
 require_root
 require_incus
