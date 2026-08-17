@@ -18,17 +18,19 @@ Fedora Server 설치를 마치고 콘솔에 로그인한 상태에서 시작한�
 **첫 Wi-Fi 연결은 스크립트가 아니라 사람이 한다.** 저장소를 받을 네트워크가 아직 없기 때문이다. `docs/gem12-first-wifi-tutorial-2026-08-17.md` 를 맥북이나 휴대폰으로 열어 따라간다. Anaconda 설치 관리자에서 Wi-Fi를 설정했다면 이미 붙어 있으므로 확인만 하면 된다.
 
 ```bash
-# 인터넷이 연결되면 저장소를 받는다. 공개 저장소이므로 HTTPS로 받으면
-# 인증이 필요 없다 — SSH 키는 1Password 에이전트에 있어 서버에서 바로 쓸 수 없다.
+# 인터넷이 연결되면 저장소를 받는다. git 은 Server 기본 구성에 없다.
+# 공개 저장소이므로 HTTPS clone 에는 인증이 필요 없다.
+dnf install -y git
 git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
 cd ~/dotfiles/commands/incus
 
 # 1. 네트워크 — Wi-Fi 연결 상태 검증 (연결이 깨졌을 때의 복구용이기도 하다)
 ./01-network.sh
 
-# 2. 호스트 기본 설정 — 시간대, SSH, Incus 설치와 초기화, 셸
-#    맥북 공개키를 미리 넘기면 입력을 건너뛴다
-SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
+# 2. 호스트 기본 설정 — 시간대, SSH, Incus 초기화(btrfs 풀), 셸
+#    인자가 필요 없다. 맥북 공개키는 GitHub(huskyhoochu.keys)에서 받고
+#    일상 접속용 사용자는 b95labs 가 기본이다. 환경변수로 덮어쓸 수 있다.
+./02-host.sh
 
 # 3. 컨테이너 5개 생성
 ./03-containers.sh

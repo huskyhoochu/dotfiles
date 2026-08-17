@@ -4,13 +4,11 @@
 # 시간대, 기본 패키지, SSH 키 인증, Incus 설치와 초기화, 셸 환경.
 # 01-network.sh 로 인터넷이 연결된 뒤 실행한다.
 #
-# SSH 공개키는 저장소에 넣지 않는다. 아래 둘 중 하나로 넘긴다.
-#   SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
-#   ./02-host.sh   (입력 요청을 받는다)
-#
-# ADMIN_USER=<이름> 을 함께 넘기면 그 사용자에게도 SSH 키 인증을 열고
-# incus 관리 권한을 준다. 부트스트랩 이후 일상 접속은 이 사용자로 한다.
-#   ADMIN_USER=b95 SSH_PUBKEY="..." ./02-host.sh
+# 인자 없이 실행하면 된다. 기본값:
+#   SSH 공개키  — GitHub(https://github.com/huskyhoochu.keys) 첫 번째 키
+#   ADMIN_USER  — b95labs (일상 접속용 사용자. SSH 키 인증과 incus 권한을 받는다)
+# 환경변수로 덮어쓸 수 있다:
+#   SSH_PUBKEY="ssh-ed25519 AAAA..." ADMIN_USER=other ./02-host.sh
 
 source "$(dirname "$0")/lib.sh"
 
@@ -18,6 +16,8 @@ BRIDGE_NAME="incusbr0"
 BRIDGE_IP="10.10.10.1/24"
 POOL_NAME="default"
 POOL_PATH="/var/lib/incus-pool"
+GITHUB_USER="huskyhoochu"
+ADMIN_USER="${ADMIN_USER:-b95labs}"
 
 require_root
 
@@ -46,9 +46,17 @@ if [ -z "${SSH_PUBKEY:-}" ]; then
   if [ -s /root/.ssh/authorized_keys ]; then
     skip "authorized_keys 가 이미 있다"
   else
-    warn "SSH 공개키가 없다. 비밀번호 로그인을 끄면 접속할 수 없게 된다."
-    echo "맥북에서 확인: ssh-add -L   (1Password 에이전트가 공개키를 출력한다)"
-    read -rp "공개키를 붙여넣어라 (건너뛰려면 빈 줄): " SSH_PUBKEY
+    # 맥북 공개키는 GitHub 이 URL 로 제공한다. 1Password 의 SSH 키가
+    # GitHub 계정에 등록돼 있으므로 손으로 칠 필요가 없다.
+    log "GitHub 에서 공개키를 받는다: ${GITHUB_USER}.keys"
+    SSH_PUBKEY="$(curl -fsSL "https://github.com/${GITHUB_USER}.keys" 2>/dev/null | head -1)" || true
+    if [ -n "$SSH_PUBKEY" ]; then
+      log "공개키: ${SSH_PUBKEY:0:40}..."
+    else
+      warn "GitHub 에서 공개키를 받지 못했다. 비밀번호 로그인을 끄면 접속할 수 없게 된다."
+      echo "맥북에서 확인: ssh-add -L   (1Password 에이전트가 공개키를 출력한다)"
+      read -rp "공개키를 붙여넣어라 (건너뛰려면 빈 줄): " SSH_PUBKEY
+    fi
   fi
 fi
 
@@ -163,9 +171,9 @@ fi
 # ── 4.5 관리자 사용자 ───────────────────────────────────────────────
 # 부트스트랩은 root 로 하고, 이후 일상 접속은 이 사용자로 한다.
 
-if [ -n "${ADMIN_USER:-}" ]; then
-  id "$ADMIN_USER" >/dev/null 2>&1 || die "사용자 ${ADMIN_USER} 가 없다"
-
+if ! id "$ADMIN_USER" >/dev/null 2>&1; then
+  warn "사용자 ${ADMIN_USER} 가 없어 관리자 사용자 설정을 건너뛴다."
+else
   if [ -s /root/.ssh/authorized_keys ]; then
     ADMIN_HOME=$(getent passwd "$ADMIN_USER" | cut -d: -f6)
     ADMIN_GROUP=$(id -gn "$ADMIN_USER")

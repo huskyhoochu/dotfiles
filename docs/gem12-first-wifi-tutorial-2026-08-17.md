@@ -155,21 +155,49 @@ ping -c 3 1.1.1.1   # 인터넷이 붙는가
 
 ---
 
-## 저장소 받기
+## 저장소 받기와 부트스트랩 (2026-08-18 실행 검증)
 
-이제 저장소를 받을 수 있다. 공개 저장소이므로 HTTPS로 받으면 인증이 필요 없다.
+맥북에서 SSH로 들어간다. 재설치한 경우 서버 호스트 키가 바뀌었으므로 옛 키부터 지운다.
 
 ```bash
-git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
-cd ~/dotfiles/commands/incus
-SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
+# 맥북에서
+ssh-keygen -R 192.168.35.69    # 재설치 후 첫 접속 때만
+ssh root@192.168.35.69
 ```
 
-`SSH_PUBKEY` 값은 맥북에서 두 방법으로 꺼낸다. 어느 쪽이든 같은 공개키가 나온다.
+서버에서 저장소를 받는다. git은 Server 기본 구성에 없으므로 먼저 설치한다. 공개 저장소이므로 HTTPS clone에는 인증이 필요 없다.
 
 ```bash
-ssh-add -L                                     # 1Password 에이전트가 공개키를 출력
-op read 'op://Personal/Github SSH/public key'  # 1Password CLI로 직접 읽기
+# 서버에서 (root)
+dnf install -y git
+git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
+cd ~/dotfiles/commands/incus
+```
+
+호스트 설정은 인자 없이 실행한다.
+
+```bash
+./02-host.sh
+```
+
+맥북 공개키는 스크립트가 GitHub(`huskyhoochu.keys` 첫 줄)에서 직접 받는다 — 1Password의 SSH 키가 GitHub에 등록돼 있어 손으로 칠 필요가 없다. 일상 접속용 사용자는 `b95labs`가 기본이며, 그 사용자에게 SSH 키 등록과 `incus-admin` 그룹 추가까지 처리한다. 다른 값이 필요하면 환경변수로 덮어쓴다: `SSH_PUBKEY="..." ADMIN_USER=other ./02-host.sh`
+
+정상 실행이면 로그에 **`btrfs 스토리지 풀 생성`**이 보인다. 루트가 btrfs가 아니면 여기서 멈춘다 (맨 위 파티셔닝 절 참조).
+
+이어서 컨테이너와 런타임까지 마친다.
+
+```bash
+./03-containers.sh
+./04-runtime.sh
+```
+
+검증:
+
+```bash
+incus storage show default | grep driver     # driver: btrfs
+incus list                                   # core/ci/apps/ai/media 5개 RUNNING
+incus exec ci -- docker run --rm hello-world
+# 맥북에서: ssh b95labs@192.168.35.69 → sudo -v, incus list
 ```
 
 이후 절차는 `commands/incus/README.md`와 `gem12-private-cloud-plan-2026-08-17.md` §8을 따른다.
