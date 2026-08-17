@@ -107,7 +107,7 @@ export CLAUDE_CODE_OAUTH_TOKEN="<맥북에서 발급한 토큰>"
 서버에 `op` CLI를 인증해두면 평문 대신 1Password에서 읽어올 수 있다. 설치와 인증 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`의 "1Password CLI" 절에 있다.
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Private/Claude Code GEM12/credential')"
+export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/<항목 이름>/credential')"
 ```
 
 **서버 밖에 둬야 하는 것** — 서버가 죽었을 때 필요한 정보다.

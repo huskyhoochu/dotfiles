@@ -150,7 +150,12 @@ cd ~/dotfiles/commands/incus
 SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
 ```
 
-`SSH_PUBKEY` 값은 맥북에서 `ssh-add -L`로 출력한다 (1Password 에이전트가 공개키를 준다).
+`SSH_PUBKEY` 값은 맥북에서 두 방법으로 꺼낸다. 어느 쪽이든 같은 공개키가 나온다.
+
+```bash
+ssh-add -L                                     # 1Password 에이전트가 공개키를 출력
+op read 'op://Personal/Github SSH/public key'  # 1Password CLI로 직접 읽기
+```
 
 이후 절차는 `commands/incus/README.md`와 `gem12-private-cloud-plan-2026-08-17.md` §8을 따른다.
 
@@ -158,13 +163,13 @@ SSH_PUBKEY="ssh-ed25519 AAAA..." ./02-host.sh
 
 ## 1Password CLI 설치와 인증
 
-서버에서 쓸 시크릿(Claude Code 토큰, rclone 토큰 등)은 1Password에 있다. `op` CLI를 인증해두면 평문 파일 대신 금고에서 직접 읽는다.
+서버에서 쓸 시크릿은 1Password의 **Personal 금고**에 있다. `op` CLI를 인증해두면 평문 파일 대신 금고에서 직접 읽는다.
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Private/Claude Code GEM12/credential')"
+export OPENROUTER_API_KEY="$(op read 'op://Personal/OPENROUTER_API_KEY/credential')"
 ```
 
-`Private` 금고는 개인 전용이라 **계정 인증으로만 읽을 수 있다.** 아래 절차는 데스크톱 앱과 브라우저 없이 콘솔에서 끝난다.
+이 계정의 금고는 `BFAI`(회사), `CGHDS`, `Personal`(개인) 3개다. 서버 시크릿은 전부 Personal에 있다. Personal 금고는 개인 전용이라 **계정 인증으로만 읽을 수 있다.** 아래 절차는 데스크톱 앱과 브라우저 없이 콘솔에서 끝난다.
 
 ### 준비물 — Secret Key
 
@@ -213,9 +218,29 @@ eval "$(op signin)"
 ### 확인
 
 ```bash
-op vault list                                          # 금고 목록이 나오는가
-op read 'op://Private/Claude Code GEM12/credential'    # 실제 항목이 읽히는가
+op vault list    # BFAI / CGHDS / Personal 세 금고가 나오는가
+op read 'op://Personal/OPENROUTER_API_KEY/credential'    # 실제 항목이 읽히는가
 ```
+
+### 경로는 필드 id로 쓴다
+
+`op://<금고>/<항목 이름>/<필드>` 형식에서 마지막 필드 자리에는 **필드 id**를 쓴다. 이 계정은 앱이 한국어라 화면에는 라벨이 "자격 증명"으로 보이지만, 경로에 그 라벨을 쓰면 읽히지 않는다. API 자격 증명 항목의 필드 id는 `credential`이다 (2026-08-17 실제 검증).
+
+```bash
+op read 'op://Personal/OPENROUTER_API_KEY/credential'   # 동작한다 — 필드 id
+op read 'op://Personal/OPENROUTER_API_KEY/자격 증명'     # 읽히지 않는다 — 화면 라벨
+```
+
+### 서버에서 실제로 읽을 항목 (Personal 금고)
+
+| 항목 | 경로 | 용도 |
+|---|---|---|
+| `Github SSH` | `op://Personal/Github SSH/public key` | 맥북 공개키. `02-host.sh`의 `SSH_PUBKEY` |
+| `OPENROUTER_API_KEY` | `op://Personal/OPENROUTER_API_KEY/credential` | AI 파이프라인 리뷰 모델 |
+| `ZENMUX_API_KEY` | `op://Personal/ZENMUX_API_KEY/credential` | `pi`의 zenmux 프로바이더 |
+| `HUGGING_FACE_API_KEY` | `op://Personal/HUGGING_FACE_API_KEY/credential` | 모델 재다운로드 |
+
+새 시크릿(Claude Code 장기 토큰, rclone Google Drive 토큰)을 만들 때는 Personal 금고에 **API 자격 증명** 유형으로, 위처럼 대문자 스네이크 케이스 이름을 붙여 저장한다. 그러면 경로가 `op://Personal/<이름>/credential`로 일관된다.
 
 ### 세션은 30분 뒤 만료된다
 
