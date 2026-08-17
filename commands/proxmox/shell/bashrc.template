@@ -1,0 +1,81 @@
+# 서버용 bash 설정 — commands/proxmox/shell/ 에서 배포
+#
+# 맥북의 zsh 설정은 SSH로 들어와도 따라오지 않는다. 서버 셸은 잠깐 들어와
+# 명령 몇 개 치는 용도이므로 zsh과 zinit을 옮기는 대신 필요한 것만 둔다.
+#
+# @COLOR@ 는 install-shell.sh 가 치환한다.
+
+# 비대화형 셸에서는 아무것도 하지 않는다.
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+# ── 프롬프트 ────────────────────────────────────────────────────────
+# 호스트명을 색으로 표시한다. SSH 창을 여러 개 띄웠을 때 core-lxc 에서
+# 칠 명령을 ci-lxc 에 치는 사고를 막는 것이 목적이다.
+
+PS1='\[\e[1;3@COLOR@m\]\h\[\e[0m\] \[\e[34m\]\w\[\e[0m\]\$ '
+
+# ── 히스토리 ────────────────────────────────────────────────────────
+
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+HISTTIMEFORMAT='%F %T '
+shopt -s histappend cmdhist
+
+# ── 셸 동작 ─────────────────────────────────────────────────────────
+
+shopt -s checkwinsize globstar autocd
+set -o noclobber          # > 로 기존 파일을 덮어쓰지 않는다
+
+# ── 별칭 ────────────────────────────────────────────────────────────
+
+alias ls='ls --color=auto'
+alias ll='ls -alhF'
+alias la='ls -A'
+alias grep='grep --color=auto'
+
+# 실수 방지 — 서버에서 rm 한 번이 복구 불가로 이어진다
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+alias df='df -hT'
+alias du='du -h'
+alias free='free -h'
+alias ports='ss -tulpn'
+alias jctl='journalctl -xe'
+
+# systemd
+alias sc='systemctl'
+alias scs='systemctl status'
+alias scr='systemctl restart'
+alias scu='systemctl --user'
+
+# ── 컨테이너 런타임 ─────────────────────────────────────────────────
+# Docker와 Podman 중 설치된 쪽에 맞춘다.
+
+if command -v docker >/dev/null 2>&1; then
+  alias dc='docker compose'
+  alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+  alias dlog='docker compose logs -f --tail=100'
+elif command -v podman >/dev/null 2>&1; then
+  alias pc='podman-compose'
+  alias pps='podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+  alias plog='podman logs -f --tail=100'
+fi
+
+# ── Proxmox 호스트 전용 ─────────────────────────────────────────────
+
+if command -v pct >/dev/null 2>&1; then
+  alias lxls='pct list'
+  # 컨테이너에 들어간다: lxe 113
+  lxe() { pct enter "$1"; }
+fi
+
+# ── 로컬 확장 ───────────────────────────────────────────────────────
+# 이 호스트에만 필요한 설정은 여기에 둔다. 저장소에서 관리하지 않는다.
+
+[ -f ~/.bashrc.local ] && . ~/.bashrc.local
