@@ -79,12 +79,15 @@ install_podman() {
     # 안 된다. RPM Fusion 의 freeworld 드라이버로 바꾼다.
     if [ "$gpu" = "igpu" ]; then
       log "${name}: RPM Fusion freeworld VAAPI 드라이버 설치"
+      # RPM Fusion 이 Fedora 의 mesa 업데이트를 리빌드로 따라잡기 전에는
+      # 버전 불일치로 실패한다. 트랜스코딩은 Jellyfin 구축 시점에나 필요하므로
+      # 실패해도 진행하고, 나중에 이 명령을 다시 실행한다.
       incus exec "$name" -- bash -c '
         set -e
         dnf install -y -q \
           "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" >/dev/null
         dnf swap -y -q mesa-va-drivers mesa-va-drivers-freeworld >/dev/null
-      '
+      ' || warn "${name}: freeworld 교체 실패 — RPM Fusion 리빌드 시차. Jellyfin 구축 전에 재시도하라: dnf swap mesa-va-drivers mesa-va-drivers-freeworld"
     fi
 
     log "${name}: GPU 인식 확인"
