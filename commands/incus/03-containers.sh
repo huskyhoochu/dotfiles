@@ -26,8 +26,10 @@ require_incus
 mkdir -p "$DATA_ROOT"
 
 # ── 컨테이너 생성 ───────────────────────────────────────────────────
+# 정의 파일은 fd 3 으로 읽는다. 루프 안의 incus 명령이 stdin 을 읽는
+# 경우가 있어(YAML 설정 수신), stdin 으로 돌리면 다음 줄을 삼켜버린다.
 
-while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do
+while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
   echo
   log "── ${NAME} ──"
 
@@ -101,7 +103,7 @@ while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do
   fi
 
   log "${NAME} 완료"
-done < <(read_containers "${SCRIPT_DIR}/containers.conf")
+done 3< <(read_containers "${SCRIPT_DIR}/containers.conf")
 
 # ── 결과 ────────────────────────────────────────────────────────────
 

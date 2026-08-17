@@ -97,7 +97,9 @@ install_podman() {
 
 # ── 실행 ────────────────────────────────────────────────────────────
 
-while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do
+# 정의 파일은 fd 3 으로 읽는다. incus exec 가 stdin 을 소비하면
+# 다음 줄을 삼켜버리기 때문이다 (03-containers.sh 와 동일).
+while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
   echo
   log "── ${NAME} ──"
 
@@ -109,7 +111,7 @@ while read -r NAME CORES MEM IP RUNTIME GPU COLOR; do
     podman) install_podman "$NAME" "$GPU" ;;
     *) warn "${NAME}: 알 수 없는 런타임 '${RUNTIME}'" ;;
   esac
-done < <(read_containers "${SCRIPT_DIR}/containers.conf")
+done 3< <(read_containers "${SCRIPT_DIR}/containers.conf")
 
 echo
 log "완료."
