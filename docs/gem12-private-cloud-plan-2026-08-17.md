@@ -106,7 +106,7 @@ Jellyfin 미디어                                미정
 | **llama.cpp + Muse Glimmer 30B** | 로컬 LLM 추론. 7900 XTX 사용. |
 | **ComfyUI** | 이미지·영상 작업. 클라우드 모델(Seedream / GPT Image / Veo / Gemini) 위주, 로컬 노드 병행. |
 | **SQLite + Litestream** | 업무 기록, 지식저장소, 온톨로지의 저장 계층. 서비스별 파일 분리. |
-| **n8n** | 자동화. |
+| **n8n** | 자동화 워크플로. 외부 서비스 연동은 n8n 웹 UI에서 설정한다. |
 | **Immich** | 개인 사진 보관. 최소 구성. |
 | **Jellyfin** | 개인 블루레이 백업 재생. 최소 구성. |
 | **Uptime Kuma / Prometheus / Grafana** | 모니터링. 다른 서비스가 안정적으로 돌아간 뒤 추가. |
@@ -177,31 +177,106 @@ Proxmox VE를 베어메탈에 설치하고, 서비스는 **LXC 컨테이너**로
 ```text
 GEM12 / Proxmox VE (베어메탈)
 │
-├── core-lxc          2 vCPU / 6GB
+├── core-lxc          2 vCPU / 6GB    Debian 13 + Podman
 │   ├── Forgejo              ← Git 저장소, GitHub 미러 복제
 │   ├── Headscale            ← 개인 VPN 컨트롤 플레인
 │   └── (후순위) Uptime Kuma / Prometheus / Grafana
 │
-├── ci-lxc            6 vCPU / 8GB
+├── ci-lxc            6 vCPU / 8GB    Debian 13 + Docker
 │   ├── Forgejo Runner
 │   └── Docker / BuildKit / 빌드 캐시
 │
-├── apps-lxc          4 vCPU / 8GB
+├── apps-lxc          4 vCPU / 8GB    Debian 13 + Docker
 │   ├── n8n
 │   ├── 업무기록 / 지식저장소 / 온톨로지 백엔드
 │   ├── SQLite (서비스별 파일 분리)
 │   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §6 참조)
 │
-├── ai-lxc            6 vCPU / 24GB   ← /dev/dri (7900 XTX)
+├── ai-lxc            6 vCPU / 24GB   Debian 13 + Podman  ← /dev/dri (7900 XTX)
 │   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter)
 │   └── ComfyUI (클라우드 모델 라우팅 + 로컬 노드)
 │
-└── media-lxc         4 vCPU / 8GB    ← /dev/dri (780M)
+└── media-lxc         4 vCPU / 8GB    Debian 13 + Podman  ← /dev/dri (780M)
     ├── Immich
     └── Jellyfin
 ```
 
 RAM 합계 54GB로 60GB 안에 들어간다. LXC는 미사용 메모리를 호스트에 반납하므로 실제 여유는 더 크다.
+
+### 운영체제 — Debian 13, 데스크톱 환경 없음
+
+모든 LXC에 **Debian 13(Trixie) 최소 구성**을 쓴다. Proxmox 자체가 Debian 기반이라 LXC 템플릿이 공식 제공되고 가장 검증된 조합이다. 서버에는 릴리스 주기가 짧은 배포판보다 안정성이 우선이다.
+
+**데스크톱 환경은 어디에도 설치하지 않는다.** Wayland나 X11 컴포지터가 없으면 패키지가 줄고 공격 표면도 작아진다. 접근 경로는 세 가지다.
+
+```text
+맥북 → Headscale VPN ─┬→ Proxmox 웹 UI    (호스트와 LXC 관리, noVNC 콘솔 내장)
+                      ├→ 각 서비스 웹 UI  (Forgejo, n8n, Immich, ComfyUI …)
+                      └→ SSH              (LXC 직접 접속)
+```
+
+Proxmox 웹 UI에 noVNC 콘솔이 들어 있어 SSH가 막혀도 브라우저에서 LXC 셸에 들어갈 수 있다. 데스크톱 환경이 필요 없는 이유다.
+
+### 브라우저가 없어도 OAuth 인증은 된다
+
+서버에 브라우저가 없으면 OAuth 로그인이 막힐 것 같지만, **인증을 맥북에서 하고 토큰만 서버로 옮기면 된다.** OAuth 인증 코드는 브라우저와 같은 기기의 `localhost`로 돌아오지만, 그렇게 발급된 토큰에는 기기 정보가 없어 어디서든 쓸 수 있다.
+
+이 시스템에서 OAuth가 실제로 필요한 곳은 **rclone의 Google Drive 연결 하나**다. rclone은 이 상황을 위한 명령을 제공한다.
+
+```bash
+# 맥북 (브라우저 있음)
+rclone authorize "drive"        # 브라우저가 열리고, 터미널에 토큰 JSON이 출력된다
+
+# 서버 (브라우저 없음)
+rclone config                   # 자동 인증 여부를 묻는 항목에 N을 답하고 토큰을 붙여넣는다
+```
+
+한 번만 하면 된다. 이후에는 refresh token으로 갱신되므로 재인증이 필요 없다.
+
+SSH 포트 포워딩으로도 된다. `ssh -L 53682:localhost:53682 <서버>`로 터널을 만들면 서버가 연 localhost 포트를 맥북 브라우저가 볼 수 있어, 서버에서 직접 `rclone config`를 돌려도 인증이 끝난다.
+
+나머지 서비스는 OAuth가 필요 없거나 브라우저 문제와 무관하다.
+
+| 서비스 | 인증 방식 |
+|---|---|
+| Forgejo → GitHub 미러 | Personal Access Token |
+| Headscale 노드 등록 | 프리어스키 |
+| Immich / Jellyfin | 자체 계정 |
+| ComfyUI 클라우드 모델 | API 키 |
+| n8n의 외부 연동 | n8n 웹 UI에서 처리. OAuth 창은 **맥북 브라우저**에 뜨므로 서버에 브라우저가 없는 것과 무관하다. 리다이렉트 URL만 서버 주소로 맞춘다 |
+
+### 브라우저 자동화는 headless로 돌린다
+
+Playwright, Puppeteer, chrome-devtools MCP 같은 도구는 브라우저를 필요로 하지만 **데스크톱 환경은 필요로 하지 않는다.** Chromium은 `--headless` 모드에서 화면 없이 렌더링하고, X11이나 Wayland 없이 공유 라이브러리 몇 개만 있으면 된다. CI 파이프라인이 매일 이 방식으로 브라우저 테스트를 돌린다.
+
+앞 절의 OAuth와는 성격이 다르다. OAuth는 **사람이 보는 화면**이 필요해 맥북에서 처리하지만, 브라우저 자동화는 **프로그램이 조작하는 엔진**이 필요할 뿐이라 서버에서 그대로 돌아간다.
+
+배치는 용도에 따라 갈린다.
+
+| 상황 | 브라우저가 도는 곳 | 조치 |
+|---|---|---|
+| 맥북에서 Claude Code 실행 (평소) | 맥북 Chrome | 서버에 필요한 것이 없다. MCP 서버는 Claude Code가 도는 기기에서 실행되므로 서버가 관여하지 않는다 |
+| CI의 E2E 테스트 | ci-lxc | Playwright 공식 이미지(`mcr.microsoft.com/playwright`)를 쓰면 의존성이 모두 들어 있다 |
+| 서버에서 SSH로 Claude Code 실행 | ci-lxc 또는 apps-lxc | `npx playwright install --with-deps chromium`으로 headless Chromium을 설치한다 |
+| n8n 워크플로의 스크래핑 | apps-lxc | 위와 같다 |
+
+평소 작업은 맥북에서 하므로 첫 줄이 기본이다. 나머지는 필요해질 때 해당 LXC에 추가한다.
+
+ai-lxc만 예외를 검토한다. RDNA3 Vulkan은 최신 Mesa가 유리한데 Debian 13의 Mesa로 충분한지는 실제로 올려봐야 안다. 부족하면 `backports`로 올리고, 그래도 모자라면 이 LXC만 Fedora로 바꾼다.
+
+### 컨테이너 런타임 — LXC별로 나눈다
+
+Docker와 Podman 중 하나로 통일하지 않는다. **이미 용도가 갈려 있고 그 분업이 합리적이다.** 현재 이 장비에서 업무 프로젝트는 Docker로(`docker-compose.yml` 10개 이상), GPU 작업은 Podman으로(`comfyui-rocm`, `rocm/pytorch`) 돌고 있다.
+
+| LXC | 런타임 | 근거 |
+|---|---|---|
+| core-lxc | **Podman** | 데몬이 없어 systemd가 컨테이너를 직접 관리한다. Headscale이 죽으면 서버에 들어갈 VPN이 죽으므로, 이 계층은 데몬 하나에 운명을 묶지 않는다 |
+| ci-lxc | **Docker** | Forgejo Actions Runner가 Docker 소켓을 전제한다. BuildKit도 Docker 쪽이 성숙하다 |
+| apps-lxc | **Docker** | 기존 compose 파일을 그대로 쓴다. n8n 공식 문서도 Docker 기준이다 |
+| ai-lxc | **Podman** | 이미 ComfyUI를 Podman으로 운영 중이다. rootless로 `/dev/dri`를 넘기는 방식이 깔끔하다 |
+| media-lxc | **Podman** | 780M VAAPI 접근이 같은 이유로 유리하다 |
+
+core-lxc에서 Podman을 쓰는 이유를 더 적어둔다. Docker는 `dockerd`가 모든 컨테이너의 부모여서 데몬이 죽으면 그 아래가 전부 죽고, systemd 입장에서는 개별 컨테이너가 보이지 않는다. Podman은 각 컨테이너가 독립 프로세스라 Quadlet(`.container` 파일)로 정의하면 **systemd가 일반 서비스처럼 다룬다.** 부팅 순서, 의존성, 재시작 정책이 전부 systemd 표준 방식으로 관리된다.
 
 CI는 CPU를 순간적으로 많이 쓰므로 다른 서비스와 분리하고, Runner에 CPU와 메모리 상한을 설정한다.
 
@@ -453,6 +528,8 @@ Headscale 먼저, 그다음 Forgejo.
 ### 4단계 — ci-lxc + apps-lxc
 
 Forgejo Runner 등록, n8n, SQLite와 Litestream, `rclone sync` 스케줄.
+
+이 단계에서 **rclone의 Google Drive 인증**을 한다. 맥북에서 `rclone authorize "drive"`로 토큰을 받아 서버에 붙여넣는다(§4의 OAuth 절 참조).
 
 **검증**: 저장소에 push하면 Actions가 자동 실행되고 배포까지 완료. Litestream이 로컬 경로에 복제하고 `rclone sync`가 Drive에 올린 것까지 확인. GitHub 미러에 커밋이 반영되는지도 함께 본다.
 
