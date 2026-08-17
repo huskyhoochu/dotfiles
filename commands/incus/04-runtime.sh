@@ -20,6 +20,9 @@ install_docker() {
 
   if incus exec "$name" -- command -v docker >/dev/null 2>&1; then
     skip "${name}: Docker 가 이미 있다"
+    # 설치는 됐는데 데몬이 죽어 있던 경우(재실행 시나리오)를 살린다.
+    incus exec "$name" -- systemctl enable --now docker >/dev/null 2>&1 \
+      || warn "${name}: docker.service 기동 실패 — journalctl -u docker 를 확인하라"
     return
   fi
 

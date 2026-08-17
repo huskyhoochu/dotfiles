@@ -51,6 +51,14 @@ while read -r -u3 NAME CORES MEM IP RUNTIME GPU COLOR; do
     -c security.nesting=true \
     -d root,size="$DISK_SIZE"
 
+  # Docker 데몬은 nesting 만으로는 못 뜬다. overlay2 가 쓰는 xattr 와
+  # mknod 를 가로채 허용해야 한다 — Incus 공식 Docker 레시피.
+  if [ "$RUNTIME" = "docker" ]; then
+    incus config set "$NAME" \
+      security.syscalls.intercept.mknod=true \
+      security.syscalls.intercept.setxattr=true
+  fi
+
   incus config set "$NAME" user.comment "${RUNTIME} / $(date +%Y-%m-%d) / commands/incus 가 생성"
 
   # 고정 IP — incusbr0 의 dnsmasq 가 이 주소로 임대한다.
