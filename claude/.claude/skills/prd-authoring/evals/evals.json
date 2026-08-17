@@ -1,0 +1,48 @@
+{
+  "skill_name": "prd-authoring",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "normalize-legacy-prd",
+      "prompt": "이 PRD 좀 정리해줘. 읽어도 뭘 해야 하는지 모르겠다는 피드백을 받았어. 담당은 폴링·테스트가 지훈, 충돌 해소 설계가 민서야. 파일: legacy-prd-sync-engine.ko.md",
+      "expected_output": "frontmatter(author/status/scope_paths/blocked_by) + §0 디렉팅~§5 골격으로 재작성. 히스토리 서사(4월 기각, 5월 회의, 구 경로 병기) 제거 또는 changelog로 이동. 미결 사항(충돌 해소 소유권)은 결정 대기+소유자(민서)로 표기, 결정을 선점하지 않음. 수용 기준은 검증 가능한 체크박스.",
+      "files": [
+        "fixtures/legacy-prd-sync-engine.ko.md"
+      ],
+      "assertions": [
+        "frontmatter가 존재하고 title/description/status/author/scope_paths/blocked_by/updated 키를 포함한다",
+        "'디렉팅' 챕터(§0)가 명령형 항목 + 담당 표기로 존재하고, 수용 기준이 체크박스(- [ ])로 존재한다",
+        "본문(changelog 전용 절 제외)에 과거 결정 회상이 없다 — '4월 기각', '5월 회의에서 뒤집혀', '원래는 ~하려 했으나' 류 서사 부재",
+        "구 경로 병기(lib/sync/engine.js)가 본문에 없다",
+        "충돌 해소 소유권(서버안 vs 클라이언트안)을 문서가 선점하지 않고 '결정 대기 + 결정 소유자(민서)'로 표기한다",
+        "담당(지훈=폴링·테스트, 민서=충돌 해소 설계)이 frontmatter 또는 §0에 명시된다"
+      ]
+    },
+    {
+      "id": 1,
+      "eval_name": "new-prd-from-scratch",
+      "prompt": "새 작업 PRD를 _docs/prd/에 써줘. 내용: 웹훅 재시도 시스템 도입. 백엔드 큐 설계는 대표(jay)가 결정해야 하고, 재시도 정책 구현과 대시보드 노출은 내(sol) 몫이야. 큐 설계가 정해지기 전엔 구현을 시작할 수 없어. 문서는 티켓 2개로 나눠줘.",
+      "expected_output": "티켓 2개 문서(파일명에 담당 접미 jay/sol) + 표준 챕터 골격. jay 티켓은 설계 입력(결정할 질문)과 스펙 자리 표시 분리, sol 티켓의 blocked_by는 'jay 큐 설계 랜딩'(실질 블로커)만. 전체 지도 표 또는 의존 관계 명시. 현재 시점 서술.",
+      "files": [],
+      "assertions": [
+        "티켓 문서가 2개 생성되고 파일명에 담당 접미(jay, sol)가 들어 있다",
+        "두 문서 모두 frontmatter + 표준 챕터 골격(§0 디렉팅 ~ 수용 기준 체크박스)을 갖춘다",
+        "sol 티켓의 blocked_by가 'jay의 큐 설계 랜딩'이라는 실질 블로커이고, '미팅 후'·'승인 후' 류의 당연한 전제가 없다",
+        "jay 티켓에 설계 입력(결정할 질문 목록)과 구현 스펙(결정 뒤 작성) 자리가 분리돼 있고, 문서가 큐 설계를 선점하지 않는다"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "ticket-map-visualization",
+      "prompt": "우리 _docs/prd/에 티켓 문서가 5개 있는데 T1~T7 티켓이 어느 문서에 있는지, 뭐가 뭘 기다리는지 한눈에 안 보여. overview 문서에 정리해줘. 구성: T1(스키마 설계, 리드 kim, 결정 필요) → T2(마이그레이션 스크립트, park, T1 대기), T3(API v2, kim), T4(클라이언트 어댑터, park, T3 대기), T5(문서화, park, 최후), T6은 T3에 흡수돼서 결번, T7(모니터링, kim, 독립).",
+      "expected_output": "티켓 전체 지도 표(티켓|내용|담당|상세 문서|선행 조건) + ASCII 의존 다이어그램(문서=티켓의 집, 독립 착수 가능 항목 별도 표기). T6 결번을 재사용 금지와 함께 명시. blocked_by에 당연한 전제 없음.",
+      "files": [],
+      "assertions": [
+        "'티켓|내용|담당|상세 문서|선행 조건' 컬럼(또는 동등 구성)의 지도 표가 있고 T1~T5·T7이 전부 표에 있다",
+        "T6이 결번(T3에 흡수, 재사용 안 함)으로 명시되고 활성 티켓으로 취급되지 않는다",
+        "ASCII 의존 다이어그램이 있고 T7의 독립 착수가 본류와 구분돼 표기된다",
+        "선행 조건이 실질 블로커만 담는다: T2←T1, T4←T3, T5=최후, T1은 결정 필요"
+      ]
+    }
+  ]
+}
