@@ -1,0 +1,37 @@
+# Forgejo — Git 저장소 + Actions (core 컨테이너의 Quadlet 정의)
+#
+# /etc/containers/systemd/forgejo.container 로 배포하면 systemd 생성기가
+# forgejo.service 를 만든다. 배포는 deploy.sh 가 한다.
+#
+# 웹 설치 마법사는 쓰지 않는다. FORGEJO__* 환경변수가 설정을 주입하고
+# INSTALL_LOCK 이 마법사를 잠근다. 관리자 계정은 deploy.sh 가 CLI로 만든다.
+
+[Unit]
+Description=Forgejo Git service
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=codeberg.org/forgejo/forgejo:16
+ContainerName=forgejo
+Volume=/mnt/data/forgejo:/data
+Volume=/etc/localtime:/etc/localtime:ro
+# HTTP 웹 UI / API
+PublishPort=3000:3000
+# Git SSH — core 자체 sshd 가 22 를 쓰므로 2222 로 내보낸다
+PublishPort=2222:22
+Environment=USER_UID=1000
+Environment=USER_GID=1000
+Environment=FORGEJO__database__DB_TYPE=sqlite3
+Environment=FORGEJO__server__DOMAIN=10.10.10.11
+Environment=FORGEJO__server__ROOT_URL=http://10.10.10.11:3000/
+Environment=FORGEJO__server__SSH_DOMAIN=10.10.10.11
+Environment=FORGEJO__server__SSH_PORT=2222
+Environment=FORGEJO__security__INSTALL_LOCK=true
+Environment=FORGEJO__service__DISABLE_REGISTRATION=true
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
