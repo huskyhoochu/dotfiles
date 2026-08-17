@@ -1,0 +1,38 @@
+# Muse Glimmer 30B — llama.cpp Vulkan 서버 (ai 컨테이너)
+#
+# /etc/systemd/system/glimmer.service 로 배포한다. 배포는 deploy.sh 가 한다.
+#
+# 파라미터는 데스크톱 실측(run-muse-glimmer-server.sh 주석)을 그대로 옮긴 것이고,
+# 바인드 주소만 사설망으로 바꿨다 — ci 컨테이너가 호출하기 때문이다.
+#
+# 서버 실측 (2026-08-18, 컨테이너 안):
+#   VRAM 19171 / 24560 MiB (여유 5389 MiB — ComfyUI 로컬 노드 몫)
+#   생성 29.0 tok/s (자유 서술) / 43.2 tok/s (정형 출력)
+#   DFlash 채택률 13.6% / 24.4% — 정형 출력일수록 오른다
+
+[Unit]
+Description=Muse Glimmer 30B llama.cpp server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/llama.cpp/build/bin/llama-server \
+  -m /mnt/data/models/Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf \
+  --alias muse-glimmer \
+  --host 10.10.10.14 --port 8081 \
+  -dev Vulkan0 \
+  -ngl 99 \
+  -c 131072 \
+  -fa on -ctk q8_0 -ctv q8_0 \
+  -md /mnt/data/models/dflash-Muse-Glimmer-30B-Q4_K_M.gguf \
+  --spec-type draft-dflash --spec-draft-n-max 15 \
+  --jinja \
+  --no-warmup
+Restart=on-failure
+RestartSec=10
+# 17GB 모델을 VRAM 에 올리는 데 시간이 걸린다
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
