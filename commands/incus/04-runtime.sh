@@ -123,7 +123,7 @@ echo
 log "Done."
 echo
 echo "Next: deploy services inside each container."
-echo "  incus exec core -- bash    # core  - Forgejo, Headscale"
+echo "  incus exec core -- bash    # core  - Forgejo"
 echo "  incus exec ai -- bash      # ai    - llama.cpp, ComfyUI"
 echo
 echo "Build order: docs/gem12-private-cloud-plan-2026-08-17.md section 8."

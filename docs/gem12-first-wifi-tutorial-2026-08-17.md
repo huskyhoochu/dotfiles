@@ -327,13 +327,18 @@ claude --version    # "2.x.x (Claude Code)" 가 나오면 설치 완료
 
 서버에는 브라우저가 없으므로 로그인 창을 띄우는 대신 **장기 토큰**을 환경변수로 넘긴다. 토큰은 맥북에서 `claude setup-token`으로 발급해 1Password에 저장돼 있다 (`CLAUDE_CODE_OAUTH_TOKEN` 항목, 2026-08-17 발급).
 
-`~/.bashrc.local`에 한 줄을 넣는다. 앞 절에서 인증해둔 `op`가 금고에서 읽어온다.
+`~/.bashrc.local`에 다음 블록을 넣는다. 앞 절에서 등록해둔 `op`가 금고에서 읽어온다.
 
 ```bash
-export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential')"
+# 대화형 셸에서만 1Password 세션을 열어 Claude Code 토큰을 주입한다.
+# op read 는 세션이 없을 때 스스로 로그인하지 못하므로 op signin 을 먼저 한다.
+case $- in *i*)
+  op whoami >/dev/null 2>&1 || eval "$(op signin)"
+  export CLAUDE_CODE_OAUTH_TOKEN="$(op read "op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential")"
+;; esac
 ```
 
-`02-host.sh`가 배포하는 bashrc가 마지막에 `~/.bashrc.local`을 읽으므로, 셸을 새로 열면 토큰이 주입된다. op 세션이 없으면 이때 1Password 비밀번호를 한 번 묻는다.
+`02-host.sh`가 배포하는 bashrc가 마지막에 `~/.bashrc.local`을 읽으므로, 셸을 새로 열면 토큰이 주입된다. op 세션(약 30분 유지)이 없으면 이때 1Password 마스터 비밀번호를 한 번 묻는다 (2026-08-18 실제 검증: `op read`는 세션이 없으면 `You are not currently signed in` 에러를 내므로 `op signin` 선행이 필수다).
 
 ### 검증
 

@@ -115,7 +115,7 @@ Jellyfin 미디어                                미정
 | 서비스 | 역할 |
 |---|---|
 | **Forgejo + Actions** | Git 저장소와 CI/CD. GitHub로 미러 복제. |
-| **Headscale** | 개인 VPN 컨트롤 플레인. 회사 Tailscale과 완전 분리. |
+| **Tailscale** (호스트) | 개인 계정 tailnet 접속 + 컨테이너 대역(10.10.10.0/24) 서브넷 라우팅. 컨테이너가 아니라 호스트에 직접 설치한다. |
 | **llama.cpp + Muse Glimmer 30B** | 로컬 LLM 추론. 7900 XTX 사용. |
 | **ComfyUI** | 이미지·영상 작업. 클라우드 모델(Seedream / GPT Image / Veo / Gemini) 위주, 로컬 노드 병행. |
 | **SQLite + Litestream** | 업무 기록, 지식저장소, 온톨로지의 저장 계층. 서비스별 파일 분리. |
@@ -198,7 +198,6 @@ GEM12 / Fedora Server (베어메탈) + Incus
 │
 ├── core          2 vCPU / 6GB    Fedora + Podman
 │   ├── Forgejo              ← Git 저장소, GitHub 미러 복제
-│   ├── Headscale            ← 개인 VPN 컨트롤 플레인
 │   └── (후순위) Uptime Kuma / Prometheus / Grafana
 │
 ├── ci            6 vCPU / 8GB    Fedora + Docker
@@ -229,7 +228,7 @@ RAM 합계 54GB로 60GB 안에 들어간다. 컨테이너는 미사용 메모리
 **데스크톱 환경은 어디에도 설치하지 않는다.** Wayland나 X11 컴포지터가 없으면 패키지가 줄고 공격 표면도 작아진다. 접근 경로는 세 가지다.
 
 ```text
-맥북 → Headscale VPN ─┬→ Cockpit 웹 UI    (Fedora Server 기본 포함, 웹 터미널 내장)
+맥북 → Tailscale VPN ─┬→ Cockpit 웹 UI    (Fedora Server 기본 포함, 웹 터미널 내장)
                       ├→ 각 서비스 웹 UI  (Forgejo, n8n, Immich, ComfyUI …)
                       └→ SSH              (호스트와 컨테이너 직접 접속)
 ```
@@ -259,7 +258,7 @@ SSH 포트 포워딩으로도 된다. `ssh -L 53682:localhost:53682 <서버>`로
 | 서비스 | 인증 방식 |
 |---|---|
 | Forgejo → GitHub 미러 | Personal Access Token |
-| Headscale 노드 등록 | 프리어스키 |
+| Tailscale 노드 등록 | 브라우저 로그인 (개인 계정) |
 | Immich / Jellyfin | 자체 계정 |
 | ComfyUI 클라우드 모델 | API 키 |
 | n8n의 외부 연동 | n8n 웹 UI에서 처리. OAuth 창은 **맥북 브라우저**에 뜨므로 서버에 브라우저가 없는 것과 무관하다. 리다이렉트 URL만 서버 주소로 맞춘다 |
@@ -289,7 +288,7 @@ Docker와 Podman 중 하나로 통일하지 않는다. **이미 용도가 갈려
 
 | 컨테이너 | 런타임 | 근거 |
 |---|---|---|
-| core | **Podman** | 데몬이 없어 systemd가 컨테이너를 직접 관리한다. Headscale이 죽으면 서버에 들어갈 VPN이 죽으므로, 이 계층은 데몬 하나에 운명을 묶지 않는다 |
+| core | **Podman** | 데몬이 없어 systemd가 컨테이너를 직접 관리한다. Git 저장소는 다른 서비스를 복구할 때의 기반이므로, 이 계층은 데몬 하나에 운명을 묶지 않는다 |
 | ci | **Docker** | Forgejo Actions Runner가 Docker 소켓을 전제한다. BuildKit도 Docker 쪽이 성숙하다 |
 | apps | **Docker** | 기존 compose 파일을 그대로 쓴다. n8n 공식 문서도 Docker 기준이다 |
 | ai | **Podman** | 이미 ComfyUI를 Podman으로 운영 중이다. rootless로 `/dev/dri`를 넘기는 방식이 깔끔하다 |
@@ -314,24 +313,56 @@ IOMMU 23 → c8:00.0  Radeon 780M  → media  (VAAPI 트랜스코딩)
 
 ## 5. 네트워크
 
-### 회사 Tailscale과 완전 분리
+### VPN — 개인 Tailscale 계정, 회사 tailnet과 완전 분리
 
-Tailscale은 **회사 서버 접속 전용**이다. 이 개인 서버는 회사 tailnet에 절대 등록하지 않고, 서버에 회사 Tailscale 클라이언트를 설치하지도 않는다.
-
-회사 tailnet에 개인 서버를 등록하면 (1) 회사 관리자가 개인 서버 노드를 보게 되고, (2) ACL 정책을 스스로 정할 수 없으며, (3) 계정이 회수되면 개인 인프라 접근도 함께 끊긴다. 개인 인프라는 개인이 통제해야 하므로 자체 Headscale을 쓴다.
+서버는 **개인 Tailscale 계정의 tailnet**에 등록한다 (2026-08-18 등록 완료, 노드명 `gem12`). 회사 tailnet에는 절대 등록하지 않는다 — 개인 tailnet은 노드 목록과 ACL을 개인이 통제하고, 회사 계정이 회수돼도 개인 인프라 접근이 유지된다.
 
 ```text
 GEM12 (서버)
-  └── Headscale 컨트롤 플레인 + 자기 자신이 노드
-        회사 Tailscale 클라이언트 설치하지 않음
+  └── tailscaled — 개인 tailnet 노드 + 10.10.10.0/24 서브넷 라우터
 
 MacBook Pro / 휴대 기기 (클라이언트)
-  ├── 프로파일 A: 회사 Tailscale  (업무용)
-  └── 프로파일 B: 개인 Headscale  (이 서버용)
+  ├── 프로파일 A: 회사 tailnet  (업무용)
+  └── 프로파일 B: 개인 tailnet  (이 서버용)
         tailscale switch 로 전환
 ```
 
-Tailscale 클라이언트는 여러 컨트롤 서버 프로파일을 저장하고 `tailscale switch`로 오갈 수 있다. 동시 접속은 안 되지만, **서버 쪽에서 회사 tailnet을 아예 쓰지 않으므로 문제되지 않는다.**
+Tailscale 클라이언트는 여러 프로파일을 저장하고 `tailscale switch`로 오갈 수 있다. 동시 접속은 안 되지만, 서버가 개인 tailnet에만 있으므로 문제되지 않는다.
+
+### 호스트 설치 절차 (2026-08-18 실측 검증)
+
+```bash
+sudo dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+sudo dnf install tailscale
+sudo systemctl enable --now tailscaled
+
+# 서브넷 라우팅에 필요한 IP 포워딩
+sudo tee /etc/sysctl.d/99-tailscale.conf >/dev/null <<'EOF'
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+EOF
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+
+# 출력되는 URL을 브라우저에서 열어 개인 계정으로 인증한다
+sudo tailscale up --advertise-routes=10.10.10.0/24
+
+# 포워딩 허용 — tailscale0 에는 테일넷 인증을 통과한 트래픽만 흐른다.
+# 존 미지정 인터페이스는 기본 존(FedoraServer)에 떨어져 포워딩이 거부된다.
+sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
+sudo firewall-cmd --reload
+```
+
+관리 콘솔(login.tailscale.com/admin/machines)에서 두 가지를 설정한다.
+
+1. `gem12`의 서브넷 라우트 `10.10.10.0/24` **승인** — 광고만으로는 라우팅되지 않는다
+2. **Disable key expiry** — 서버 노드는 키가 만료되면 재인증 전까지 tailnet에서 떨어진다
+
+이후 어느 네트워크에서든 MagicDNS 이름으로 접속한다.
+
+```bash
+ssh b95labs@gem12          # 호스트 (전체 도메인: gem12.tail4555a7.ts.net)
+ssh root@10.10.10.13       # 컨테이너 — 서브넷 라우트로 직접 닿는다
+```
 
 ### 물리 연결 — Wi-Fi로 운영한다
 
@@ -357,15 +388,15 @@ incusbr0  10.10.10.1/24  (내부 전용, 물리 포트 없음)
    └── media   10.10.10.15
 ```
 
-모든 접근이 Headscale VPN을 거치는 설계이므로 컨테이너가 LAN IP를 각자 가질 이유가 없다. 격리 면에서는 이쪽이 낫다.
+모든 접근이 Tailscale VPN을 거치는 설계이므로 컨테이너가 LAN IP를 각자 가질 이유가 없다. 격리 면에서는 이쪽이 낫다.
 
 대역폭은 5GHz Wi-Fi 6 기준 실효 300~600Mbps로, Git push나 사진 업로드에는 충분하다. 대용량 미디어를 처음 넣을 때만 USB로 직접 옮긴다.
 
 랜선이 생기면 `eno1`을 연결해 `wlp6s0`를 대체한다. Incus의 마스커레이딩은 호스트 라우팅을 따라가므로 NAT 브리지 쪽은 바꿀 것이 없다.
 
-### 순환 의존 대비
+### 장애 대비
 
-Headscale이 GEM12 안에 있으므로 서버가 죽으면 들어갈 VPN도 함께 죽는다. 대비책은 **모니터와 키보드를 직접 연결하는 것**이다. 집에 있는 장비이므로 이것으로 충분하다.
+VPN 컨트롤 플레인은 Tailscale 호스팅 서비스에 있으므로 서버 장애와 무관하게 살아 있다. 다만 서버 자체가 죽으면 원격으로 들어갈 곳이 없으니, 대비책은 **모니터와 키보드를 직접 연결하는 것**이다. 집에 있는 장비이므로 이것으로 충분하다.
 
 Wi-Fi가 끊기면 원격 복구가 불가능하지만, 이는 유선이어도 서버 자체가 죽으면 마찬가지다. 외출 중 장애는 복구를 포기하고 귀가 후 처리한다. 혼자 쓰는 시스템에서 이 정도 가용성이면 충분하고, 외부 VPS를 두는 비용과 의존이 더 크다.
 
@@ -373,7 +404,7 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 ### 공개 범위
 
-당분간 인터넷에 공개하는 서비스는 없다. 모든 접근은 Headscale VPN을 거친다.
+당분간 인터넷에 공개하는 서비스는 없다. 모든 접근은 Tailscale VPN을 거친다.
 
 | 대상 | 접근 경로 |
 |---|---|
@@ -403,7 +434,6 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 - SQLite DB (업무기록 / 지식저장소 / 온톨로지)
 - n8n 워크플로와 자격증명
 - 각 서비스 설정과 compose 파일 (Forgejo에도 있지만 이중화)
-- Headscale DB와 프리어스키
 
 **Forgejo 저장소 내용은 백업하지 않는다.** GitHub 미러가 이미 사본이므로 Drive까지 올리면 3중이 된다. 다만 미러가 옮기는 것은 Git 저장소뿐이고 Issue와 Actions 설정은 넘어가지 않으므로, **설정 DB만** 백업한다.
 
@@ -459,7 +489,6 @@ sudo smartctl -H /dev/sdX
 - Google 계정 복구 정보
 - 백업 암호화 키
 - 서버 root 비밀번호
-- Headscale 프리어스키
 
 1Password에 넣되, **1Password 자체 복구 키는 종이로 오프라인 보관**한다.
 
@@ -570,9 +599,9 @@ export CLAUDE_CODE_OAUTH_TOKEN="<발급받은 토큰>"
 
 ### 2단계 — core 컨테이너
 
-Headscale 먼저, 그다음 Forgejo.
+Forgejo를 올린다.
 
-**검증**: 맥북에서 개인 VPN 접속 후 Forgejo에 push 성공. 회사 Tailscale 프로파일로 전환해도 회사 서버에 정상 접속.
+**검증**: 맥북에서 Tailscale 접속으로 Forgejo에 push 성공. 회사 tailnet 프로파일로 전환해도 회사 서버에 정상 접속.
 
 ### 3단계 — ai 컨테이너
 
