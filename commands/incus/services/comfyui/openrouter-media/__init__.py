@@ -23,6 +23,10 @@ import torch
 from PIL import Image
 
 API_BASE = "https://openrouter.ai/api/v1"
+ZENMUX_BASE = "https://zenmux.ai/api/v1"
+# ZenMux 비디오 — 문서가 보증하는 모델 (챗 /models 목록에는 비디오 모델이 안 나온다,
+# 2026-08-18 실측). 신모델은 model_override 로.
+ZENMUX_VIDEO_MODELS = ["bytedance/doubao-seedance-2.0"]
 
 # 모델 목록은 2026-08-18 의 /api/v1/images/models · /api/v1/videos/models 실측이다.
 # 새 모델은 model_override 로 바로 쓸 수 있고, 목록 갱신은 이 파일 수정으로 한다.
@@ -59,6 +63,13 @@ def _key():
     return key
 
 
+def _zenmux_key():
+    key = os.environ.get("ZENMUX_API_KEY")
+    if not key:
+        raise RuntimeError("ZENMUX_API_KEY not set — see /etc/comfyui.env (env.example)")
+    return key
+
+
 # 참조 이미지의 긴 변 상한 — 2K 시트를 원본 그대로 base64 로 붙이면 요청이
 # 수 MB 로 커져 엣지(520) 오류 확률과 업로드 시간이 늘어난다. 참조 용도로는
 # 이 크기면 충분하다.
@@ -88,10 +99,10 @@ def _image_refs(images, frame_type=None):
     return refs
 
 
-def _request(method, url, payload=None, auth=True):
+def _request(method, url, payload=None, auth=True, key=None):
     headers = {"Content-Type": "application/json"} if payload is not None else {}
     if auth:
-        headers["Authorization"] = "Bearer " + _key()
+        headers["Authorization"] = "Bearer " + (key or _key())
     data = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(url, data, headers, method=method)
     try:
@@ -229,6 +240,93 @@ class OpenRouterSeedanceVideo:
         return (video_from_file(out_path),)
 
 
+class ZenMuxSeedanceVideo:
+    """ZenMux 네이티브 비디오 API — POST /videos → 폴링 → content.video_url.
+
+    존재 이유: OpenRouter /videos 는 참조를 URL 로만 받아 data URI 첨부가
+    520 으로 죽는다 (2026-08-18 2회 실측). ZenMux 는 문서가 Data URI 를 명문
+    허용하고, 5xx 실패 시 금액을 보상한다 (사용자 확인). 요청은 벤더 네이티브
+    content 배열 구조 — text / image_url(role: first_frame·reference_image).
+    """
+
+    CATEGORY = "OpenRouter"
+    RETURN_TYPES = ("VIDEO",)
+    FUNCTION = "generate"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {"multiline": True, "default": ""}),
+                "model": (ZENMUX_VIDEO_MODELS,),
+                "duration": ("INT", {"default": 5, "min": 2, "max": 15, "tooltip": "초 단위. doubao-seedance-2.0 은 최대 10초"}),
+                "resolution": (["720p", "480p", "1080p"], {"default": "720p"}),
+                "ratio": (["9:16", "16:9", "1:1", "4:3", "3:4", "adaptive"], {"default": "9:16"}),
+                "generate_audio": ("BOOLEAN", {"default": False}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 2**31 - 1}),
+                "poll_timeout": ("INT", {"default": 900, "min": 60, "max": 3600}),
+            },
+            "optional": {
+                "model_override": ("STRING", {"default": ""}),
+                "reference_images": ("IMAGE",),
+                "first_frame": ("IMAGE",),
+            },
+        }
+
+    def generate(self, prompt, model, duration, resolution, ratio, generate_audio,
+                 seed, poll_timeout, model_override="", reference_images=None, first_frame=None):
+        key = _zenmux_key()
+        content = [{"type": "text", "text": prompt}]
+        if first_frame is not None:
+            for ref in _image_refs(first_frame[:1]):
+                content.append({"type": "image_url", "role": "first_frame",
+                                "image_url": ref["image_url"]})
+        if reference_images is not None:
+            for ref in _image_refs(reference_images):
+                content.append({"type": "image_url", "role": "reference_image",
+                                "image_url": ref["image_url"]})
+        payload = {
+            "model": model_override or model,
+            "content": content,
+            "resolution": resolution,
+            "ratio": ratio,
+            "duration": duration,
+            "generate_audio": generate_audio,
+        }
+        if seed:
+            payload["seed"] = seed
+
+        sub = json.loads(_request("POST", ZENMUX_BASE + "/videos", payload, key=key))
+        job_id = sub["id"]
+
+        deadline = time.time() + poll_timeout
+        st = sub
+        status = sub.get("status", "queued")
+        while time.time() < deadline and status not in ("succeeded", "failed"):
+            time.sleep(15)  # 문서 권장 폴링 주기
+            st = json.loads(_request("GET", f"{ZENMUX_BASE}/videos/{job_id}", key=key))
+            status = st.get("status")
+        if status == "failed":
+            raise RuntimeError(f"video job failed: {str(st.get('error'))[:500]}")
+        if status != "succeeded":
+            raise RuntimeError(f"video job timed out after {poll_timeout}s (id={job_id})")
+
+        video_url = st["content"]["video_url"]
+        data = _request("GET", video_url, auth=False)
+
+        import folder_paths
+        out_path = os.path.join(folder_paths.get_output_directory(), f"seedance_zm_{job_id}.mp4")
+        with open(out_path, "wb") as f:
+            f.write(data)
+
+        try:
+            from comfy_api.latest import InputImpl
+            video_from_file = InputImpl.VideoFromFile
+        except (ImportError, AttributeError):
+            from comfy_api.input_impl import VideoFromFile as video_from_file
+        return (video_from_file(out_path),)
+
+
 class OpenRouterPromptCraft:
     """자연어 요청 → 생성 프롬프트 (chat completions).
 
@@ -278,10 +376,12 @@ class OpenRouterPromptCraft:
 NODE_CLASS_MAPPINGS = {
     "OpenRouterSeedreamImage": OpenRouterSeedreamImage,
     "OpenRouterSeedanceVideo": OpenRouterSeedanceVideo,
+    "ZenMuxSeedanceVideo": ZenMuxSeedanceVideo,
     "OpenRouterPromptCraft": OpenRouterPromptCraft,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "OpenRouterSeedreamImage": "Seedream Image (OpenRouter)",
     "OpenRouterSeedanceVideo": "Seedance Video (OpenRouter)",
+    "ZenMuxSeedanceVideo": "Seedance Video (ZenMux)",
     "OpenRouterPromptCraft": "Prompt Craft (OpenRouter LLM)",
 }

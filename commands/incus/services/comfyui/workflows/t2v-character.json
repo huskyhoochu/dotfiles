@@ -35,9 +35,9 @@
     },
     {
       "id": 3,
-      "type": "OpenRouterSeedanceVideo",
+      "type": "ZenMuxSeedanceVideo",
       "pos": [580, 200],
-      "size": [400, 360],
+      "size": [400, 400],
       "flags": {},
       "order": 2,
       "mode": 0,
@@ -48,8 +48,8 @@
       "outputs": [
         {"name": "VIDEO", "type": "VIDEO", "links": [3], "slot_index": 0}
       ],
-      "properties": {"Node name for S&R": "OpenRouterSeedanceVideo"},
-      "widgets_values": ["", "bytedance/seedance-2.0-mini", 5, "720p", "9:16", 0, "fixed", 900, ""]
+      "properties": {"Node name for S&R": "ZenMuxSeedanceVideo"},
+      "widgets_values": ["", "bytedance/doubao-seedance-2.0", 5, "720p", "9:16", false, 0, "fixed", 900, ""]
     },
     {
       "id": 4,
