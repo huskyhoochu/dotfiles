@@ -71,21 +71,22 @@ trap 'umount "$BIND" 2>/dev/null || true' EXIT
 # 업로드 상한 4 MiB/s(≈32 Mbps): 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소
 # 이관 같은 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다 (사용자 결정 2026-08-19).
 #
-# 처음엔 1 MiB/s 로 걸었다가 402MB 유입에서 두 번 연속 실패해 완화했다 — 상한이 셀수록
-# 전송이 길어지고, 그동안 Drive 의 resumable upload 세션이 열려 있어 공용 client_id 의
-# 분당 쿼터(rateLimitExceeded)와 500 을 만날 확률이 올라간다. 상한의 목적이 대량 유입
-# 억제인데 정작 그때 죽으면 뜻이 없다. 4 MiB/s 면 402MB 를 2분 안에 넘기면서도
-# 가정용 업링크의 일부만 쓴다.
+# tpslimit 4 는 실패에서 배운 값이다. 402MB 유입 때 백업이 세 번 죽었는데, 오류를
+# 유형별로 세어 보니 rateLimitExceeded 22 : 500 이 11 이었다 — 500 은 쿼터 초과의
+# 파생이고 근본은 분당 요청 수다. 동시성(connections)이나 대역(limit-upload)을 낮춰도
+# 총 요청 수는 그대로라 쿼터는 똑같이 소진된다. 초당 트랜잭션 자체를 묶어야 넘어간다.
+# 이 설정으로 968MiB 를 11분 20초에 rateLimit 0건으로 통과했다(2026-08-19 실측).
 #
-# 연결 4개(기본 5): 동시 요청을 조금 줄여 쿼터 압박을 낮춘다. 근본 해결은 개인
-# client_id 전환(§1-1) — 공용 client_id 의 쿼터를 전 세계 rclone 사용자와 나누는 구조다.
+# 근본 해결은 개인 client_id 전환(§1-1) — 공용 client_id 의 분당 쿼터를 전 세계 rclone
+# 사용자와 나누는 구조다. 전환하면 tpslimit 을 올리거나 뺄 수 있다.
 restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/ai" \
   --exclude "${BIND}/mnt/data/ci" \
   --exclude "${BIND}/mnt/data/media/jellyfin/media" \
   --exclude "${BIND}/mnt/data/media/immich/library" \
   --limit-upload 4096 \
-  -o rclone.connections=4 \
+  -o rclone.connections=2 \
+  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
   --tag auto --quiet
 log "restic backup done"
 
@@ -93,6 +94,8 @@ log "restic backup done"
 # forget 은 태그만 정리한다. 실제 데이터 회수(prune)는 주 1회 backup-prune 이 한다.
 
 restic forget --keep-hourly 24 --keep-daily 7 --keep-weekly 8 \
-  -o rclone.connections=4 --quiet
+  -o rclone.connections=2 \
+  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
+  --quiet
 
 log "Done."
