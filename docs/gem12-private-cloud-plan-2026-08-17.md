@@ -35,35 +35,20 @@ Immich, Jellyfin, ComfyUI를 media·ai 컨테이너에 올린다. 설치와 기�
 
 **검증**: Immich에 사진 업로드 가능, Jellyfin 기동, ComfyUI에서 클라우드 모델 호출 성공.
 
-### 1-3. 구축 6단계 — 모니터링
+### 1-3. 모니터링 — 남은 단계
 
-Uptime Kuma를 먼저 붙이고, 필요해지면 Prometheus와 Grafana를 추가한다. 최소 알림 대상:
+Uptime Kuma + 호스트 점검 타이머는 가동 중이다 — 구성과 점검 항목은 §12 6단계. 남은 것:
 
-```text
-디스크 사용량 > 85%
-NVMe 수명 경고 / SMART 경고
-btrfs 체크섬 오류 (고칠 사본이 없으므로 즉시 대응해야 한다)
-RAM 사용량 > 90%
-CPU 온도 (k10temp Tctl) > 95°C
-GPU junction (amdgpu temp2) > 105°C — 7900 XTX 스로틀 한계 110°C. 풀부하 실측 95°C (2026-08-18)
-GPU VRAM (amdgpu temp3) > 100°C
-NVMe Composite > 70°C
-Wi-Fi 연결 끊김
+- [ ] **Kuma 웹 UI 초기 설정** — `https://gem12.tail4555a7.ts.net:3001` 에서 ① 관리자 계정 생성 ② 알림 채널 등록(Settings → Notifications) ③ Push 모니터 생성(이름 `gem12-health`, 하트비트 300초, 재시도 2) ④ push URL 을 서버 `/etc/gem12-healthcheck.env` 의 `KUMA_PUSH_URL` 에 기록. URL 이 비어 있는 동안 점검 결과는 journal 에만 남는다
+- [ ] **GitHub 미러 push 실패 감시** — Forgejo API 토큰이 필요해 점검 목록에서 빠져 있다. 토큰을 발급해 `gem12-healthcheck` 에 점검을 추가한다
 
-Forgejo 응답 없음
-Litestream 로컬 복제 실패
-rclone sync 실패 (Drive 반영 중단)
-GitHub 미러 push 실패
-```
-
-btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 1개라 자동 복구가 불가능하므로, 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다.
-
-온도는 커널 hwmon 이 전부 내준다 — `sensors`(lm_sensors, 설치됨) 또는 `/sys/class/hwmon/*/temp*_input`(k10temp=CPU, amdgpu=GPU edge/junction/VRAM, nvme). **node_exporter 의 hwmon 컬렉터가 이 값을 그대로 Prometheus 메트릭으로 노출**하므로 온도 알림은 별도 도구 없이 Prometheus 규칙으로 건다.
+Prometheus + Grafana 는 필요해지면 추가한다. 그때 온도 메트릭은 node_exporter 의 hwmon 컬렉터가 그대로 노출하므로(`k10temp`=CPU, `amdgpu`=GPU, `nvme`) 별도 도구가 필요 없다.
 
 ### 1-4. 운영 정비
 
-- [ ] **자동 보안 업데이트** — `dnf-automatic` 설치와 타이머 활성화 (2026-08-18 실측: 미설치)
 - [ ] **LAN IP 고정 임대** — 공유기에서 gem12(192.168.35.191)를 고정 임대로 묶는다. 재설치 때 IP가 바뀐 전례가 있다
+
+자동 보안 업데이트는 가동 중이다 — §12 6단계.
 
 ### 1-5. 미결 판단
 
@@ -175,12 +160,13 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 |---|---|---|
 | 호스트 | Fedora Server 44 (커널 6.19.10), btrfs 단일 파티션 | 29G / 929G 사용 |
 | Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
-| core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) | active, healthz 200 |
+| core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) + Uptime Kuma 2.5 (Quadlet, :3001) | 전부 active |
 | ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
 | apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
 | ai (10.10.10.14) | `glimmer.service` — llama.cpp Vulkan, `10.10.10.14:8081` | active, health ok |
 | media (10.10.10.15) | 컨테이너만 가동. 서비스는 §1-2에서 올린다 | RUNNING |
 | 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
+| 모니터링·업데이트 (호스트) | `healthcheck.timer` 5분(점검 → Kuma push), `dnf5-automatic.timer` 매일 06:00 보안 업데이트 (호스트 + 컨테이너 5개) | 전부 active |
 
 GitHub push mirror는 polydeukes 최신 커밋이 GitHub에 반영된 것으로 확인했다.
 
@@ -190,6 +176,7 @@ GitHub push mirror는 polydeukes 최신 커밋이 GitHub에 반영된 것으로 
 ssh b95labs@gem12                              # 호스트 (gem12.tail4555a7.ts.net)
 ssh root@10.10.10.13                           # 컨테이너 — 서브넷 라우트로 직접
 https://gem12.tail4555a7.ts.net:3000           # Forgejo  (tailscale serve, tailnet 전용)
+https://gem12.tail4555a7.ts.net:3001           # Uptime Kuma
 https://gem12.tail4555a7.ts.net:5678           # n8n
 https://gem12.tail4555a7.ts.net:8080           # NocoDB
 ```
@@ -301,7 +288,7 @@ Jellyfin 미디어                                미정
 | **NocoDB** | SQLite 위 그리드 UI. 사람이 후보를 보고 고르는 화면. |
 | **Immich** | 개인 사진 보관. 최소 구성. |
 | **Jellyfin** | 개인 블루레이 백업 재생. 최소 구성. |
-| **Uptime Kuma / Prometheus / Grafana** | 모니터링. 다른 서비스가 안정적으로 돌아간 뒤 추가. |
+| **Uptime Kuma** | 모니터링. 호스트 점검 타이머(`gem12-healthcheck`)의 push 를 받아 상태 이력과 알림을 맡는다. Prometheus / Grafana 는 필요해지면 추가. |
 
 ### 무엇을 두지 않는가
 
@@ -377,7 +364,7 @@ GEM12 / Fedora Server (베어메탈) + Incus
 │
 ├── core          2 vCPU / 6GB    Fedora + Podman
 │   ├── Forgejo              ← Git 저장소, GitHub 미러 복제
-│   └── (후순위) Uptime Kuma / Prometheus / Grafana
+│   └── Uptime Kuma          ← 모니터링 (호스트 점검 push 수신 + 알림)
 │
 ├── ci            6 vCPU / 8GB    Fedora + Docker
 │   ├── Forgejo Runner
@@ -788,10 +775,23 @@ Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git 
 
 **검증 통과**: 맥에서 **Drive 사본과 1Password 시크릿만으로**(서버 무접촉) restic 복원 87.4 MiB — gitea.db `integrity_check` ok, 미러 없는 저장소(model-arena) clone 후 HEAD 일치, litestream 복제본에서 DB 재구성 ok.
 
+### 6단계 — 모니터링 + 자동 보안 업데이트 (2026-08-18)
+
+media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업의 감시가 우선이다. Prometheus 없이 **Uptime Kuma push 모니터(dead-man switch) 방식**으로 §1-3 알림 목록을 덮는 결정 — 점검 스크립트가 5분마다 결과를 신고하고, 신고가 끊기는 것 자체도 down 으로 잡힌다.
+
+- Uptime Kuma 2.5: core 에 Quadlet(`commands/incus/services/uptime-kuma/`), `:3001` + tailscale serve 등록. 데이터는 `/mnt/data/uptime-kuma`(호스트 `/mnt/data/core/` 아래)라 매시 restic 백업에 자동 포함
+- 호스트 점검 타이머: `commands/incus/services/healthcheck/` — 5분마다 `/usr/local/sbin/gem12-healthcheck` 실행. 점검 항목: 디스크 >85% · RAM >90% · `btrfs device stats --check`(고칠 사본이 없으므로 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다) · `smartctl -H` · 온도(k10temp Tctl >95°C, amdgpu junction >105°C·mem >100°C, nvme Composite >70°C) · 기본 라우트(Wi-Fi 단절) · Forgejo healthz · litestream(apps) · `backup.service` Result 와 `backup.timer`(rclone→Drive 중단 감지). 실패 시 실패 목록과 함께 down 을 push 한다. push URL 은 `/etc/gem12-healthcheck.env`
+- 온도 센서는 hwmon 인덱스가 아니라 **칩 이름 + 라벨로 매칭** — amdgpu 가 2개(XTX·780M)인데 junction/mem 라벨은 XTX 만 내주므로 라벨이 dGPU 를 고른다
+- 자동 보안 업데이트: `commands/incus/services/dnf-automatic/` — 호스트 + 컨테이너 5개에 `dnf5-plugin-automatic` 설치, `/etc/dnf/automatic.conf` 에 `upgrade_type=security`·`apply_updates=yes`, `dnf5-automatic.timer`(매일 06:00 + 무작위 60분). Fedora 44 는 dnf5 라 패키지·타이머 이름이 dnf5-* 다
+- 실측 함정: 루프 안 `incus exec` 가 stdin 을 삼켜 컨테이너 목록 순회가 첫 항목에서 끊긴다 — `</dev/null` 필수
+
+**검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. Kuma push 연결 실측은 §1-3 의 UI 초기 설정 뒤에 한다.
+
 ---
 
 ## Changelog
 
+- **2026-08-18 (모니터링 + 자동 보안 업데이트 가동)** — §1-3·§1-4 의 두 항목 수행(§12 6단계): Uptime Kuma(core Quadlet, :3001) + 호스트 점검 타이머(`gem12-healthcheck` 5분, §1-3 목록을 Kuma push 로 전달), `dnf5-plugin-automatic` 을 호스트+컨테이너 5개에 보안 업데이트 자동 적용으로 활성화. Prometheus 없이 push 모니터 방식으로 목록을 덮는 결정. 남은 것: Kuma UI 초기 설정(계정·알림 채널·push URL 기입), GitHub 미러 push 감시(Forgejo API 토큰 필요), LAN 고정 임대.
 - **2026-08-18 (백업 파이프라인 가동)** — §1-1 의 1·2단계 완성(§12 5단계): 매시 btrfs 스냅샷 + restic→Drive, 복원 리허설 통과가 완료 판정. 계획 문구와 실측이 갈린 지점 반영 — rclone 은 apps 컨테이너가 아니라 **호스트에서** 돌린다(호스트에 이미 설치돼 있었고 스냅샷 권한·전 컨테이너 데이터 접근이 호스트에만 있음), 도구는 rclone crypt 대신 **restic(rclone 백엔드)** 채택, Forgejo 는 미러 유무 선별 없이 **디렉토리 전체 백업**(57MB, 용량 문제 시 선별 전환). §1-4 재현성 정비를 겸사 완료(사용자 요청): litestream·n8n·NocoDB·러너·tailscale serve 를 스크립트로 고정. 남은 것: 3단계 오프라인 SSD, rclone 개인 client_id(공용 client_id 2026년 중 퇴역 예고).
 - **2026-08-18 (에이전트 루프 서버 이주)** — 그간 수동 flue 실행(구현 에이전트·수동 리뷰)이 맥북에서 돌고 서버는 추론만 맡던 구조를 발견·해체. 동기는 실측: 맥→서버 장시간 스트리밍(무선 2구간+Tailscale)이 하루 4회 "Connection error"로 죽는 동안 서버 안 CI 리뷰는 무사고였고, 도구 실행(git·npm·tsc)이 맥 CPU를 써서 서버 리소스가 놀았음(사용자 관찰). 원칙 확정: **경계는 단발 신호(투입·관찰)만 건너고, 개발 과정 전체는 서버 안에서**. ci 컨테이너에 `commands/incus/services/agent-loop/` 규약(setup.sh·agent-run.sh·env.example) 신설 — systemd 일회 유닛이 루프를 소유해 SSH 절단과 무관. 스모크 통과(45초 완주). Fedora 44의 기본 nodejs 22 함정(nodejs24-npm으로 지정) 기록.
 - **2026-08-18 (백업 교리 개정)** — "Forgejo 저장소는 GitHub 미러가 사본이라 백업 제외" 규칙에 예외 편입: 미러 없는 Forgejo 태생 저장소(gem12-agents·model-arena)와 모든 위키 repo는 서버가 유일 사본이므로 "반드시 백업" 등급으로. polydeukes 계획 문서의 위키 이관 구상(gitignore 로컬 폴더 폐지 → 비공개 위키 + cognee 인덱스 + Drive 백업) 검토 중 발견.

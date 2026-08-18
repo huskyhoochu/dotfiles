@@ -16,6 +16,7 @@ command -v tailscale >/dev/null || die "tailscale not installed. See §7 of the 
 # 포트 → 대상 (컨테이너 IP 는 03-containers.sh 의 containers.conf 와 일치해야 한다)
 declare -A SERVES=(
   [3000]="http://10.10.10.11:3000"   # Forgejo (core)
+  [3001]="http://10.10.10.11:3001"   # Uptime Kuma (core)
   [5678]="http://10.10.10.13:5678"   # n8n (apps)
   [8080]="http://10.10.10.13:8080"   # NocoDB (apps)
 )
