@@ -11,6 +11,9 @@
 # 재사용한다. 의존성은 ComfyUI 보장분(torch·numpy·PIL)과 표준 라이브러리뿐이다.
 
 import base64
+import datetime
+import hashlib
+import hmac
 import io as _io
 import json
 import os
@@ -99,6 +102,56 @@ def _image_refs(images, frame_type=None):
     return refs
 
 
+def _r2_env():
+    need = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_BASE"]
+    vals = {k: os.environ.get(k) for k in need}
+    missing = [k for k, v in vals.items() if not v]
+    if missing:
+        raise RuntimeError(f"R2 env missing: {', '.join(missing)} — /etc/comfyui.env (env.example)")
+    return vals
+
+
+def _r2_put(key, data, content_type="image/jpeg"):
+    """S3 SigV4 PUT — 표준 라이브러리만으로 R2 업로드. 공개 URL 을 돌려준다.
+
+    참조 이미지를 공개 HTTPS URL 로 내주기 위한 것 — Seedance 2.5 의 실인물
+    참조는 URL 로만 받는다 (2026-08-18 조사). 키는 내용 해시라 재실행이 멱등이다.
+    """
+    e = _r2_env()
+    host = f"{e['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com"
+    now = datetime.datetime.now(datetime.timezone.utc)
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    datestamp = now.strftime("%Y%m%d")
+    region, service = "auto", "s3"
+    payload_hash = hashlib.sha256(data).hexdigest()
+    uri = f"/{e['R2_BUCKET']}/{key}"
+    headers = {"host": host, "x-amz-content-sha256": payload_hash,
+               "x-amz-date": amz_date, "content-type": content_type}
+    signed = ";".join(sorted(headers))
+    canonical_headers = "".join(f"{k}:{headers[k]}\n" for k in sorted(headers))
+    creq = "\n".join(["PUT", uri, "", canonical_headers, signed, payload_hash])
+    scope = f"{datestamp}/{region}/{service}/aws4_request"
+    sts = "\n".join(["AWS4-HMAC-SHA256", amz_date, scope,
+                     hashlib.sha256(creq.encode()).hexdigest()])
+    k = hmac.new(("AWS4" + e["R2_SECRET_ACCESS_KEY"]).encode(), datestamp.encode(), hashlib.sha256).digest()
+    for part in (region, service, "aws4_request"):
+        k = hmac.new(k, part.encode(), hashlib.sha256).digest()
+    sig = hmac.new(k, sts.encode(), hashlib.sha256).hexdigest()
+    auth = (f"AWS4-HMAC-SHA256 Credential={e['R2_ACCESS_KEY_ID']}/{scope}, "
+            f"SignedHeaders={signed}, Signature={sig}")
+    req = urllib.request.Request(
+        f"https://{host}{uri}", data,
+        {"Authorization": auth, "x-amz-date": amz_date,
+         "x-amz-content-sha256": payload_hash, "content-type": content_type},
+        method="PUT")
+    try:
+        with urllib.request.urlopen(req, timeout=120):
+            pass
+    except urllib.error.HTTPError as err:
+        raise RuntimeError(f"R2 PUT {err.code}: {err.read().decode(errors='replace')[:300]}")
+    return e["R2_PUBLIC_BASE"].rstrip("/") + "/" + key
+
+
 def _request(method, url, payload=None, auth=True, key=None):
     headers = {"Content-Type": "application/json"} if payload is not None else {}
     if auth:
@@ -185,6 +238,9 @@ class OpenRouterSeedanceVideo:
             },
             "optional": {
                 "model_override": ("STRING", {"default": ""}),
+                # 공개 URL 참조 (쉼표 구분) — R2ImageURL 노드 출력을 연결한다.
+                # seedance 2.5 의 실인물 참조는 URL 로만 받는다 (data URI 는 520).
+                "reference_urls": ("STRING", {"default": ""}),
                 # 캐릭터 시트 등 참조 이미지 (reference-to-video) — 인물 일관성 유지
                 "reference_images": ("IMAGE",),
                 # 첫 프레임 고정 (image-to-video) — 클립 체인에 쓴다
@@ -193,7 +249,8 @@ class OpenRouterSeedanceVideo:
         }
 
     def generate(self, prompt, model, duration, resolution, aspect_ratio, seed,
-                 poll_timeout, model_override="", reference_images=None, first_frame=None):
+                 poll_timeout, model_override="", reference_urls="",
+                 reference_images=None, first_frame=None):
         payload = {
             "model": model_override or model,
             "prompt": prompt,
@@ -203,8 +260,14 @@ class OpenRouterSeedanceVideo:
         }
         if seed:
             payload["seed"] = seed
+        refs = []
+        if reference_urls.strip():
+            refs += [{"type": "image_url", "image_url": {"url": u.strip()}}
+                     for u in reference_urls.split(",") if u.strip()]
         if reference_images is not None:
-            payload["input_references"] = _image_refs(reference_images)
+            refs += _image_refs(reference_images)
+        if refs:
+            payload["input_references"] = refs
         if first_frame is not None:
             payload["frame_images"] = _image_refs(first_frame[:1], frame_type="first_frame")
         sub = json.loads(_request("POST", API_BASE + "/videos", payload))
@@ -238,6 +301,37 @@ class OpenRouterSeedanceVideo:
         except (ImportError, AttributeError):
             from comfy_api.input_impl import VideoFromFile as video_from_file
         return (video_from_file(out_path),)
+
+
+class R2ImageURL:
+    """IMAGE → Cloudflare R2 업로드 → 공개 HTTPS URL (STRING).
+
+    Seedance 2.5/Kling 처럼 참조를 URL 로만 받는 모델 앞에 놓는다.
+    배치 입력이면 URL 을 쉼표로 이어 돌려준다 (비디오 노드가 분리해 쓴다).
+    """
+
+    CATEGORY = "OpenRouter"
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("urls",)
+    FUNCTION = "upload"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"images": ("IMAGE",)}}
+
+    def upload(self, images):
+        urls = []
+        for t in images:
+            arr = (t.clamp(0, 1).cpu().numpy() * 255).astype(np.uint8)
+            im = Image.fromarray(arr)
+            if max(im.size) > REF_MAX_SIDE:
+                im.thumbnail((REF_MAX_SIDE, REF_MAX_SIDE), Image.LANCZOS)
+            buf = _io.BytesIO()
+            im.save(buf, "JPEG", quality=92)
+            data = buf.getvalue()
+            k = "refs/" + hashlib.sha1(data).hexdigest()[:16] + ".jpg"
+            urls.append(_r2_put(k, data))
+        return (",".join(urls),)
 
 
 class ZenMuxSeedanceVideo:
@@ -378,10 +472,12 @@ NODE_CLASS_MAPPINGS = {
     "OpenRouterSeedanceVideo": OpenRouterSeedanceVideo,
     "ZenMuxSeedanceVideo": ZenMuxSeedanceVideo,
     "OpenRouterPromptCraft": OpenRouterPromptCraft,
+    "R2ImageURL": R2ImageURL,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "OpenRouterSeedreamImage": "Seedream Image (OpenRouter)",
     "OpenRouterSeedanceVideo": "Seedance Video (OpenRouter)",
     "ZenMuxSeedanceVideo": "Seedance Video (ZenMux)",
     "OpenRouterPromptCraft": "Prompt Craft (OpenRouter LLM)",
+    "R2ImageURL": "Image → R2 Public URL",
 }

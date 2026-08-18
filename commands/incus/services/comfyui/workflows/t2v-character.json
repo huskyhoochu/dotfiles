@@ -1,6 +1,6 @@
 {
-  "last_node_id": 4,
-  "last_link_id": 3,
+  "last_node_id": 6,
+  "last_link_id": 6,
   "nodes": [
     {
       "id": 1,
@@ -12,11 +12,11 @@
       "mode": 0,
       "inputs": [],
       "outputs": [
-        {"name": "IMAGE", "type": "IMAGE", "links": [2], "slot_index": 0},
+        {"name": "IMAGE", "type": "IMAGE", "links": [3], "slot_index": 0},
         {"name": "MASK", "type": "MASK", "links": [], "slot_index": 1}
       ],
       "properties": {"Node name for S&R": "LoadImage"},
-      "widgets_values": ["example.png", "image"]
+      "widgets_values": ["character-sheet_00001_.png", "image"]
     },
     {
       "id": 2,
@@ -28,39 +28,72 @@
       "mode": 0,
       "inputs": [],
       "outputs": [
-        {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0}
+        {"name": "prompt", "type": "STRING", "links": [1, 2], "slot_index": 0}
       ],
       "properties": {"Node name for S&R": "OpenRouterPromptCraft"},
       "widgets_values": ["참조 시트 속 인물이 밝은 카페 창가에 앉아 카메라를 보고 손을 흔들며 인사하는 세로형 숏폼. 자연광, 얕은 심도, 생기 있는 분위기", "bytedance-seed/seed-2.0-lite", 0, "fixed", ""]
     },
     {
       "id": 3,
-      "type": "ZenMuxSeedanceVideo",
-      "pos": [580, 200],
-      "size": [400, 400],
+      "type": "OpenRouterSeedreamImage",
+      "pos": [560, 60],
+      "size": [400, 280],
       "flags": {},
       "order": 2,
       "mode": 0,
       "inputs": [
         {"name": "prompt", "type": "STRING", "link": 1, "widget": {"name": "prompt"}},
-        {"name": "reference_images", "type": "IMAGE", "link": 2}
+        {"name": "reference_images", "type": "IMAGE", "link": 3}
       ],
       "outputs": [
-        {"name": "VIDEO", "type": "VIDEO", "links": [3], "slot_index": 0}
+        {"name": "IMAGE", "type": "IMAGE", "links": [4, 5], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "OpenRouterSeedreamImage"},
+      "widgets_values": ["", "bytedance-seed/seedream-5-0-lite", "2K", "9:16", 0, "fixed", ""]
+    },
+    {
+      "id": 4,
+      "type": "ZenMuxSeedanceVideo",
+      "pos": [1020, 60],
+      "size": [400, 400],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "prompt", "type": "STRING", "link": 2, "widget": {"name": "prompt"}},
+        {"name": "first_frame", "type": "IMAGE", "link": 4}
+      ],
+      "outputs": [
+        {"name": "VIDEO", "type": "VIDEO", "links": [6], "slot_index": 0}
       ],
       "properties": {"Node name for S&R": "ZenMuxSeedanceVideo"},
       "widgets_values": ["", "bytedance/doubao-seedance-2.0", 5, "720p", "9:16", false, 0, "fixed", 900, ""]
     },
     {
-      "id": 4,
-      "type": "SaveVideo",
-      "pos": [1050, 200],
-      "size": [380, 280],
+      "id": 5,
+      "type": "PreviewImage",
+      "pos": [560, 420],
+      "size": [340, 300],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
-        {"name": "video", "type": "VIDEO", "link": 3}
+        {"name": "images", "type": "IMAGE", "link": 5}
+      ],
+      "outputs": [],
+      "properties": {"Node name for S&R": "PreviewImage"},
+      "widgets_values": []
+    },
+    {
+      "id": 6,
+      "type": "SaveVideo",
+      "pos": [1490, 60],
+      "size": [380, 280],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "video", "type": "VIDEO", "link": 6}
       ],
       "outputs": [],
       "properties": {"Node name for S&R": "SaveVideo"},
@@ -69,8 +102,11 @@
   ],
   "links": [
     [1, 2, 0, 3, 0, "STRING"],
-    [2, 1, 0, 3, 1, "IMAGE"],
-    [3, 3, 0, 4, 0, "VIDEO"]
+    [2, 2, 0, 4, 0, "STRING"],
+    [3, 1, 0, 3, 1, "IMAGE"],
+    [4, 3, 0, 4, 1, "IMAGE"],
+    [5, 3, 0, 5, 0, "IMAGE"],
+    [6, 4, 0, 6, 0, "VIDEO"]
   ],
   "groups": [],
   "config": {},
