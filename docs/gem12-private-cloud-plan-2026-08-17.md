@@ -39,7 +39,7 @@ Immich, Jellyfin, ComfyUI를 media·ai 컨테이너에 올린다. 설치와 기�
 
 Uptime Kuma + 호스트 점검 타이머는 가동 중이다 — 구성과 점검 항목은 §12 6단계. 남은 것:
 
-- [ ] **Kuma 웹 UI 초기 설정** — `https://gem12.tail4555a7.ts.net:3001` 에서 ① 관리자 계정 생성 ② 알림 채널 등록(Settings → Notifications) ③ Push 모니터 생성(이름 `gem12-health`, 하트비트 300초, 재시도 2) ④ push URL 을 서버 `/etc/gem12-healthcheck.env` 의 `KUMA_PUSH_URL` 에 기록. URL 이 비어 있는 동안 점검 결과는 journal 에만 남는다
+- [ ] **Kuma 알림 채널 등록** — 웹 UI 설정 → 알림에서 채널(Telegram·메일 등)을 만들고 `gem12-health` 모니터에 연결한다. 채널이 없는 동안 down 은 대시보드에서만 보인다. 관리자 계정(SQLite 내장 DB)·push 모니터(하트비트 300초, 재시도 2)·`KUMA_PUSH_URL` 기입은 완료(2026-08-18) — push 도달 실측 통과
 - [ ] **GitHub 미러 push 실패 감시** — Forgejo API 토큰이 필요해 점검 목록에서 빠져 있다. 토큰을 발급해 `gem12-healthcheck` 에 점검을 추가한다
 
 Prometheus + Grafana 는 필요해지면 추가한다. 그때 온도 메트릭은 node_exporter 의 hwmon 컬렉터가 그대로 노출하므로(`k10temp`=CPU, `amdgpu`=GPU, `nvme`) 별도 도구가 필요 없다.
@@ -785,7 +785,7 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 - 자동 보안 업데이트: `commands/incus/services/dnf-automatic/` — 호스트 + 컨테이너 5개에 `dnf5-plugin-automatic` 설치, `/etc/dnf/automatic.conf` 에 `upgrade_type=security`·`apply_updates=yes`, `dnf5-automatic.timer`(매일 06:00 + 무작위 60분). Fedora 44 는 dnf5 라 패키지·타이머 이름이 dnf5-* 다
 - 실측 함정: 루프 안 `incus exec` 가 stdin 을 삼켜 컨테이너 목록 순회가 첫 항목에서 끊긴다 — `</dev/null` 필수
 
-**검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. Kuma push 연결 실측은 §1-3 의 UI 초기 설정 뒤에 한다.
+**검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. UI 초기 설정(내장 SQLite 선택 — Litestream 은 물리지 않는다: 모니터링 이력은 시간 단위 손실 허용이고 매시 restic 백업에 이미 포함) 후 push 도달 실측 통과, `gem12-health` 모니터 Up.
 
 ---
 
