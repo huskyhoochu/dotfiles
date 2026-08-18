@@ -70,18 +70,25 @@ trap 'umount "$BIND" 2>/dev/null || true' EXIT
 #
 # 업로드 상한 1 MiB/s: 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소 이관 같은
 # 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다 (사용자 결정 2026-08-19).
+#
+# 연결 2개(기본 5): rclone 공용 client_id 의 Drive 분당 쿼터를 여럿이 나눠 쓰는 탓에
+# 동시 요청이 많으면 500/rateLimitExceeded 가 재시도를 소진하고 백업이 죽는다
+# (2026-08-19 실측 — 402MB 유입 중 24분 만에 Fatal). 개인 client_id 전환(§1-1)이
+# 근본 해결이고, 그때까지는 동시성을 낮춰 쿼터 압박을 줄인다.
 restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/ai" \
   --exclude "${BIND}/mnt/data/ci" \
   --exclude "${BIND}/mnt/data/media/jellyfin/media" \
   --exclude "${BIND}/mnt/data/media/immich/library" \
   --limit-upload 1024 \
+  -o rclone.connections=2 \
   --tag auto --quiet
 log "restic backup done"
 
 # ── 3. 보존 정책 ────────────────────────────────────────────────────
 # forget 은 태그만 정리한다. 실제 데이터 회수(prune)는 주 1회 backup-prune 이 한다.
 
-restic forget --keep-hourly 24 --keep-daily 7 --keep-weekly 8 --quiet
+restic forget --keep-hourly 24 --keep-daily 7 --keep-weekly 8 \
+  -o rclone.connections=2 --quiet
 
 log "Done."
