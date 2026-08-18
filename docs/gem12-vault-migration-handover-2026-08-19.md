@@ -17,9 +17,32 @@
 restic 백업은 `/mnt/data/core` 를 포함하므로 세 저장소 모두 매시 백업에 편입된다.
 업로드 상한 1 MiB/s 가 걸려 있어 대량 유입이 회선을 점유하지 않는다.
 
-02:17 에 시작한 사이클이 새 저장소 402MB 를 올린다. 상한 1 MiB/s 라 7분 이상
-걸리는 것이 정상이다 — 상한이 의도대로 듣는다는 뜻이기도 하다. 완료 여부는
-아침에 한 번 확인하면 된다.
+**첫 대량 사이클은 한 번 실패했다.** 02:17 실행이 Google Drive 500 을 반복해서 받다
+24분 만에 `Fatal: unable to save snapshot` 으로 죽었다. 원인은 rclone **공용
+client_id** 의 분당 쿼터다 — 로그의 `project_number:202264815644` 가 그것이고,
+전 세계 rclone 사용자가 나눠 쓴다. restic 기본 동시성 5로 두드리니 재시도 한도를
+넘겼다.
+
+대응으로 `-o rclone.connections=2` 를 백업·forget·prune·check 에 걸고 스테일 락을
+해제한 뒤 재실행했다. **근본 해결은 §1-1 에 이미 미결로 있는 개인 client_id 전환**이다
+(Google Cloud 콘솔에서 OAuth 클라이언트를 만들어 `rclone config` 에 넣는 웹 작업).
+이번 일로 우선순위가 올라갔다.
+
+아침 확인:
+
+```bash
+ssh root@gem12 'systemctl show backup.service -p Result --value'   # success 여야 한다
+```
+
+`exit-code` 로 나오면 락을 풀고 다시 돌린다.
+
+```bash
+ssh root@gem12
+export RESTIC_REPOSITORY=rclone:gdrive:gem12-backup \
+  RESTIC_PASSWORD_FILE=/root/.restic-password HOME=/root
+restic unlock
+systemctl start backup.service
+```
 
 ```bash
 ssh root@gem12 'export RESTIC_REPOSITORY=rclone:gdrive:gem12-backup \
