@@ -1,0 +1,61 @@
+{
+  "last_node_id": 3,
+  "last_link_id": 2,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "OpenRouterPromptCraft",
+      "pos": [60, 200],
+      "size": [440, 300],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "OpenRouterPromptCraft"},
+      "widgets_values": ["AI 인플루언서 캐릭터 시트: 20대 여성, 은발 보브컷, 밝은 미소, 캐주얼 셔츠. 한 장 안에 정면 클로즈업 / 상반신 / 전신 / 좌우 프로필 5가지 뷰를 격자로 — 모든 뷰에서 동일한 얼굴·의상·헤어, 중립 회색 배경, 균일한 스튜디오 조명", "bytedance-seed/seed-2.0-lite", 0, "fixed", ""]
+    },
+    {
+      "id": 2,
+      "type": "OpenRouterSeedreamImage",
+      "pos": [580, 200],
+      "size": [400, 280],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "prompt", "type": "STRING", "link": 1, "widget": {"name": "prompt"}}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [2], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "OpenRouterSeedreamImage"},
+      "widgets_values": ["", "bytedance-seed/seedream-5-0-pro", "2K", "16:9", 0, "fixed", ""]
+    },
+    {
+      "id": 3,
+      "type": "SaveImage",
+      "pos": [1050, 200],
+      "size": [380, 320],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 2}
+      ],
+      "outputs": [],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["character-sheet"]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "STRING"],
+    [2, 2, 0, 3, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

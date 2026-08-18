@@ -59,6 +59,26 @@ def _key():
     return key
 
 
+def _image_refs(images, frame_type=None):
+    """IMAGE 텐서 배치 → API 의 image_url 참조 목록 (base64 data URI).
+
+    스키마는 images·videos 엔드포인트 공통(2026-08-18 문서 확인):
+    {"type": "image_url", "image_url": {"url": <https 또는 data URI>}}
+    frame_images 만 frame_type("first_frame"/"last_frame")이 추가된다.
+    """
+    refs = []
+    for t in images:
+        arr = (t.clamp(0, 1).cpu().numpy() * 255).astype(np.uint8)
+        buf = _io.BytesIO()
+        Image.fromarray(arr).save(buf, "PNG")
+        uri = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+        ref = {"type": "image_url", "image_url": {"url": uri}}
+        if frame_type:
+            ref["frame_type"] = frame_type
+        refs.append(ref)
+    return refs
+
+
 def _request(method, url, payload=None, auth=True):
     headers = {"Content-Type": "application/json"} if payload is not None else {}
     if auth:
@@ -93,10 +113,13 @@ class OpenRouterSeedreamImage:
             "optional": {
                 # 목록에 없는 신모델을 즉시 쓰기 위한 통로 (예: 차기 seedream)
                 "model_override": ("STRING", {"default": ""}),
+                # 캐릭터 시트 등 참조 이미지 — 동일 인물·스타일 유지용
+                "reference_images": ("IMAGE",),
             },
         }
 
-    def generate(self, prompt, model, resolution, aspect_ratio, seed, model_override=""):
+    def generate(self, prompt, model, resolution, aspect_ratio, seed,
+                 model_override="", reference_images=None):
         payload = {
             "model": model_override or model,
             "prompt": prompt,
@@ -105,6 +128,8 @@ class OpenRouterSeedreamImage:
         }
         if seed:
             payload["seed"] = seed
+        if reference_images is not None:
+            payload["input_references"] = _image_refs(reference_images)
         body = json.loads(_request("POST", API_BASE + "/images", payload))
         images = []
         for d in body["data"]:
@@ -136,11 +161,15 @@ class OpenRouterSeedanceVideo:
             },
             "optional": {
                 "model_override": ("STRING", {"default": ""}),
+                # 캐릭터 시트 등 참조 이미지 (reference-to-video) — 인물 일관성 유지
+                "reference_images": ("IMAGE",),
+                # 첫 프레임 고정 (image-to-video) — 클립 체인에 쓴다
+                "first_frame": ("IMAGE",),
             },
         }
 
     def generate(self, prompt, model, duration, resolution, aspect_ratio, seed,
-                 poll_timeout, model_override=""):
+                 poll_timeout, model_override="", reference_images=None, first_frame=None):
         payload = {
             "model": model_override or model,
             "prompt": prompt,
@@ -150,6 +179,10 @@ class OpenRouterSeedanceVideo:
         }
         if seed:
             payload["seed"] = seed
+        if reference_images is not None:
+            payload["input_references"] = _image_refs(reference_images)
+        if first_frame is not None:
+            payload["frame_images"] = _image_refs(first_frame[:1], frame_type="first_frame")
         sub = json.loads(_request("POST", API_BASE + "/videos", payload))
         job_id = sub["id"]
 
