@@ -14,16 +14,12 @@
 
 우선순위 순이다. 현재 가동 상태는 §2, 완료된 구축 단계와 검증 결과는 §12에 있다.
 
-### 1-1. 백업 파이프라인 완성 — 최우선
+### 1-1. 백업 — 남은 단계
 
-2026-08-18 실측 기준 가동 중인 것은 Litestream 로컬 복제(apps 컨테이너, `file://` → `/mnt/data/backup/litestream/`)다. §8의 3단계 설계 중 나머지를 세운다.
+1·2단계(매시 btrfs 스냅샷 + restic→Drive)는 가동 중이다 — 구성은 §8, 구축 기록과 복원 리허설 결과는 §12 5단계.
 
-- [ ] **1단계 — 로컬 스냅샷 자동화.** btrfs 스냅샷과 Incus 컨테이너 스냅샷을 타이머로 주기 생성한다. (2026-08-18 실측: 스냅샷 타이머와 컨테이너 스냅샷 모두 0건)
-- [ ] **2단계 — rclone → Google Drive.** apps 컨테이너에 rclone 설치, 맥북에서 `rclone authorize "drive"`로 OAuth 토큰을 발급해 이식(§6의 OAuth 절), 시간 단위 `rclone sync` + 암호화. 워크플로 B 맵의 rclone 티켓(arxiv_youtube#17)과 같은 작업이다.
-- [ ] **2단계 백업 대상 확정.** Forgejo 설정 DB, n8n 워크플로·자격증명, 각 서비스 설정, **미러 없는 Forgejo 저장소와 위키 repo**(§8 등급표 2026-08-18 개정)를 포함한다.
 - [ ] **3단계 — 오프라인 사본.** 암호화 외장 SSD, 분기 1회 갱신 + SMART 확인.
-
-**검증**: Drive에서 받아온 사본만으로 복원 리허설이 통과하는가.
+- [ ] **rclone 개인 client_id 발급.** 공용 client_id 는 2026년 중 퇴역 예고(rclone 공지) + 분당 쿼터 공유로 403 재시도가 생긴다(복원 리허설 실측). 발급 후 호스트 `[gdrive]` remote 에 client_id/secret 을 추가한다.
 
 ### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
 
@@ -63,7 +59,6 @@ btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 
 ### 1-4. 운영 정비
 
 - [ ] **자동 보안 업데이트** — `dnf-automatic` 설치와 타이머 활성화 (2026-08-18 실측: 미설치)
-- [ ] **재현성 정비** — n8n·NocoDB의 `docker run` 인자, 러너 등록 절차, `tailscale serve` 설정을 `commands/incus/services/` 스크립트로 고정한다 (§10 원칙 2)
 - [ ] **LAN IP 고정 임대** — 공유기에서 gem12(192.168.35.191)를 고정 임대로 묶는다. 재설치 때 IP가 바뀐 전례가 있다
 
 ### 1-5. 미결 판단
@@ -88,7 +83,7 @@ OCuLink eGPU 구조를 버리고 **일반 데스크톱 직결 + NAS 케이스**�
 | GPU | 7900 XTX ×2 (기존 ASRock Phantom Gaming OC + 중고 1대 추가, 직결) | VRAM 48GB — Glimmer 전속 1대 + ComfyUI 전속 1대로 경합 해소. 카드당 x8 Gen4는 현 OCuLink(x4 Gen4)의 2배 |
 | RAM | 64GB (DDR5 UDIMM 32GB×2, 신규 구매) | 실측 근거: 개발 파이프라인 풀가동 피크 11.2G, 추론은 VRAM 상주(llama-server 호스트 몫 5.5G). 96GB 이상은 통합 메모리 추론 시나리오에서만 필요한데 dGPU 2대 구성이므로 해당 없음. GEM12의 SO-DIMM은 규격이 달라 이식 불가 |
 | SSD | GEM12의 NVMe 1TB 이식 | 아래 레인 배치 참조 |
-| HDD | WD Red Plus 4TB × 1로 시작 | 단일 구성은 Drive 백업(§1-1)이 실재할 때 성립 — **백업 파이프라인 완성이 선행 조건**. 4대 이상으로 늘면 §5 원칙대로 ZFS RAIDZ 전환 |
+| HDD | WD Red Plus 4TB × 1로 시작 | 단일 구성은 Drive 백업이 실재할 때 성립 — 2026-08-18 가동·복원 리허설 통과로 충족(§12 5단계). 4대 이상으로 늘면 §5 원칙대로 ZFS RAIDZ 전환 |
 | PSU | 기존 eGPU용 1200W 재활용 | GPU 355W×2 + CPU 65W급 커버. PCIe 8핀 케이블 수(XTX당 2~3개, 총 5~6개) 확인 필요 |
 
 **시세 (다나와, 2026-08-18 조회)**
@@ -181,6 +176,7 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 | apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
 | ai (10.10.10.14) | `glimmer.service` — llama.cpp Vulkan, `10.10.10.14:8081` | active, health ok |
 | media (10.10.10.15) | 컨테이너만 가동. 서비스는 §1-2에서 올린다 | RUNNING |
+| 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
 
 GitHub push mirror는 polydeukes 최신 커밋이 GitHub에 반영된 것으로 확인했다.
 
@@ -601,22 +597,25 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 ### 1단계 — 로컬 스냅샷 (실수 복구)
 
-btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못된 업데이트 되돌리기에 쓴다.
+디스크 고장은 막지 못하지만 실수 삭제와 잘못된 업데이트 되돌리기에 쓴다. 두 갈래로 돈다 (`commands/incus/services/backup/`).
+
+- **호스트 데이터**: `backup.timer` 가 매시 루트 서브볼륨을 읽기전용 스냅샷으로 뜬다 (`/.snapshots/auto-<ts>`, 24시간 유지 — 더 긴 이력은 2단계 restic 이 맡는다). `/mnt/data` 는 루트 서브볼륨 위의 일반 디렉토리라 함께 잡힌다.
+- **컨테이너 루트fs**: Incus 풀이 별도 서브볼륨이라 위 스냅샷에 안 잡힌다. Incus 내장 스케줄로 매일 04:00 스냅샷, 7일 보존 (`profile default` 의 `snapshots.schedule`/`snapshots.expiry`).
 
 ### 2단계 — Google Drive (재해 복구)
 
-개인 Google Drive 약 5TB. **전체 디스크가 아니라 필수 요소만** 올린다. 로컬에서 먼저 암호화한다 (`rclone crypt` 또는 `restic`). 평문 DB나 시크릿을 그대로 올리지 않는다.
+개인 Google Drive 약 5TB. **전체 디스크가 아니라 필수 요소만** 올린다. 도구는 **restic(rclone 백엔드)** 로 확정 — 암호화·중복제거·버전 이력·무결성 검사(`restic check`)를 restic 이 맡고, Drive 전송만 rclone 이 한다. 평문 DB나 시크릿이 그대로 올라가지 않는다.
+
+매시 `backup.timer` 가 1단계 스냅샷에서 restic 백업을 뜬다 — SQLite(WAL)가 가동 중이어도 스냅샷 시점으로 crash-consistent 하다. 실행은 **호스트**에서 한다: 스냅샷 권한과 전 컨테이너 데이터(`/mnt/data/*`)는 호스트에만 있다. 보존은 시간 24 · 일 7 · 주 8, 실데이터 회수(prune)와 검사는 주 1회 `backup-prune.timer`.
 
 **반드시 백업** — 서버가 유일한 사본이다
 
-- Forgejo 설정 DB (Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅). 저장소 내용 자체는 GitHub 미러가 맡으므로 제외한다
-- **GitHub 미러가 없는 Forgejo 저장소** (gem12-agents, model-arena 등 Forgejo 태생 저장소) — 미러 규칙의 예외로, 서버가 유일 사본이다
-- **모든 위키 repo** (`<repo>.wiki.git`) — push mirror 는 위키를 옮기지 않는다. 비공개 계획 문서를 위키에 두는 저장소(polydeukes)에서 특히 중요하다
+- **Forgejo 데이터 디렉토리 전체** — 설정 DB(Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅), **미러 없는 Forgejo 태생 저장소**(gem12-agents, model-arena), **모든 위키 repo**(`<repo>.wiki.git` — push mirror 는 위키를 옮기지 않는다)
 - SQLite DB (업무기록 / 지식저장소 / 온톨로지)
 - n8n 워크플로와 자격증명
 - 각 서비스 설정과 compose 파일 (Forgejo에도 있지만 이중화)
 
-**GitHub 미러가 있는 저장소의 내용은 백업하지 않는다.** 미러가 이미 사본이므로 Drive까지 올리면 3중이 된다. 다만 이 면제는 미러가 실재하는 저장소의 git 내용에만 성립한다 — Issue·Actions 설정·위키·미러 없는 저장소는 위 목록대로 백업한다.
+Forgejo 는 선별하지 않고 디렉토리 통째로 싣는다 (2026-08-18 결정) — 현재 전체가 57MB 라 GitHub 미러가 있는 저장소를 걸러내는 로직의 위험이 절감 효과보다 크다. 용량이 문제될 때 미러 있는 저장소의 git 내용만 선별 제외로 전환한다.
 
 **여유가 되면 백업** — 다른 곳에 사본이 있다
 
@@ -624,7 +623,6 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 
 **백업하지 않음** — 재생성하거나 다시 받을 수 있다
 
-- Forgejo 저장소 내용. GitHub 미러가 사본이다
 - LLM / ComfyUI 모델 가중치. 재다운로드할 수 있다. **다만 목록과 다운로드 스크립트는 Git에 남긴다.** 이것이 실질적인 백업이다.
 - Jellyfin 미디어. 원본이 외장 SSD에 있다.
 - CI 캐시, Docker 레이어
@@ -644,12 +642,12 @@ SQLite (apps 컨테이너)
    │ Litestream — 초 단위 증분 복제
    ▼
 서버 내 별도 경로 (/mnt/data/backup/litestream)
-   │ rclone sync — 시간 단위, 암호화
+   │ restic — 매시, 암호화·중복제거 (rclone 백엔드)
    ▼
 Google Drive
 ```
 
-Litestream은 로컬 경로(`file://`)로 복제하고, `rclone sync`가 그 결과를 주기적으로 Drive에 올린다. Drive 반영이 시간 단위로 늦어지지만 개인 업무 기록에서 그 정도 손실은 감당할 수 있고 비용이 들지 않는다.
+Litestream은 로컬 경로(`file://`)로 복제하고, 매시 restic 백업이 그 결과를 Drive에 올린다. Drive 반영이 시간 단위로 늦어지지만 개인 업무 기록에서 그 정도 손실은 감당할 수 있고 비용이 들지 않는다.
 
 실시간 오프사이트 복제가 필요해지면 Cloudflare R2 같은 S3 호환 서비스를 붙인다. 월 1~2달러 수준이고 Litestream이 직접 쓸 수 있다. **서버 안에 MinIO를 띄우는 방식은 의미가 없다** — 복제본이 원본과 같은 디스크에 남아 재해 복구가 되지 않는다.
 
@@ -778,10 +776,19 @@ Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git 
 
 **검증 통과**: 저장소 push 시 Actions 자동 실행, GitHub 미러 커밋 반영, Litestream 로컬 복제·복원.
 
+### 5단계 — 백업 파이프라인 + 재현성 회수 (2026-08-18)
+
+- 백업: `commands/incus/services/backup/` — 매시 `backup.timer` 가 btrfs 루트 스냅샷(24시간 유지) 후 스냅샷에서 restic 백업(rclone `gdrive` 백엔드, ai·ci 제외), 주 1회 `backup-prune.timer` 가 prune + `check --read-data-subset=5%`. Incus 컨테이너 스냅샷은 내장 스케줄(매일 04:00, 7d). 시크릿은 `op://Personal/GEM12_RCLONE_DRIVE_TOKEN` · `GEM12_RESTIC_PASSWORD` → 호스트 600 파일
+- 구축 중 실측 함정 2건: **/root 아래 스크립트는 SELinux(admin_home_t)가 systemd 실행을 거부** → `/usr/local/sbin/gem12-backup` 으로 설치. **systemd 서비스에 HOME 이 없어** restic 캐시·rclone 설정 탐색 실패 → 유닛에 `Environment=HOME=/root`
+- 재현성 회수(§10 원칙 2): litestream.yml, n8n·NocoDB `docker run` 인자(비밀번호는 `/etc/nocodb.env` 로 분리), 러너 유닛·등록 절차, tailscale serve 규약을 `commands/incus/services/{litestream,n8n,nocodb,forgejo-runner,tailscale-serve}/` 로 고정. 전부 멱등 재실행 검증
+
+**검증 통과**: 맥에서 **Drive 사본과 1Password 시크릿만으로**(서버 무접촉) restic 복원 87.4 MiB — gitea.db `integrity_check` ok, 미러 없는 저장소(model-arena) clone 후 HEAD 일치, litestream 복제본에서 DB 재구성 ok.
+
 ---
 
 ## Changelog
 
+- **2026-08-18 (백업 파이프라인 가동)** — §1-1 의 1·2단계 완성(§12 5단계): 매시 btrfs 스냅샷 + restic→Drive, 복원 리허설 통과가 완료 판정. 계획 문구와 실측이 갈린 지점 반영 — rclone 은 apps 컨테이너가 아니라 **호스트에서** 돌린다(호스트에 이미 설치돼 있었고 스냅샷 권한·전 컨테이너 데이터 접근이 호스트에만 있음), 도구는 rclone crypt 대신 **restic(rclone 백엔드)** 채택, Forgejo 는 미러 유무 선별 없이 **디렉토리 전체 백업**(57MB, 용량 문제 시 선별 전환). §1-4 재현성 정비를 겸사 완료(사용자 요청): litestream·n8n·NocoDB·러너·tailscale serve 를 스크립트로 고정. 남은 것: 3단계 오프라인 SSD, rclone 개인 client_id(공용 client_id 2026년 중 퇴역 예고).
 - **2026-08-18 (에이전트 루프 서버 이주)** — 그간 수동 flue 실행(구현 에이전트·수동 리뷰)이 맥북에서 돌고 서버는 추론만 맡던 구조를 발견·해체. 동기는 실측: 맥→서버 장시간 스트리밍(무선 2구간+Tailscale)이 하루 4회 "Connection error"로 죽는 동안 서버 안 CI 리뷰는 무사고였고, 도구 실행(git·npm·tsc)이 맥 CPU를 써서 서버 리소스가 놀았음(사용자 관찰). 원칙 확정: **경계는 단발 신호(투입·관찰)만 건너고, 개발 과정 전체는 서버 안에서**. ci 컨테이너에 `commands/incus/services/agent-loop/` 규약(setup.sh·agent-run.sh·env.example) 신설 — systemd 일회 유닛이 루프를 소유해 SSH 절단과 무관. 스모크 통과(45초 완주). Fedora 44의 기본 nodejs 22 함정(nodejs24-npm으로 지정) 기록.
 - **2026-08-18 (백업 교리 개정)** — "Forgejo 저장소는 GitHub 미러가 사본이라 백업 제외" 규칙에 예외 편입: 미러 없는 Forgejo 태생 저장소(gem12-agents·model-arena)와 모든 위키 repo는 서버가 유일 사본이므로 "반드시 백업" 등급으로. polydeukes 계획 문서의 위키 이관 구상(gitignore 로컬 폴더 폐지 → 비공개 위키 + cognee 인덱스 + Drive 백업) 검토 중 발견.
 - **2026-08-18 (케이스 최종 후보 확정)** — 케이스 요건에 NAS 외형(사용자 취향) 추가. 디자인 업체 조사(Lian Li·Fractal·be quiet!·InWin·HYTE·Streacom·SilverStone) 결과 요건 충족 모델은 소수 — **최종 후보를 Jonsbo N5와 Lian Li V3000 Plus 2개로 좁히고 시스템 구축 시 재검토**하기로 결정. N5 커뮤니티 후기(소음이 실질 리스크, GPU 배기는 실측 안정)와 빌드 체크리스트 수록. Enthoo Pro 2·Meshify 2 XL은 PC 타워 외형으로 취향 탈락, Jonsbo N6는 mATX 전용으로 불가. 미니 서버 랙(10인치)은 본체 수용 불가 — 주변장치용 하이브리드 구성만 가능함을 확인.

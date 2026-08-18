@@ -72,7 +72,8 @@ Fedora의 로그인 셸은 bash다. 모든 스크립트는 `#!/usr/bin/env bash`
 |---|---|---|
 | 맥북 SSH 공개키 | `ssh-add -L` (1Password 에이전트가 출력) | `SSH_PUBKEY=... ./02-host.sh` |
 | Claude Code 토큰 | `claude setup-token` | `op read 'op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential'` |
-| rclone Google Drive | `rclone authorize "drive"` | `rclone config` 에 붙여넣기 |
+| rclone Google Drive | `rclone authorize "drive"` → `op://Personal/GEM12_RCLONE_DRIVE_TOKEN` | 호스트 `/root/.config/rclone/rclone.conf` 의 `[gdrive]` remote (600) |
+| restic 저장소 비밀번호 | `openssl rand -base64 32` → `op://Personal/GEM12_RESTIC_PASSWORD` | 호스트 `/root/.restic-password` (600). 잃으면 백업 전체를 잃는다 |
 
 토큰은 `~/.bashrc.local` 에 두거나 1Password에서 주입한다. 이 저장소에 넣지 않는다.
 
