@@ -20,7 +20,7 @@
 
 - [ ] **1단계 — 로컬 스냅샷 자동화.** btrfs 스냅샷과 Incus 컨테이너 스냅샷을 타이머로 주기 생성한다. (2026-08-18 실측: 스냅샷 타이머와 컨테이너 스냅샷 모두 0건)
 - [ ] **2단계 — rclone → Google Drive.** apps 컨테이너에 rclone 설치, 맥북에서 `rclone authorize "drive"`로 OAuth 토큰을 발급해 이식(§6의 OAuth 절), 시간 단위 `rclone sync` + 암호화. 워크플로 B 맵의 rclone 티켓(arxiv_youtube#17)과 같은 작업이다.
-- [ ] **2단계 백업 대상 확정.** Forgejo 설정 DB, n8n 워크플로·자격증명, 각 서비스 설정을 §8의 등급표대로 포함한다.
+- [ ] **2단계 백업 대상 확정.** Forgejo 설정 DB, n8n 워크플로·자격증명, 각 서비스 설정, **미러 없는 Forgejo 저장소와 위키 repo**(§8 등급표 2026-08-18 개정)를 포함한다.
 - [ ] **3단계 — 오프라인 사본.** 암호화 외장 SSD, 분기 1회 갱신 + SMART 확인.
 
 **검증**: Drive에서 받아온 사본만으로 복원 리허설이 통과하는가.
@@ -598,11 +598,13 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 **반드시 백업** — 서버가 유일한 사본이다
 
 - Forgejo 설정 DB (Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅). 저장소 내용 자체는 GitHub 미러가 맡으므로 제외한다
+- **GitHub 미러가 없는 Forgejo 저장소** (gem12-agents, model-arena 등 Forgejo 태생 저장소) — 미러 규칙의 예외로, 서버가 유일 사본이다
+- **모든 위키 repo** (`<repo>.wiki.git`) — push mirror 는 위키를 옮기지 않는다. 비공개 계획 문서를 위키에 두는 저장소(polydeukes)에서 특히 중요하다
 - SQLite DB (업무기록 / 지식저장소 / 온톨로지)
 - n8n 워크플로와 자격증명
 - 각 서비스 설정과 compose 파일 (Forgejo에도 있지만 이중화)
 
-**Forgejo 저장소 내용은 백업하지 않는다.** GitHub 미러가 이미 사본이므로 Drive까지 올리면 3중이 된다. 다만 미러가 옮기는 것은 Git 저장소뿐이고 Issue와 Actions 설정은 넘어가지 않으므로, **설정 DB만** 백업한다.
+**GitHub 미러가 있는 저장소의 내용은 백업하지 않는다.** 미러가 이미 사본이므로 Drive까지 올리면 3중이 된다. 다만 이 면제는 미러가 실재하는 저장소의 git 내용에만 성립한다 — Issue·Actions 설정·위키·미러 없는 저장소는 위 목록대로 백업한다.
 
 **여유가 되면 백업** — 다른 곳에 사본이 있다
 
@@ -768,6 +770,7 @@ Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git 
 
 ## Changelog
 
+- **2026-08-18 (백업 교리 개정)** — "Forgejo 저장소는 GitHub 미러가 사본이라 백업 제외" 규칙에 예외 편입: 미러 없는 Forgejo 태생 저장소(gem12-agents·model-arena)와 모든 위키 repo는 서버가 유일 사본이므로 "반드시 백업" 등급으로. polydeukes 계획 문서의 위키 이관 구상(gitignore 로컬 폴더 폐지 → 비공개 위키 + cognee 인덱스 + Drive 백업) 검토 중 발견.
 - **2026-08-18 (케이스 최종 후보 확정)** — 케이스 요건에 NAS 외형(사용자 취향) 추가. 디자인 업체 조사(Lian Li·Fractal·be quiet!·InWin·HYTE·Streacom·SilverStone) 결과 요건 충족 모델은 소수 — **최종 후보를 Jonsbo N5와 Lian Li V3000 Plus 2개로 좁히고 시스템 구축 시 재검토**하기로 결정. N5 커뮤니티 후기(소음이 실질 리스크, GPU 배기는 실측 안정)와 빌드 체크리스트 수록. Enthoo Pro 2·Meshify 2 XL은 PC 타워 외형으로 취향 탈락, Jonsbo N6는 mATX 전용으로 불가. 미니 서버 랙(10인치)은 본체 수용 불가 — 주변장치용 하이브리드 구성만 가능함을 확인.
 - **2026-08-18 (차기 장비 보드 재선정)** — 기존 GPU(Phantom Gaming OC, 3슬롯)가 ProArt X870E의 3슬롯 간격에서 아래 슬롯을 막는 실사용 보고를 확인, 보드 요건을 재정의(3슬롯 카드 2장 + GPU당 OCuLink 이상 + NAS 적합)하고 5개 경로 비교 후 **ASRock X870E Taichi Lite(4슬롯 간격, M.2 비공유)를 우선, X870 Steel Legend WiFi를 절약 대안**으로 확정. 주거 제약으로 Wi-Fi 운영이 차기 장비에서도 유지됨을 명시(유선 전환 서술 제거). 중고 카드 두께 제약 소멸.
 - **2026-08-18 (차기 장비)** — §1-6 신설: OCuLink 대신 데스크톱 직결 + NAS 케이스 방향 확정 (7900 + ProArt X870E-Creator + 7900 XTX ×2 + 64GB + WD 4TB). ASUS 공식 스펙으로 M.2_2 ↔ PCIEX16_2 대역폭 공유 확인, 기존 Phantom Gaming OC 실측 치수(330mm·3슬롯)로 슬롯 배치 결정, 다나와 시세(합계 약 390~410만 원) 기록. 케이스 우선 후보 Enthoo Pro 2 Server V2.
