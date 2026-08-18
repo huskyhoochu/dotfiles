@@ -59,6 +59,12 @@ def _key():
     return key
 
 
+# 참조 이미지의 긴 변 상한 — 2K 시트를 원본 그대로 base64 로 붙이면 요청이
+# 수 MB 로 커져 엣지(520) 오류 확률과 업로드 시간이 늘어난다. 참조 용도로는
+# 이 크기면 충분하다.
+REF_MAX_SIDE = 1280
+
+
 def _image_refs(images, frame_type=None):
     """IMAGE 텐서 배치 → API 의 image_url 참조 목록 (base64 data URI).
 
@@ -69,9 +75,12 @@ def _image_refs(images, frame_type=None):
     refs = []
     for t in images:
         arr = (t.clamp(0, 1).cpu().numpy() * 255).astype(np.uint8)
+        im = Image.fromarray(arr)
+        if max(im.size) > REF_MAX_SIDE:
+            im.thumbnail((REF_MAX_SIDE, REF_MAX_SIDE), Image.LANCZOS)
         buf = _io.BytesIO()
-        Image.fromarray(arr).save(buf, "PNG")
-        uri = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+        im.save(buf, "JPEG", quality=92)
+        uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
         ref = {"type": "image_url", "image_url": {"url": uri}}
         if frame_type:
             ref["frame_type"] = frame_type
@@ -89,7 +98,11 @@ def _request(method, url, payload=None, auth=True):
         with urllib.request.urlopen(req, timeout=300) as r:
             return r.read()
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"OpenRouter {e.code}: {e.read().decode(errors='replace')[:500]}")
+        detail = e.read().decode(errors="replace")[:500]
+        # 5xx 는 OpenRouter 쪽 일시 오류가 대부분이다. 제출(POST) 실패는 과금 전이라
+        # 다시 실행하면 되지만, 중복 과금 위험 때문에 자동 재시도는 하지 않는다.
+        hint = " — 일시 오류일 수 있다. 잠시 후 다시 실행 (제출 실패는 과금되지 않음)" if e.code >= 500 else ""
+        raise RuntimeError(f"OpenRouter {e.code}: {detail}{hint}")
 
 
 class OpenRouterSeedreamImage:
