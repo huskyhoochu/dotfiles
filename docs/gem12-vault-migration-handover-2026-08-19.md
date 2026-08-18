@@ -14,8 +14,20 @@
 
 `~/Documents/personal/b95labs_vault` 가 Obsidian 에 등록돼 있다. 열면 바로 쓸 수 있다.
 
-restic 백업은 `/mnt/data/core` 를 포함하므로 세 저장소 모두 매시 백업에 편입됐다.
+restic 백업은 `/mnt/data/core` 를 포함하므로 세 저장소 모두 매시 백업에 편입된다.
 업로드 상한 1 MiB/s 가 걸려 있어 대량 유입이 회선을 점유하지 않는다.
+
+02:17 에 시작한 사이클이 새 저장소 402MB 를 올린다. 상한 1 MiB/s 라 7분 이상
+걸리는 것이 정상이다 — 상한이 의도대로 듣는다는 뜻이기도 하다. 완료 여부는
+아침에 한 번 확인하면 된다.
+
+```bash
+ssh root@gem12 'export RESTIC_REPOSITORY=rclone:gdrive:gem12-backup \
+  RESTIC_PASSWORD_FILE=/root/.restic-password HOME=/root
+restic ls latest | grep -c cyprien_vault'   # 0 이 아니면 편입된 것
+```
+
+0 이면 `systemctl start backup.service` 로 한 번 돌리면 된다.
 
 ## 반드시 이 순서로 (아침에 할 일)
 
@@ -35,17 +47,29 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 
 ### 2. 미러 동기화 트리거
 
+가장 쉬운 길은 웹 UI 다. `https://gem12.tail4555a7.ts.net:3000` → 각 저장소 →
+설정 → 미러 → **지금 동기화**.
+
+CLI 로 하려면 토큰을 그때그때 발급해 쓰고 지운다 (작업용 토큰을 남겨두지 않는다).
+
 ```bash
-ssh root@gem12 'TOK=<Forgejo 토큰>
+ssh root@gem12
+TOK=$(incus exec core -- podman exec -u git forgejo \
+  forgejo admin user generate-access-token --username b95labs \
+  --token-name "sync-$(date +%s)" --scopes write:repository --raw)
+
 for r in cyprien_vault funes_days_alter b95labs_vault; do
   incus exec core -- curl -s -o /dev/null -w "$r: %{http_code}\n" \
     -X POST "http://127.0.0.1:3000/api/v1/repos/b95labs/$r/push_mirrors-sync" \
     -H "Authorization: token $TOK"
-done'
+done
+
+# 다 쓴 토큰 회수 — CLI 에 삭제 명령이 없고 DELETE API 는 basic auth 를 요구한다
+incus exec core -- podman exec forgejo sqlite3 /data/gitea/gitea.db \
+  "delete from access_token where name like 'sync-%';"
 ```
 
-각 200 이면 성공이다. Forgejo 웹 UI(`https://gem12.tail4555a7.ts.net:3000`)의
-저장소 설정 → 미러 에서 "지금 동기화"를 눌러도 된다.
+각 200 이면 성공이다.
 
 확인:
 
