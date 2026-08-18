@@ -143,6 +143,37 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 
 **이식 방식과 성공 기준의 충돌.** NVMe를 그대로 옮기면 §11의 재구축 검증을 건너뛰게 된다. 절충: 이식으로 빠르게 가동하되, HDD를 스크래치 삼아 부트스트랩 스크립트만으로 재구축 리허설을 1회 수행해 §11을 별도로 통과시킨다. 무선 어댑터가 AX200에서 보드 내장 Wi-Fi 7로 바뀌므로 인터페이스 이름 변경에 따른 네트워크 설정 갱신은 어차피 필요하다.
 
+### 1-7. Obsidian vault·블로그 저장소 이관 (2026-08-18 조사 완료, 실행 대기)
+
+cyprien_vault 와 funes_days_alter 를 Forgejo 원본 + GitHub push mirror 체제로 옮기고,
+vault 에서 문학 원고를 별도 vault 로 분리한다.
+
+**실측 (2026-08-18)**:
+
+- vault 로컬 클론은 `~/Documents/personal/cyprien_vault` 하나뿐 (638MB, obsidian-git
+  자동 커밋). alter 의 스크립트들이 참조하는 `~/Documents/obsidian/cyprien_vault` 경로는
+  존재하지 않는다 — **이관하는 김에 스크립트 경로를 고쳐야 한다**. alter 로컬 클론은
+  맥에서 발견되지 않음 (위치 사용자 확인 필요)
+- 발행 파이프라인 (`funes_days_alter/scripts/`): `publish_post.sh` 가 ① og 카드 생성
+  ② vault 커밋·push ③ alter 빈 커밋 push(배포 트리거) ④ gh commit status 폴링.
+  Vercel 빌드는 `sync_remote.sh` 가 **GitHub 의 cyprien_vault 를 gh 로 clone** 해
+  `Efforts/On/funes_days_blog/` → `src/content/posts` 로 복사 후 Astro SSG
+- **이관 호환성**: GitHub 이 미러로 남으면 Vercel(GitHub 연결·gh clone 경로) 은 변경 없이
+  동작한다. 미러 지연 경합(vault 미러 반영 전에 alter 빌드 시작) 가능성은
+  publish_post.sh 에 GitHub vault HEAD 확인 단계를 넣어 흡수한다
+
+**작업 순서 (실행 시)**:
+
+1. 문학 원고를 새 vault 로 분리 (대상 폴더는 사용자 지정) → Forgejo 신규 저장소
+2. cyprien_vault: Forgejo 로 이관(이슈 없음, 저장소만) → GitHub push mirror 설정
+   → 맥 클론 origin 을 Forgejo 로 재지정 (polydeukes 전례: 기존 GitHub 은 `github` 리모트)
+3. funes_days_alter: 같은 방식 이관 + 미러 → Vercel 배포 1회 실측 (미러 경유 트리거 검증)
+4. 스크립트 정비: sync_local/publish_post 의 vault 경로 정정, 미러 반영 대기 단계 추가
+5. 발행 리허설: publish_post.sh dry-run → 실발행 1회로 전 구간 검증
+
+**미결 (사용자 결정)**: 문학 vault 의 이름 / 분리 방식(스냅샷 새출발 vs 히스토리 추출) /
+GitHub 미러 여부. Forgejo 태생으로 두면 §8 교리대로 매시 restic 백업에 자동 포함된다.
+
 ---
 
 ## 2. 가동 상태 (2026-08-18 실측)
