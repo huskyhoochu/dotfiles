@@ -67,11 +67,15 @@ trap 'umount "$BIND" 2>/dev/null || true' EXIT
 
 # 사진·영화 원본은 외장 SSD 에 있고 용량이 Drive 백업에 맞지 않는다 (사용자 결정
 # 2026-08-18). Immich 는 원본 라이브러리만 빼고 DB(postgres — 앨범·메타)는 남긴다.
+#
+# 업로드 상한 1 MiB/s: 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소 이관 같은
+# 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다 (사용자 결정 2026-08-19).
 restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/ai" \
   --exclude "${BIND}/mnt/data/ci" \
   --exclude "${BIND}/mnt/data/media/jellyfin/media" \
   --exclude "${BIND}/mnt/data/media/immich/library" \
+  --limit-upload 1024 \
   --tag auto --quiet
 log "restic backup done"
 
