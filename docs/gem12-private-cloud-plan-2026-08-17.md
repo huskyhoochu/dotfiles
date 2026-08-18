@@ -44,7 +44,10 @@ Uptime Kuma를 먼저 붙이고, 필요해지면 Prometheus와 Grafana를 추가
 NVMe 수명 경고 / SMART 경고
 btrfs 체크섬 오류 (고칠 사본이 없으므로 즉시 대응해야 한다)
 RAM 사용량 > 90%
-비정상 CPU 온도
+CPU 온도 (k10temp Tctl) > 95°C
+GPU junction (amdgpu temp2) > 105°C — 7900 XTX 스로틀 한계 110°C. 풀부하 실측 95°C (2026-08-18)
+GPU VRAM (amdgpu temp3) > 100°C
+NVMe Composite > 70°C
 Wi-Fi 연결 끊김
 
 Forgejo 응답 없음
@@ -54,6 +57,8 @@ GitHub 미러 push 실패
 ```
 
 btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 1개라 자동 복구가 불가능하므로, 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다.
+
+온도는 커널 hwmon 이 전부 내준다 — `sensors`(lm_sensors, 설치됨) 또는 `/sys/class/hwmon/*/temp*_input`(k10temp=CPU, amdgpu=GPU edge/junction/VRAM, nvme). **node_exporter 의 hwmon 컬렉터가 이 값을 그대로 Prometheus 메트릭으로 노출**하므로 온도 알림은 별도 도구 없이 Prometheus 규칙으로 건다.
 
 ### 1-4. 운영 정비
 
