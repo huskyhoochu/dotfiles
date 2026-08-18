@@ -30,7 +30,8 @@ incus exec "$CONTAINER" -- chmod 600 /etc/agent-loop.env
 # ── 도구 설치 ───────────────────────────────────────────────────────
 
 log "Installing node/npm"
-incus exec "$CONTAINER" -- dnf install -y -q nodejs npm >/dev/null
+# Fedora 44 의 무접미사 nodejs 는 22 — 버전 접미사 패키지로 24 를 지정한다
+incus exec "$CONTAINER" -- dnf install -y -q nodejs24-npm >/dev/null
 NODE_V=$(incus exec "$CONTAINER" -- node --version)
 case "$NODE_V" in
   v2[4-9]*|v[3-9]*) log "node ${NODE_V}" ;;
