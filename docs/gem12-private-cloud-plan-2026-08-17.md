@@ -143,10 +143,42 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 
 **이식 방식과 성공 기준의 충돌.** NVMe를 그대로 옮기면 §11의 재구축 검증을 건너뛰게 된다. 절충: 이식으로 빠르게 가동하되, HDD를 스크래치 삼아 부트스트랩 스크립트만으로 재구축 리허설을 1회 수행해 §11을 별도로 통과시킨다. 무선 어댑터가 AX200에서 보드 내장 Wi-Fi 7로 바뀌므로 인터페이스 이름 변경에 따른 네트워크 설정 갱신은 어차피 필요하다.
 
-### 1-7. Obsidian vault·블로그 저장소 이관 (2026-08-18 조사 완료, 실행 대기)
+### 1-7. Obsidian vault·블로그 저장소 이관 (2026-08-19 실행 — 미러 반영만 대기)
 
 cyprien_vault 와 funes_days_alter 를 Forgejo 원본 + GitHub push mirror 체제로 옮기고,
-vault 에서 문학 원고를 별도 vault 로 분리한다.
+vault 에서 활성 작업을 별도 vault 로 분리했다.
+
+**실행 결과 (2026-08-19)**: 세 저장소가 Forgejo 원본이 됐다 — `b95labs/cyprien_vault`
+(327M), `b95labs/funes_days_alter`, `b95labs/b95labs_vault`(신규). 로컬 origin 은 전부
+Forgejo 이고 기존 GitHub 은 `github` 리모트다(polydeukes 전례). push mirror 3건 등록
+완료. 남은 것은 **GITHUB_MIRROR_PAT 의 저장소 범위 확장**(fine-grained PAT 이라
+polydeukes 에만 허용돼 미러 push 가 403) — 웹 UI 작업이라 사람 몫이다. 절차와 이후
+순서는 `gem12-vault-migration-handover-2026-08-19.md` 에 있다.
+
+**분리 방향이 뒤집혔다.** 애초 계획은 문학 원고를 새 vault 로 빼는 것이었으나,
+원고·메모·첨부가 vault 의 대부분(Atlas 39M + `_attachments` 181M)이고 15년 이력의
+주인공이다. 그것을 옮기면 활성 blog vault 가 죽은 이력 384M 를 끌고 다니게 된다.
+**이력은 내용과 함께 있어야 한다** — 그래서 cyprien_vault 를 아카이브로 제자리에 두고,
+활성 작업(Efforts 의 사업·개발 항목 + 블로그 원고)만 `b95labs_vault`(29M)로 스냅샷
+분리했다. 이름은 개인사업자 상호를 따랐다 — 블로그는 프로젝트 중의 하나일 뿐이다.
+
+**새 vault 는 ACE 를 버렸다.** `projects/` + `journal/` 둘로 시작하고 필요해질 때 늘린다.
+루트 `CLAUDE.md` 를 사람·AI 계약으로 두어 AI 쓰기 화이트리스트, provenance
+frontmatter(`author`/`model`/`reviewed`), 최소 스키마(`type`/`status`/`date`)를 고정했다.
+근거는 2026년 AI 협업 PKM 관행 조사 — Karpathy LLM Wiki 패턴, Google OKF(2026-06),
+Reitz 의 CLAUDE.md 계약. 소형 vault 에 임베딩·벡터 DB 를 두지 않는 것도 같은 조사의
+결론이다("인프라 구축 = 미루기" 안티패턴).
+
+**발행 파이프라인에 미러 가드를 넣었다.** vault 의 origin 이 Forgejo 가 되면서 GitHub 은
+비동기 미러가 됐고, Vercel 빌드는 GitHub 미러를 clone 한다. 미러 반영 전에 배포가
+시작되면 옛 원고가 나가는데 **빌드는 성공한다** — 실패가 아니라 오배포라 더 위험하다.
+`publish_post.sh` 3/5 단계가 미러 HEAD 일치를 최대 10분 기다린다. 이관 중 실제로 이
+지연을 관측했다(미러 등록이 push 이후라 첫 동기화가 밀렸다).
+
+검증: `sync_local` 80편 + `astro build` 통과(80 페이지·이미지 123개),
+`publish_post --dry-run` 5단계 통과. 실발행 1회는 사람이 아침에 한다.
+
+남은 절차와 순서 의존성은 `docs/gem12-vault-migration-handover-2026-08-19.md` 에 있다.
 
 **실측 (2026-08-18)**:
 
@@ -162,21 +194,33 @@ vault 에서 문학 원고를 별도 vault 로 분리한다.
   동작한다. 미러 지연 경합(vault 미러 반영 전에 alter 빌드 시작) 가능성은
   publish_post.sh 에 GitHub vault HEAD 확인 단계를 넣어 흡수한다
 
-**작업 순서 (실행 시)**:
+**작업 순서 (2026-08-19 실행)**:
 
-1. 문학 원고를 새 vault 로 분리 (대상 폴더는 사용자 지정) → Forgejo 신규 저장소
-2. cyprien_vault: Forgejo 로 이관(이슈 없음, 저장소만) → GitHub push mirror 설정
-   → 맥 클론 origin 을 Forgejo 로 재지정 (polydeukes 전례: 기존 GitHub 은 `github` 리모트)
-3. funes_days_alter: 같은 방식 이관 + 미러 → Vercel 배포 1회 실측 (미러 경유 트리거 검증)
-4. 스크립트 정비: sync_local/publish_post 의 vault 경로 정정, 미러 반영 대기 단계 추가
-5. 발행 리허설: publish_post.sh dry-run → 실발행 1회로 전 구간 검증
+1. ✅ restic 전송 상한 선행 반영 (업로드 1 MiB/s) — 대량 유입 전에 걸어야 의미가 있다
+2. ✅ 활성 작업을 `b95labs_vault` 로 분리 → Forgejo 신규 저장소
+3. ✅ cyprien_vault: Forgejo 이관 → origin 재지정 (기존 GitHub 은 `github` 리모트)
+4. ✅ funes_days_alter: 같은 방식 이관
+5. ✅ 스크립트 정비: 네 파일의 vault 경로 정정, 미러 반영 대기 단계 추가,
+   `sed -i` BSD/GNU 분기 (맥에서 로컬 발행이 실패하던 원인)
+6. ✅ 발행 리허설: sync 80편 + astro build + publish_post dry-run 통과
+7. ⏳ **사람 몫**: PAT 범위 확장 → 미러 동기화 → alter GitHub push → 실발행 1회
+   → cyprien 에서 이동 항목 삭제. 순서 의존성이 있다 (핸드오버 문서 참조)
 
-**확정 (사용자 결정 2026-08-18)**: 새 vault 이름 **manuscript_vault** / 분리는 **스냅샷
-새출발**(15년 이력은 cyprien_vault 에 그대로 남는다 — obsidian-git 자동 커밋 위주라 추적
-가치 낮음) / **GitHub 미러도 건다** (Forgejo + restic + GitHub 3겹) — 단 **GitHub 쪽은
-반드시 private** (`gh repo create --private` 로 생성 후 미러 연결, push mirror 는 대상
-저장소를 만들어 주지 않는다). 실행은 별도 회차 — 남은 유일한 입력은 **문학 원고가 든
-폴더 지정**(실행 시 확인).
+**확정 (사용자 결정 2026-08-18 → 2026-08-19 개정)**: 새 vault 이름 **b95labs_vault**
+(개인사업자 상호) / 분리는 **스냅샷 새출발** / **GitHub 미러도 건다** (Forgejo + restic +
+GitHub 3겹) — 단 **GitHub 쪽은 반드시 private** (`gh repo create --private` 로 생성 후
+미러 연결, push mirror 는 대상 저장소를 만들어 주지 않는다).
+
+분리 방향은 실행 직전에 역전됐다. 08-18 안은 원고를 새 vault 로 빼는 것이었으나, 사용자가
+"ACE 에서 Effort 와 데일리만 쓴다 — 역방향으로 생각해야 한다"고 정정하면서 대상이
+"원고 31M"에서 "Atlas 전체 + 첨부 220M"로 커졌고, 그러면 15년 이력이 내용과 분리된다.
+결론: 아카이브를 제자리에 두고 활성 작업만 뺀다. 데일리 노트도 가져오지 않고 새로
+시작한다 — ACE 자체를 AI 협업형 구조로 대체했다.
+
+**조사로 확인한 것 (2026-08-18~19)**: Atlas/Works 는 예상보다 독립적이었다 — 첨부
+임베드 0건, 외부 유입 링크 실질 2건, 유출은 `_indexes/year/*` 한 유형뿐. obsidian-git 은
+`data.json` 이 없어 전 기능 기본 비활성(자동 push 타이머 없음)이라 origin 교체가 조용히
+깨질 경로가 없었다. 로컬 클론은 origin 보다 19 커밋 뒤처져 있었다(다른 노트북에서 push).
 
 ---
 
@@ -630,6 +674,8 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 매시 `backup.timer` 가 1단계 스냅샷에서 restic 백업을 뜬다 — SQLite(WAL)가 가동 중이어도 스냅샷 시점으로 crash-consistent 하다. 실행은 **호스트**에서 한다: 스냅샷 권한과 전 컨테이너 데이터(`/mnt/data/*`)는 호스트에만 있다. 보존은 시간 24 · 일 7 · 주 8, 실데이터 회수(prune)와 검사는 주 1회 `backup-prune.timer`.
 
+**전송 대역에 상한을 둔다** (2026-08-19): 백업·prune 업로드 1 MiB/s, 주간 check 다운로드 2 MiB/s. 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소 이관 같은 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다. 총 전송량이 아니라 **순간 점유율**이 같이 쓰는 사람에게 체감되는 값이라, 며칠에 나눠 올리는 것보다 이쪽이 본질적 해법이다(나눠 올리면 이후 git gc 가 팩을 재작성해 재업로드가 생긴다).
+
 **반드시 백업** — 서버가 유일한 사본이다
 
 - **Forgejo 데이터 디렉토리 전체** — 설정 DB(Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅), **미러 없는 Forgejo 태생 저장소**(gem12-agents, model-arena), **모든 위키 repo**(`<repo>.wiki.git` — push mirror 는 위키를 옮기지 않는다)
@@ -699,6 +745,12 @@ sudo gem12-offline-copy     # commands/incus/services/backup/offline-copy.sh
 ## 9. Git 전략 — Forgejo + GitHub 미러
 
 Forgejo가 주 저장소이고, GitHub에 미러로 복제한다. push mirror는 가동 중이며 polydeukes에서 refs 일치를 검증했다 (8시간 주기 + sync_on_commit, PAT는 `op://Personal/GITHUB_MIRROR_PAT`).
+
+**PAT 는 fine-grained 라 저장소를 하나씩 허용해야 한다** (2026-08-19 실측). 새 저장소에
+미러를 걸면 등록은 되지만 push 가 403 으로 실패하므로, GitHub 웹 UI 에서 해당 토큰의
+Repository access 에 저장소를 추가해야 한다 — API 로는 바꿀 수 없다. 또한
+`sync_on_commit` 은 Forgejo 가 push 를 받을 때 트리거되므로, **미러를 push 이후에
+등록하면 첫 동기화는 8시간 주기나 수동 트리거를 기다린다.**
 
 ```text
 개발 (MacBook)
@@ -841,6 +893,7 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 
 ## Changelog
 
+- **2026-08-19 (§1-7 vault 이관 — 분리 방향 역전)** — cyprien_vault·funes_days_alter 를 Forgejo 원본으로 옮기고 활성 작업을 `b95labs_vault`(신규 29M)로 분리. **계획과 반대로 갔다**: 원고를 빼는 대신 아카이브를 제자리에 두고 일 노트를 뺐다 — 원고·메모·첨부가 vault 의 대부분이고 15년 이력의 주인공이라, 옮기면 활성 vault 가 죽은 이력 384M 를 끌고 다니게 된다. 새 vault 는 ACE 를 버리고 `projects/` + `journal/` 로 시작하며 루트 CLAUDE.md 를 사람·AI 계약으로 둔다(AI 쓰기 화이트리스트, provenance frontmatter). 2026년 AI 협업 PKM 관행 조사(Karpathy LLM Wiki, Google OKF, Reitz CLAUDE.md 계약)에 근거. 발행 파이프라인에 **미러 반영 가드**를 넣었다 — GitHub 이 비동기 미러가 되면서 반영 전 배포가 옛 원고로 "성공"하는 오배포 경로가 생겼고, 이관 중 실제로 지연을 관측했다. 부수 발견: `sync_local.sh` 의 `sed -i` 가 BSD(macOS)에서 실패해 로컬 발행이 애초에 동작하지 않았다. 실측 함정: GITHUB_MIRROR_PAT 은 fine-grained 라 저장소별 허용이 필요하고 웹 UI 로만 바꿀 수 있다. 검증: sync 80편 + astro build + dry-run 5단계 통과. 남은 것: PAT 범위 확장 → 미러 동기화 → alter GitHub push → 실발행 1회 → cyprien 정리(순서 의존, 핸드오버 문서).
 - **2026-08-18 (백업 3단계 가동 + 미디어 백업 교리 확정)** — §1-1 의 3단계(오프라인 사본)를 `gem12-offline-copy` 스크립트로 가동: 매시 스냅샷 최신본에서 핵심 데이터 tar(183MB) → 외장 SSD, **비암호화**(사용자 결정 — 계획의 "암호화 SSD" 문구 폐기), SMART 확인 내장(PASSED). 미디어 백업 교리 확정: Immich 사진 라이브러리·Jellyfin 미디어는 용량(55G+126G) 때문에 Drive 백업에서 제외(backup.sh exclude), 이중화는 외장 SSD 원본 + 서버 사본이 맡는다 — "여유가 되면 백업" 등급 폐지. Immich postgres 는 백업 유지. 외장 SSD 사진·영화 대량 반입 진행(폴더별 앨범, systemd 일회 유닛).
 - **2026-08-18 (구축 5단계 완료 — media + ComfyUI, §12 7단계)** — Immich(ML 제외 Quadlet 구성)·Jellyfin(freeworld 26.1.6 리빌드 등장으로 보류 해소, VAAPI H264/HEVC 실측)·ComfyUI(python3.13 venv + CPU torch, OpenRouter 클라우드 전용) 가동. 사용자 정정으로 OpenRouter 전용 이미지/비디오 엔드포인트에서 ByteDance 2026-08 라인업(seedream-5.0, seedance-2.5)을 발견해 자작 노드 2개로 연결 — 기존 키 하나로 최신 모델 전부 커버. healthcheck·tailscale serve 에 3개 서비스 편입, 미디어 반입 튜토리얼 작성(외장 SSD exFAT 실측). 교훈: 유료 생성 API 검증을 승인 없이 반복해 비용을 태웠다 — 이후 유료 호출 검증은 비용 제시·승인 후 최저가 1회로 제한한다.
 - **2026-08-18 (점검 범위 확장 — 컨테이너 전수 + 미러 push 감시)** — gem12-healthcheck 에 컨테이너 5개 RUNNING 전수, llm(glimmer/lightning 교대 — 둘 중 하나), n8n·NocoDB·forgejo-runner, GitHub 미러 push `last_error`(Forgejo API, 토큰은 deploy.sh 가 CLI 발급) 점검을 추가해 §1-3 의 "미러 push 실패 감시" 잔여 항목 해소. 첫 실행이 glimmer 정지를 잡았는데 lightning 교대 운용에 의한 정상 상태로 판명 — 단독 점검을 "둘 중 하나"로 정정(오탐 실측). 남은 것: Kuma 알림 채널 등록(DB 실측으로 미등록 확인).
