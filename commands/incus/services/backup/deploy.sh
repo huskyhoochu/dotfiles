@@ -50,7 +50,10 @@ fi
 
 # ── 유닛 배포 (호스트) ──────────────────────────────────────────────
 
-log "Deploying systemd units"
+log "Deploying backup script and systemd units"
+# /root 아래 두면 SELinux(admin_home_t)가 systemd 실행을 막는다 —
+# /usr/local/sbin 으로 복사해 bin_t 컨텍스트를 얻는다.
+install -m 755 "${SCRIPT_DIR}/backup.sh" /usr/local/sbin/gem12-backup
 for unit in "${UNITS[@]}"; do
   cp "${SCRIPT_DIR}/${unit}" "/etc/systemd/system/${unit}"
 done

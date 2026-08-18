@@ -4,6 +4,10 @@
 # 호스트에서 root 로 실행한다. backup.timer 가 매시 부른다. 수동 실행도 안전하다.
 #   sudo ./backup.sh
 #
+# deploy.sh 가 /usr/local/sbin/gem12-backup 으로 복사해 설치한다 — /root 아래는
+# SELinux(admin_home_t)가 systemd 의 실행을 막는다(실측). 그래서 이 파일은
+# lib.sh 를 source 하지 않고 자립한다.
+#
 # 1. 루트 서브볼륨을 읽기전용 스냅샷으로 뜬다 (/mnt/data 는 루트 서브볼륨 위의
 #    일반 디렉토리라 여기 함께 잡힌다. 컨테이너 루트fs 는 별도 서브볼륨이라
 #    안 잡힌다 — 그쪽은 Incus 내장 스냅샷 스케줄의 몫, deploy.sh 참조)
@@ -13,7 +17,15 @@
 # 시크릿: /root/.restic-password (op://Personal/GEM12_RESTIC_PASSWORD),
 #         /root/.config/rclone/rclone.conf 의 [gdrive] (op://Personal/GEM12_RCLONE_DRIVE_TOKEN)
 
-source "$(dirname "$0")/../../lib.sh"
+set -euo pipefail
+
+log()  { printf '\033[34m[%s]\033[0m %s\n' "$(date '+%H:%M:%S')" "$1"; }
+die()  { printf '\033[31m[ERROR]\033[0m %s\n' "$1" >&2; exit 1; }
+skip() { printf '\033[90m[SKIP]\033[0m %s\n' "$1"; }
+
+require_root() {
+  [ "$(id -u)" -eq 0 ] || die "Must run as root. Use sudo or log in as root."
+}
 
 SNAP_DIR="/.snapshots"
 SNAP_KEEP_HOURS=24
