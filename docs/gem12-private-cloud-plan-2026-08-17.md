@@ -172,7 +172,7 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 | 호스트 | Fedora Server 44 (커널 6.19.10), btrfs 단일 파티션 | 29G / 929G 사용 |
 | Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
 | core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) | active, healthz 200 |
-| ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker | 둘 다 active |
+| ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
 | apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
 | ai (10.10.10.14) | `glimmer.service` — llama.cpp Vulkan, `10.10.10.14:8081` | active, health ok |
 | media (10.10.10.15) | 컨테이너만 가동. 서비스는 §1-2에서 올린다 | RUNNING |
@@ -187,6 +187,13 @@ ssh root@10.10.10.13                           # 컨테이너 — 서브넷 라�
 https://gem12.tail4555a7.ts.net:3000           # Forgejo  (tailscale serve, tailnet 전용)
 https://gem12.tail4555a7.ts.net:5678           # n8n
 https://gem12.tail4555a7.ts.net:8080           # NocoDB
+```
+
+에이전트 루프 투입 (경계 원칙 — 맥은 단발 신호만, 루프·도구 실행·추론은 전부 서버 안):
+
+```bash
+echo "<과제>" | ssh b95labs@gem12 "sudo /root/dotfiles/commands/incus/services/agent-loop/agent-run.sh run <id> <owner/repo> [glimmer|lightning]"
+ssh b95labs@gem12 "sudo .../agent-run.sh status <id>"   # 조회 — 로그·종료 코드
 ```
 
 ---
@@ -770,6 +777,7 @@ Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git 
 
 ## Changelog
 
+- **2026-08-18 (에이전트 루프 서버 이주)** — 그간 수동 flue 실행(구현 에이전트·수동 리뷰)이 맥북에서 돌고 서버는 추론만 맡던 구조를 발견·해체. 동기는 실측: 맥→서버 장시간 스트리밍(무선 2구간+Tailscale)이 하루 4회 "Connection error"로 죽는 동안 서버 안 CI 리뷰는 무사고였고, 도구 실행(git·npm·tsc)이 맥 CPU를 써서 서버 리소스가 놀았음(사용자 관찰). 원칙 확정: **경계는 단발 신호(투입·관찰)만 건너고, 개발 과정 전체는 서버 안에서**. ci 컨테이너에 `commands/incus/services/agent-loop/` 규약(setup.sh·agent-run.sh·env.example) 신설 — systemd 일회 유닛이 루프를 소유해 SSH 절단과 무관. 스모크 통과(45초 완주). Fedora 44의 기본 nodejs 22 함정(nodejs24-npm으로 지정) 기록.
 - **2026-08-18 (백업 교리 개정)** — "Forgejo 저장소는 GitHub 미러가 사본이라 백업 제외" 규칙에 예외 편입: 미러 없는 Forgejo 태생 저장소(gem12-agents·model-arena)와 모든 위키 repo는 서버가 유일 사본이므로 "반드시 백업" 등급으로. polydeukes 계획 문서의 위키 이관 구상(gitignore 로컬 폴더 폐지 → 비공개 위키 + cognee 인덱스 + Drive 백업) 검토 중 발견.
 - **2026-08-18 (케이스 최종 후보 확정)** — 케이스 요건에 NAS 외형(사용자 취향) 추가. 디자인 업체 조사(Lian Li·Fractal·be quiet!·InWin·HYTE·Streacom·SilverStone) 결과 요건 충족 모델은 소수 — **최종 후보를 Jonsbo N5와 Lian Li V3000 Plus 2개로 좁히고 시스템 구축 시 재검토**하기로 결정. N5 커뮤니티 후기(소음이 실질 리스크, GPU 배기는 실측 안정)와 빌드 체크리스트 수록. Enthoo Pro 2·Meshify 2 XL은 PC 타워 외형으로 취향 탈락, Jonsbo N6는 mATX 전용으로 불가. 미니 서버 랙(10인치)은 본체 수용 불가 — 주변장치용 하이브리드 구성만 가능함을 확인.
 - **2026-08-18 (차기 장비 보드 재선정)** — 기존 GPU(Phantom Gaming OC, 3슬롯)가 ProArt X870E의 3슬롯 간격에서 아래 슬롯을 막는 실사용 보고를 확인, 보드 요건을 재정의(3슬롯 카드 2장 + GPU당 OCuLink 이상 + NAS 적합)하고 5개 경로 비교 후 **ASRock X870E Taichi Lite(4슬롯 간격, M.2 비공유)를 우선, X870 Steel Legend WiFi를 절약 대안**으로 확정. 주거 제약으로 Wi-Fi 운영이 차기 장비에서도 유지됨을 명시(유선 전환 서술 제거). 중고 카드 두께 제약 소멸.
