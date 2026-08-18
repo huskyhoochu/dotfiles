@@ -173,8 +173,10 @@ vault 에서 문학 원고를 별도 vault 로 분리한다.
 
 **확정 (사용자 결정 2026-08-18)**: 새 vault 이름 **manuscript_vault** / 분리는 **스냅샷
 새출발**(15년 이력은 cyprien_vault 에 그대로 남는다 — obsidian-git 자동 커밋 위주라 추적
-가치 낮음) / **GitHub 미러도 건다** (Forgejo + restic + GitHub 3겹). 실행은 별도 회차 —
-남은 유일한 입력은 **문학 원고가 든 폴더 지정**(실행 시 확인).
+가치 낮음) / **GitHub 미러도 건다** (Forgejo + restic + GitHub 3겹) — 단 **GitHub 쪽은
+반드시 private** (`gh repo create --private` 로 생성 후 미러 연결, push mirror 는 대상
+저장소를 만들어 주지 않는다). 실행은 별도 회차 — 남은 유일한 입력은 **문학 원고가 든
+폴더 지정**(실행 시 확인).
 
 ---
 
