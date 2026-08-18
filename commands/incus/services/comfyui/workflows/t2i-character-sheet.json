@@ -15,7 +15,7 @@
         {"name": "prompt", "type": "STRING", "links": [1], "slot_index": 0}
       ],
       "properties": {"Node name for S&R": "OpenRouterPromptCraft"},
-      "widgets_values": ["AI 인플루언서 캐릭터 시트: 20대 여성, 은발 보브컷, 밝은 미소, 캐주얼 셔츠. 한 장 안에 정면 클로즈업 / 상반신 / 전신 / 좌우 프로필 5가지 뷰를 격자로 — 모든 뷰에서 동일한 얼굴·의상·헤어, 중립 회색 배경, 균일한 스튜디오 조명", "bytedance-seed/seed-2.0-lite", 0, "fixed", ""]
+      "widgets_values": ["스타일라이즈드 3D 애니메이션 캐릭터 시트 (픽사·드림웍스풍, 실사 아님): 20대 여성 캐릭터, 은발 보브컷, 밝은 미소, 캐주얼 셔츠. 한 장 안에 정면 클로즈업 / 상반신 / 전신 / 좌우 프로필 5가지 뷰를 격자로 — 모든 뷰에서 동일한 얼굴·의상·헤어, 중립 회색 배경, 균일한 스튜디오 조명. 명백한 3D 렌더 질감으로", "bytedance-seed/seed-2.0-lite", 0, "fixed", ""]
     },
     {
       "id": 2,
