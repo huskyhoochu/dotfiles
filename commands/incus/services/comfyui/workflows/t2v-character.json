@@ -42,8 +42,13 @@
       "order": 2,
       "mode": 0,
       "inputs": [
-        {"name": "prompt", "type": "STRING", "link": 1, "widget": {"name": "prompt"}},
-        {"name": "reference_images", "type": "IMAGE", "link": 3}
+        {"name": "reference_images", "shape": 7, "type": "IMAGE", "link": 3},
+        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 1},
+        {"name": "model", "type": "COMBO", "widget": {"name": "model"}, "link": null},
+        {"name": "resolution", "type": "COMBO", "widget": {"name": "resolution"}, "link": null},
+        {"name": "aspect_ratio", "type": "COMBO", "widget": {"name": "aspect_ratio"}, "link": null},
+        {"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": null},
+        {"name": "model_override", "shape": 7, "type": "STRING", "widget": {"name": "model_override"}, "link": null}
       ],
       "outputs": [
         {"name": "IMAGE", "type": "IMAGE", "links": [4, 5], "slot_index": 0}
@@ -60,8 +65,17 @@
       "order": 3,
       "mode": 0,
       "inputs": [
-        {"name": "prompt", "type": "STRING", "link": 2, "widget": {"name": "prompt"}},
-        {"name": "first_frame", "type": "IMAGE", "link": 4}
+        {"name": "reference_images", "shape": 7, "type": "IMAGE", "link": null},
+        {"name": "first_frame", "shape": 7, "type": "IMAGE", "link": 4},
+        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 2},
+        {"name": "model", "type": "COMBO", "widget": {"name": "model"}, "link": null},
+        {"name": "duration", "type": "INT", "widget": {"name": "duration"}, "link": null},
+        {"name": "resolution", "type": "COMBO", "widget": {"name": "resolution"}, "link": null},
+        {"name": "ratio", "type": "COMBO", "widget": {"name": "ratio"}, "link": null},
+        {"name": "generate_audio", "type": "BOOLEAN", "widget": {"name": "generate_audio"}, "link": null},
+        {"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": null},
+        {"name": "poll_timeout", "type": "INT", "widget": {"name": "poll_timeout"}, "link": null},
+        {"name": "model_override", "shape": 7, "type": "STRING", "widget": {"name": "model_override"}, "link": null}
       ],
       "outputs": [
         {"name": "VIDEO", "type": "VIDEO", "links": [6], "slot_index": 0}
@@ -101,9 +115,9 @@
     }
   ],
   "links": [
-    [1, 2, 0, 3, 0, "STRING"],
-    [2, 2, 0, 4, 0, "STRING"],
-    [3, 1, 0, 3, 1, "IMAGE"],
+    [1, 2, 0, 3, 1, "STRING"],
+    [2, 2, 0, 4, 2, "STRING"],
+    [3, 1, 0, 3, 0, "IMAGE"],
     [4, 3, 0, 4, 1, "IMAGE"],
     [5, 3, 0, 5, 0, "IMAGE"],
     [6, 4, 0, 6, 0, "VIDEO"]

@@ -26,7 +26,13 @@
       "order": 1,
       "mode": 0,
       "inputs": [
-        {"name": "prompt", "type": "STRING", "link": 1, "widget": {"name": "prompt"}}
+        {"name": "reference_images", "shape": 7, "type": "IMAGE", "link": null},
+        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 1},
+        {"name": "model", "type": "COMBO", "widget": {"name": "model"}, "link": null},
+        {"name": "resolution", "type": "COMBO", "widget": {"name": "resolution"}, "link": null},
+        {"name": "aspect_ratio", "type": "COMBO", "widget": {"name": "aspect_ratio"}, "link": null},
+        {"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": null},
+        {"name": "model_override", "shape": 7, "type": "STRING", "widget": {"name": "model_override"}, "link": null}
       ],
       "outputs": [
         {"name": "IMAGE", "type": "IMAGE", "links": [2], "slot_index": 0}
@@ -51,7 +57,7 @@
     }
   ],
   "links": [
-    [1, 1, 0, 2, 0, "STRING"],
+    [1, 1, 0, 2, 1, "STRING"],
     [2, 2, 0, 3, 0, "IMAGE"]
   ],
   "groups": [],
