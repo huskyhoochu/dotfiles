@@ -1,16 +1,105 @@
 # GEM12 기반 1인용 Private Cloud 구축 계획
 
-> 날짜: 2026-08-17 (월)
+> 작성: 2026-08-17 (월) · 최근 갱신: 2026-08-18 — 서버 접속 실측 반영
 > 대상 장비: Tianbei GEM12 (Ryzen 7 8845HS / 60GB RAM / NVMe 1TB / RX 7900 XTX via OCuLink)
-> 현재 Fedora Workstation 데스크톱을 포맷하고 Fedora Server 전용 서버로 전환한다. 가상화는 Incus 시스템 컨테이너를 쓴다.
+> Fedora Server 44 베어메탈 + Incus 시스템 컨테이너로 가동 중이다.
 
 ## 한줄 요약
 
-혼자 쓰는 개인 서버를 만든다. Git 저장소와 CI/CD, 업무 기록과 지식저장소, 로컬 LLM 추론, 이미지·영상 작업 환경, 사진과 미디어 보관을 한 장비에서 돌린다. 디스크가 1개뿐이라 이중화가 없으므로 **백업이 유일한 방어선**이고, 모든 설정을 Git에 남겨 **다른 장비에서 그대로 재구축할 수 있는 상태**를 유지한다. 2027년 초 새 장비(WTR MAX)로 옮길 때 이 설정을 재적용해 서비스가 살아나는지가 최종 검증이다.
+혼자 쓰는 개인 서버다. Git 저장소와 CI/CD, 업무 기록과 지식저장소, 로컬 LLM 추론, 이미지·영상 작업 환경, 사진과 미디어 보관을 한 장비에서 돌린다. 디스크가 1개뿐이라 이중화가 없으므로 **백업이 유일한 방어선**이고, 모든 설정을 Git에 남겨 **다른 장비에서 그대로 재구축할 수 있는 상태**를 유지한다. 2027년 초 새 장비(WTR MAX)로 옮길 때 이 설정을 재적용해 서비스가 살아나는지가 최종 검증이다.
 
 ---
 
-## 1. 장비 실측
+## 1. 남은 작업
+
+우선순위 순이다. 현재 가동 상태는 §2, 완료된 구축 단계와 검증 결과는 §12에 있다.
+
+### 1-1. 백업 파이프라인 완성 — 최우선
+
+2026-08-18 실측 기준 가동 중인 것은 Litestream 로컬 복제(apps 컨테이너, `file://` → `/mnt/data/backup/litestream/`)다. §8의 3단계 설계 중 나머지를 세운다.
+
+- [ ] **1단계 — 로컬 스냅샷 자동화.** btrfs 스냅샷과 Incus 컨테이너 스냅샷을 타이머로 주기 생성한다. (2026-08-18 실측: 스냅샷 타이머와 컨테이너 스냅샷 모두 0건)
+- [ ] **2단계 — rclone → Google Drive.** apps 컨테이너에 rclone 설치, 맥북에서 `rclone authorize "drive"`로 OAuth 토큰을 발급해 이식(§6의 OAuth 절), 시간 단위 `rclone sync` + 암호화. 워크플로 B 맵의 rclone 티켓(arxiv_youtube#17)과 같은 작업이다.
+- [ ] **2단계 백업 대상 확정.** Forgejo 설정 DB, n8n 워크플로·자격증명, 각 서비스 설정을 §8의 등급표대로 포함한다.
+- [ ] **3단계 — 오프라인 사본.** 암호화 외장 SSD, 분기 1회 갱신 + SMART 확인.
+
+**검증**: Drive에서 받아온 사본만으로 복원 리허설이 통과하는가.
+
+### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
+
+Immich, Jellyfin, ComfyUI를 media·ai 컨테이너에 올린다. 설치와 기동 확인까지만 하고 데이터는 나중에 채운다.
+
+- [ ] media 컨테이너 `mesa-va-drivers-freeworld` 교체 — RPM Fusion이 mesa 26.1.6 리빌드를 낼 때까지 보류, Jellyfin 구축 전 재시도
+- [ ] Immich / Jellyfin 배치 (Podman, 780M VAAPI)
+- [ ] ComfyUI 배치 (ai 컨테이너, 클라우드 모델 라우팅 + 로컬 노드)
+
+**검증**: Immich에 사진 업로드 가능, Jellyfin 기동, ComfyUI에서 클라우드 모델 호출 성공.
+
+### 1-3. 구축 6단계 — 모니터링
+
+Uptime Kuma를 먼저 붙이고, 필요해지면 Prometheus와 Grafana를 추가한다. 최소 알림 대상:
+
+```text
+디스크 사용량 > 85%
+NVMe 수명 경고 / SMART 경고
+btrfs 체크섬 오류 (고칠 사본이 없으므로 즉시 대응해야 한다)
+RAM 사용량 > 90%
+비정상 CPU 온도
+Wi-Fi 연결 끊김
+
+Forgejo 응답 없음
+Litestream 로컬 복제 실패
+rclone sync 실패 (Drive 반영 중단)
+GitHub 미러 push 실패
+```
+
+btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 1개라 자동 복구가 불가능하므로, 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다.
+
+### 1-4. 운영 정비
+
+- [ ] **자동 보안 업데이트** — `dnf-automatic` 설치와 타이머 활성화 (2026-08-18 실측: 미설치)
+- [ ] **재현성 정비** — n8n·NocoDB의 `docker run` 인자, 러너 등록 절차, `tailscale serve` 설정을 `commands/incus/services/` 스크립트로 고정한다 (§10 원칙 2)
+- [ ] **LAN IP 고정 임대** — 공유기에서 gem12(192.168.35.191)를 고정 임대로 묶는다. 재설치 때 IP가 바뀐 전례가 있다
+
+### 1-5. 미결 판단
+
+| 항목 | 결정 시점 |
+|---|---|
+| 블루레이 리핑 규모 → 미디어 스토리지 계획 | 리핑 시작 시 |
+| ComfyUI 로컬 모델 중 실제로 필요한 것 선별 (백업 목록 기준 65GB) | ComfyUI 배치 시 |
+| 도메인 확보 여부 (서비스 주소용) | 외부 공개 시 |
+
+---
+
+## 2. 가동 상태 (2026-08-18 실측)
+
+서버에 접속해 확인한 값이다.
+
+| 계층 | 구성 | 상태 |
+|---|---|---|
+| 호스트 | Fedora Server 44 (커널 6.19.10), btrfs 단일 파티션 | 29G / 929G 사용 |
+| Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
+| core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) | active, healthz 200 |
+| ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker | 둘 다 active |
+| apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
+| ai (10.10.10.14) | `glimmer.service` — llama.cpp Vulkan, `10.10.10.14:8081` | active, health ok |
+| media (10.10.10.15) | 컨테이너만 가동. 서비스는 §1-2에서 올린다 | RUNNING |
+
+GitHub push mirror는 polydeukes 최신 커밋이 GitHub에 반영된 것으로 확인했다.
+
+접속 규약:
+
+```bash
+ssh b95labs@gem12                              # 호스트 (gem12.tail4555a7.ts.net)
+ssh root@10.10.10.13                           # 컨테이너 — 서브넷 라우트로 직접
+https://gem12.tail4555a7.ts.net:3000           # Forgejo  (tailscale serve, tailnet 전용)
+https://gem12.tail4555a7.ts.net:5678           # n8n
+https://gem12.tail4555a7.ts.net:8080           # NocoDB
+```
+
+---
+
+## 3. 장비 실측
 
 2026-08-17 측정값이다. 이 문서의 모든 용량 계산은 이 숫자에 근거한다.
 
@@ -18,14 +107,14 @@
 |---|---|
 | CPU | AMD HawkPoint (8845HS 계열), 8코어 16스레드 |
 | RAM | 32GB × 2 = 64GB (60GB 사용 가능), DIMM 슬롯 2개 모두 사용 중 |
-| NVMe | 1TB × 1 (SHPP41-1000GM), 현재 btrfs, **수명 소모 1%** |
+| NVMe | 1TB × 1 (SHPP41-1000GM), btrfs, **수명 소모 1%** |
 | 확장 슬롯 | 5개 중 4개 사용(J97 / J98 / J103 / J91), **`U93` 1개 비어 있음** |
 | HDD | 없음 |
 | iGPU | Radeon 780M (`c8:00.0`, IOMMU 그룹 23 단독) |
 | dGPU | RX 7900 XTX (`03:00.0`, IOMMU 그룹 17 단독, OCuLink PCIe 4.0 x4) |
 | 유선 NIC | 2.5GbE × 2 (`eno1`, `enp5s0`) — 랜선이 없어 사용하지 않음 |
 | 무선 NIC | Intel Wi-Fi 6 AX200 (`wlp6s0`, `iwlwifi`) — **주 연결** |
-| 현재 디스크 사용량 | 621GB / 929GB (59%) |
+| 디스크 사용량 | 29GB / 929GB (2026-08-18, 서버 전환 후) |
 
 ### 공식 스펙과 대조
 
@@ -42,45 +131,30 @@ AOOSTAR GEM12+ 공식 사양은 다음과 같다. 실측값과 맞춰보면 확�
 
 ### 실측값이 계획에 미치는 영향
 
-**빈 M.2 슬롯이 있다.** `dmidecode`가 보고한 빈 슬롯 `U93`가 이것이다. 2TB를 꽂으면 §2의 용량 압박이 사라지고 모델과 미디어를 별도 디스크로 분리할 수 있다. 다만 **당분간 하드웨어를 추가하지 않기로 했으므로 1TB 안에서 운영한다.**
+**빈 M.2 슬롯이 있다.** `dmidecode`가 보고한 빈 슬롯 `U93`가 이것이다. 2TB를 꽂으면 §4의 용량 압박이 사라지고 모델과 미디어를 별도 디스크로 분리할 수 있다. 다만 **당분간 하드웨어를 추가하지 않기로 했으므로 1TB 안에서 운영한다.**
 
 **NVMe 수명 소모가 1%다.** 사실상 새 디스크이므로 그대로 재사용한다.
 
-**RAM 증설은 교체를 뜻한다.** 슬롯 2개가 모두 차 있어 늘리려면 기존 32GB 두 장을 빼야 한다. 공식 최대가 128GB이므로 48GB나 64GB 두 장으로 바꿀 수 있다. §4의 컨테이너 할당 합계가 54GB라 지금은 필요하지 않다.
+**RAM 증설은 교체를 뜻한다.** 슬롯 2개가 모두 차 있어 늘리려면 기존 32GB 두 장을 빼야 한다. 공식 최대가 128GB이므로 48GB나 64GB 두 장으로 바꿀 수 있다. §6의 컨테이너 할당 합계가 54GB라 지금은 필요하지 않다.
 
 ---
 
-## 2. 디스크 예산
+## 4. 디스크
 
-### 지금 지우는 것
+### 데이터 원본 위치
 
-게임을 하지 않기로 했고 서버에는 데스크톱 환경이 없으므로 다음은 전부 사라진다.
+어느 데이터의 원본이 어디에 있는지가 백업 등급(§8)을 결정한다.
 
-| 항목 | 크기 | 근거 |
-|---|---:|---|
-| `.local/share/Steam` | 149G | 게임 안 함 |
-| `.local/share/containers` (podman overlay) | 66G | 이미지 재빌드 가능 |
-| `.cache` | 63G | 재생성됨 |
-| `Videos/Wallpapers` (wallpaperengine) | 55G | 서버에 데스크톱 없음 |
-| `.npm` | 13G | 재생성됨 |
-| `Library` / `.var` / `bottles` / `waydroid` / `flatpak` | ~28G | 데스크톱 전용 |
-| **소계** | **~374G** | |
+| 데이터 | 원본 위치 | 복구 경로 |
+|---|---|---|
+| 코드 저장소 | Forgejo (core) | GitHub push mirror |
+| SQLite DB (arxiv-candidates 등) | apps `/mnt/data/sqlite/` | Litestream → `/mnt/data/backup/litestream/` |
+| LLM 모델 (GGUF) | ai `/mnt/data/models/` | HuggingFace 재다운로드 — `commands/incus/services/glimmer/download.sh` |
+| Obsidian vault | GitHub | clone |
+| 사진 · 블루레이 백업본 | **외장 SSD** | 서버의 Immich/Jellyfin 몫은 사본 |
+| dotfiles | GitHub | clone (서버 사본: `/root/dotfiles`) |
 
-포맷하면 어차피 전부 사라지지만, **백업 대상에서 제외할 목록**이라는 점이 중요하다.
-
-### 지켜야 하는 데이터
-
-| 항목 | 크기 | 복구 경로 |
-|---|---:|---|
-| `Documents/models` (LLM GGUF) | 63G | HuggingFace 재다운로드 — 느리지만 가능 |
-| `comfyui-playground/data/models` | 65G | 재다운로드 가능 |
-| 코드 저장소 (`transcodes`, `bfai`, `personal_labs`, `moon_bird`) | ~30G | Git 원격 — 포맷 전 확인 필요 |
-| `obsidian/cyprien_vault` | 1.1G | GitHub 원격에 있음 (확인됨) |
-| `Pictures` | 717M | Immich 초기 데이터로 사용 |
-| `Dropbox` / `Downloads` | ~15G | 선별 필요 |
-| `dotfiles` | 2G | GitHub |
-
-### 신규 시스템 용량 배분 (1TB 기준)
+### 용량 배분 (1TB 기준)
 
 ```text
 Fedora Server 호스트 + 컨테이너 루트          ~120G
@@ -102,13 +176,13 @@ Jellyfin 미디어                                미정
 
 **용량 계획에 여유가 생긴다.** 위 배분에서 Immich 50GB와 Jellyfin 몫은 상한이 아니라 "들어가는 만큼 넣는다"가 된다. 부족하면 선택적으로 정리하면 되고, 서버가 원본을 책임지지 않으므로 무엇을 뺄지 자유롭게 정할 수 있다.
 
-**백업 등급이 내려간다.** 서버의 사진은 이미 사본이므로 Google Drive까지 3중으로 올릴 필요가 약하다. §6에서 "여유가 되면 백업"으로 분류한다. 다만 외장 SSD도 고장 나고 두 사본이 모두 집 안에 있으면 화재나 도난에 함께 사라지므로, **외장 SSD의 SMART 상태를 정기적으로 확인**한다.
+**백업 등급이 내려간다.** 서버의 사진은 이미 사본이므로 Google Drive까지 3중으로 올릴 필요가 약하다. §8에서 "여유가 되면 백업"으로 분류한다. 다만 외장 SSD도 고장 나고 두 사본이 모두 집 안에 있으면 화재나 도난에 함께 사라지므로, **외장 SSD의 SMART 상태를 정기적으로 확인**한다.
 
 빈 M.2 슬롯이 하나 있으므로 나중에 2TB를 추가할 수 있다. 모델과 미디어를 옮기면 1TB는 시스템과 앱 데이터 전용이 되고 위 배분에서 230GB(모델 150G + ComfyUI 80G)가 빠진다. 다만 **당분간은 디스크를 추가하지 않고 1TB로 운영한다.**
 
 ---
 
-## 3. 서비스 구성
+## 5. 서비스 구성
 
 ### 무엇을 두는가
 
@@ -120,6 +194,7 @@ Jellyfin 미디어                                미정
 | **ComfyUI** | 이미지·영상 작업. 클라우드 모델(Seedream / GPT Image / Veo / Gemini) 위주, 로컬 노드 병행. |
 | **SQLite + Litestream** | 업무 기록, 지식저장소, 온톨로지의 저장 계층. 서비스별 파일 분리. |
 | **n8n** | 자동화 워크플로. 외부 서비스 연동은 n8n 웹 UI에서 설정한다. |
+| **NocoDB** | SQLite 위 그리드 UI. 사람이 후보를 보고 고르는 화면. |
 | **Immich** | 개인 사진 보관. 최소 구성. |
 | **Jellyfin** | 개인 블루레이 백업 재생. 최소 구성. |
 | **Uptime Kuma / Prometheus / Grafana** | 모니터링. 다른 서비스가 안정적으로 돌아간 뒤 추가. |
@@ -137,11 +212,11 @@ Jellyfin 미디어                                미정
 | ZFS | 디스크가 1개라 ZFS의 강점이 나오지 않는다. 아래 참조. |
 | Kubernetes / Ceph / 분산 DB | 단일 노드에 운영 복잡도만 늘린다. |
 
-### 파일시스템 — btrfs를 유지한다
+### 파일시스템 — btrfs를 쓴다
 
-Fedora Server 설치 기본값은 LVM 위 xfs지만, 이 장비에서는 현재 쓰고 있는 **btrfs를 유지한다.** 설치 시 수동 파티셔닝으로 btrfs를 지정한다. Incus의 btrfs 스토리지 드라이버가 컨테이너 스냅샷과 복제를 CoW로 처리하므로 궁합도 맞는다.
+Fedora Server 설치 기본값은 LVM 위 xfs지만, 이 장비는 수동 파티셔닝으로 지정한 **btrfs 단일 파티션**으로 돌아간다. Incus의 btrfs 스토리지 드라이버가 컨테이너 스냅샷과 복제를 CoW로 처리하므로 궁합도 맞는다.
 
-둘은 성격이 비슷하다. 모두 Copy-on-Write 방식이라 스냅샷이 순간이고 용량을 거의 쓰지 않으며, 체크섬으로 데이터 손상(bit rot)을 탐지하고, 전원이 나가도 `fsck` 없이 복구된다. 백업 1단계의 스냅샷은 어느 쪽에서든 똑같이 동작한다.
+btrfs와 ZFS는 성격이 비슷하다. 모두 Copy-on-Write 방식이라 스냅샷이 순간이고 용량을 거의 쓰지 않으며, 체크섬으로 데이터 손상(bit rot)을 탐지하고, 전원이 나가도 `fsck` 없이 복구된다. 백업 1단계의 스냅샷은 어느 쪽에서든 똑같이 동작한다.
 
 차이는 여러 디스크를 묶을 때 나온다. RAID 구성, 손상 자동 복구(체크섬이 틀리면 다른 디스크의 사본으로 고침), 풀 확장이 그것이다. **디스크가 1개면 이 이점이 전부 사라진다.** 체크섬이 손상을 탐지해도 고칠 사본이 없어 "이 파일이 망가졌다"고 알려주는 데서 끝난다.
 
@@ -149,7 +224,7 @@ Fedora Server 설치 기본값은 LVM 위 xfs지만, 이 장비에서는 현재 
 
 - **ZFS는 RAM을 많이 쓴다.** ARC 캐시가 기본적으로 RAM 절반을 가져간다. 이 시스템은 60GB 중 54GB를 컨테이너에 할당하므로 ARC를 강제로 제한해야 하는데, 굳이 제약을 만들 이유가 없다.
 - **ZFS는 커널 모듈을 다시 컴파일해야 한다.** CDDL과 GPL이 충돌해 ZFS는 커널에 포함될 수 없고, DKMS가 설치 시점에 소스를 컴파일해 모듈을 만든다. 커널을 올릴 때마다 이 과정이 반복되며, 새 커널의 내부 API에 OpenZFS가 아직 대응하지 않았으면 컴파일이 실패한다. 루트 파일시스템이 ZFS면 부팅 자체가 막힌다. Fedora는 커널을 빠르게 올리는 배포판이라 이 위험이 다른 어디보다 크다. btrfs는 커널 메인라인에 있어 이 문제가 아예 없다.
-- **btrfs는 이미 깔려 있고 잘 돌아간다.** Fedora가 몇 년째 기본값으로 쓰는 구성이다.
+- **btrfs는 Fedora가 몇 년째 기본값으로 쓰는 구성이다.**
 
 빈 슬롯에 2TB를 추가하더라도 판단은 그대로다. 별도 볼륨으로 쓰면 btrfs로 충분하고, 두 디스크를 미러로 묶더라도 btrfs RAID1은 안정적이다.
 
@@ -173,13 +248,13 @@ btrfs RAID5/6에는 "write hole" 문제가 있다. 스트라이프를 쓰는 도
 
 ---
 
-## 4. 가상화 — Incus 시스템 컨테이너
+## 6. 가상화 — Incus 시스템 컨테이너
 
 Fedora Server를 베어메탈에 설치하고, 서비스는 **Incus 시스템 컨테이너**로 나눈다.
 
 ### Fedora Server + Incus를 쓰는 근거
 
-- **이미 아는 운영체제다.** 이 장비는 지금 Fedora Workstation이고, 관리 지식(dnf, systemd, SELinux, firewalld)이 Fedora에 쌓여 있다. Server 에디션은 같은 체계에서 데스크톱만 뺀 구성이다.
+- **이미 아는 운영체제다.** 관리 지식(dnf, systemd, SELinux, firewalld)이 Fedora에 쌓여 있다. Server 에디션은 같은 체계에서 데스크톱만 뺀 구성이다.
 - **Incus가 필요한 것을 전부 다룬다.** 컨테이너 생성, 자원 제한, NAT 네트워크, GPU 장치 연결, 스냅샷을 CLI 하나로 관리한다. 이 계획의 가상화 요구사항이 그것의 전부다.
 - **Incus는 Fedora 공식 저장소에 있다.** `dnf install incus`로 깔리고 배포판 업데이트와 함께 관리된다.
 
@@ -187,7 +262,7 @@ Fedora Server를 베어메탈에 설치하고, 서비스는 **Incus 시스템 �
 
 **첫째, GPU 문제다.** RDNA3(7900 XTX)는 vendor-reset을 지원하지 않아 VM 패스스루 후 재시작 시 GPU가 복구되지 않는 사례가 알려져 있다. 시스템 컨테이너는 호스트 커널의 `amdgpu` 드라이버를 공유하고 `/dev/dri` 노드만 넘겨받으므로 이 문제를 구조적으로 회피한다.
 
-**둘째, llama.cpp가 Vulkan 백엔드를 쓴다** (`run-muse-glimmer-server.sh`의 `-dev Vulkan0`). ROCm이었다면 `/opt/rocm` 전체 스택과 커널 모듈 버전 맞추기 때문에 컨테이너 이미지가 수십 GB로 커지지만, Vulkan은 호스트 `amdgpu` + `/dev/dri/renderD*` + Mesa RADV만 있으면 된다. Incus의 gpu 장치 한 줄이면 된다.
+**둘째, llama.cpp가 Vulkan 백엔드를 쓴다.** ROCm이었다면 `/opt/rocm` 전체 스택과 커널 모듈 버전 맞추기 때문에 컨테이너 이미지가 수십 GB로 커지지만, Vulkan은 호스트 `amdgpu` + `/dev/dri/renderD*` + Mesa RADV만 있으면 된다. Incus의 gpu 장치 한 줄이면 된다.
 
 **셋째, 60GB RAM 제약이다.** VM 5개는 게스트 커널과 메모리 예약이 각각 필요해 60GB로는 여유가 없지만, 시스템 컨테이너는 커널을 공유해 오버헤드가 훨씬 작다.
 
@@ -205,10 +280,10 @@ GEM12 / Fedora Server (베어메탈) + Incus
 │   └── Docker / BuildKit / 빌드 캐시
 │
 ├── apps          4 vCPU / 8GB    Fedora + Docker
-│   ├── n8n
+│   ├── n8n / NocoDB
 │   ├── 업무기록 / 지식저장소 / 온톨로지 백엔드
 │   ├── SQLite (서비스별 파일 분리)
-│   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §6 참조)
+│   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §8 참조)
 │
 ├── ai            6 vCPU / 24GB   Fedora + Podman  ← /dev/dri (7900 XTX)
 │   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter)
@@ -229,7 +304,7 @@ RAM 합계 54GB로 60GB 안에 들어간다. 컨테이너는 미사용 메모리
 
 ```text
 맥북 → Tailscale VPN ─┬→ Cockpit 웹 UI    (Fedora Server 기본 포함, 웹 터미널 내장)
-                      ├→ 각 서비스 웹 UI  (Forgejo, n8n, Immich, ComfyUI …)
+                      ├→ 각 서비스 웹 UI  (Forgejo, n8n, NocoDB, Immich, ComfyUI …)
                       └→ SSH              (호스트와 컨테이너 직접 접속)
 ```
 
@@ -280,18 +355,18 @@ Playwright, Puppeteer, chrome-devtools MCP 같은 도구는 브라우저를 필�
 
 평소 작업은 맥북에서 하므로 첫 줄이 기본이다. 나머지는 필요해질 때 해당 컨테이너에 추가한다.
 
-RDNA3 Vulkan은 최신 Mesa가 유리한데, Fedora는 Mesa를 빠르게 올리는 배포판이라 이 걱정이 없다. 컨테이너를 Fedora로 통일한 실익이 ai 컨테이너에서 가장 크다. 단, media 컨테이너의 VAAPI 코덱(H.264/HEVC)은 특허 문제로 Fedora 기본 Mesa에서 빠져 있으므로 RPM Fusion의 `mesa-va-drivers-freeworld`로 바꿔야 한다 — `04-runtime.sh`가 처리한다.
+RDNA3 Vulkan은 최신 Mesa가 유리한데, Fedora는 Mesa를 빠르게 올리는 배포판이라 이 걱정이 없다. 컨테이너를 Fedora로 통일한 실익이 ai 컨테이너에서 가장 크다. 단, media 컨테이너의 VAAPI 코덱(H.264/HEVC)은 특허 문제로 Fedora 기본 Mesa에서 빠져 있으므로 RPM Fusion의 `mesa-va-drivers-freeworld`로 바꿔야 한다 — `04-runtime.sh`가 처리하며, 현재 보류 상태는 §1-2 참조.
 
 ### 컨테이너 런타임 — 컨테이너별로 나눈다
 
-Docker와 Podman 중 하나로 통일하지 않는다. **이미 용도가 갈려 있고 그 분업이 합리적이다.** 현재 이 장비에서 업무 프로젝트는 Docker로(`docker-compose.yml` 10개 이상), GPU 작업은 Podman으로(`comfyui-rocm`, `rocm/pytorch`) 돌고 있다. Podman은 Fedora가 만든 도구라 컨테이너 안에서도 저장소 추가 없이 깔린다.
+Docker와 Podman 중 하나로 통일하지 않는다. **용도가 갈려 있고 그 분업이 합리적이다.** 업무 프로젝트는 Docker(`docker-compose.yml` 다수), GPU 작업은 Podman으로 운영해온 이력이 있다. Podman은 Fedora가 만든 도구라 컨테이너 안에서도 저장소 추가 없이 깔린다.
 
 | 컨테이너 | 런타임 | 근거 |
 |---|---|---|
 | core | **Podman** | 데몬이 없어 systemd가 컨테이너를 직접 관리한다. Git 저장소는 다른 서비스를 복구할 때의 기반이므로, 이 계층은 데몬 하나에 운명을 묶지 않는다 |
 | ci | **Docker** | Forgejo Actions Runner가 Docker 소켓을 전제한다. BuildKit도 Docker 쪽이 성숙하다 |
 | apps | **Docker** | 기존 compose 파일을 그대로 쓴다. n8n 공식 문서도 Docker 기준이다 |
-| ai | **Podman** | 이미 ComfyUI를 Podman으로 운영 중이다. rootless로 `/dev/dri`를 넘기는 방식이 깔끔하다 |
+| ai | **Podman** | ComfyUI를 Podman으로 운영해온 이력이 있다. rootless로 `/dev/dri`를 넘기는 방식이 깔끔하다 |
 | media | **Podman** | 780M VAAPI 접근이 같은 이유로 유리하다 |
 
 core에서 Podman을 쓰는 이유를 더 적어둔다. Docker는 `dockerd`가 모든 컨테이너의 부모여서 데몬이 죽으면 그 아래가 전부 죽고, systemd 입장에서는 개별 컨테이너가 보이지 않는다. Podman은 각 컨테이너가 독립 프로세스라 Quadlet(`.container` 파일)로 정의하면 **systemd가 일반 서비스처럼 다룬다.** 부팅 순서, 의존성, 재시작 정책이 전부 systemd 표준 방식으로 관리된다.
@@ -300,22 +375,22 @@ CI는 CPU를 순간적으로 많이 쓰므로 다른 서비스와 분리하고, 
 
 ### GPU 배분
 
-두 GPU가 서로 다른 IOMMU 그룹에 단독으로 있어, 각각 다른 컨테이너에 할당할 수 있다.
+두 GPU가 서로 다른 IOMMU 그룹에 단독으로 있어, 각각 다른 컨테이너에 할당한다.
 
 ```text
 IOMMU 17 → 03:00.0  RX 7900 XTX  → ai     (LLM 추론 + ComfyUI)
 IOMMU 23 → c8:00.0  Radeon 780M  → media  (VAAPI 트랜스코딩)
 ```
 
-**서버로 전환하면 VRAM 여유가 생긴다.** 현재 Muse Glimmer는 24560MiB 중 21734MiB를 점유하고 나머지 2826MiB를 데스크톱 렌더링이 쓰고 있다. 데스크톱이 없어지면 이 2826MiB를 **ComfyUI 로컬 노드에 배정한다**. 평소 ComfyUI는 클라우드 모델을 쓰므로 VRAM을 거의 안 쓰지만, 업스케일이나 컨트롤넷을 로컬에서 실행할 때 이 3GB가 필요하다. Glimmer 설정 자체는 128k 컨텍스트 그대로 둔다(학습된 상한이 131072라 더 늘려도 실익이 없다).
+서버 전환으로 데스크톱 렌더링 몫이 사라져 VRAM에 여유가 있다. Muse Glimmer는 24560MiB 중 19171MiB를 점유한다(2026-08-18 실측). 남는 약 5GB는 **ComfyUI 로컬 노드 몫**이다 — 평소 ComfyUI는 클라우드 모델을 쓰므로 VRAM을 거의 안 쓰지만, 업스케일이나 컨트롤넷을 로컬에서 실행할 때 쓴다. Glimmer 설정은 128k 컨텍스트 그대로 둔다(학습된 상한이 131072라 더 늘려도 실익이 없다).
 
 ---
 
-## 5. 네트워크
+## 7. 네트워크
 
 ### VPN — 개인 Tailscale 계정, 회사 tailnet과 완전 분리
 
-서버는 **개인 Tailscale 계정의 tailnet**에 등록한다 (2026-08-18 등록 완료, 노드명 `gem12`). 회사 tailnet에는 절대 등록하지 않는다 — 개인 tailnet은 노드 목록과 ACL을 개인이 통제하고, 회사 계정이 회수돼도 개인 인프라 접근이 유지된다.
+서버는 **개인 Tailscale 계정의 tailnet**에 등록되어 있다 (2026-08-18, 노드명 `gem12`, 100.73.205.75, MagicDNS `gem12.tail4555a7.ts.net`). 회사 tailnet에는 절대 등록하지 않는다 — 개인 tailnet은 노드 목록과 ACL을 개인이 통제하고, 회사 계정이 회수돼도 개인 인프라 접근이 유지된다.
 
 ```text
 GEM12 (서버)
@@ -330,6 +405,8 @@ MacBook Pro / 휴대 기기 (클라이언트)
 Tailscale 클라이언트는 여러 프로파일을 저장하고 `tailscale switch`로 오갈 수 있다. 동시 접속은 안 되지만, 서버가 개인 tailnet에만 있으므로 문제되지 않는다.
 
 ### 호스트 설치 절차 (2026-08-18 실측 검증)
+
+재구축 시 그대로 따라한다.
 
 ```bash
 sudo dnf config-manager addrepo --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
@@ -352,7 +429,7 @@ sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
 sudo firewall-cmd --reload
 ```
 
-관리 콘솔(login.tailscale.com/admin/machines)에서 두 가지를 설정한다.
+관리 콘솔(login.tailscale.com/admin/machines)에서 두 가지를 설정한다. 현재 서버에는 둘 다 적용되어 있다 (키 만료 해제는 2026-08-18 실측 확인).
 
 1. `gem12`의 서브넷 라우트 `10.10.10.0/24` **승인** — 광고만으로는 라우팅되지 않는다
 2. **Disable key expiry** — 서버 노드는 키가 만료되면 재인증 전까지 tailnet에서 떨어진다
@@ -364,20 +441,18 @@ ssh b95labs@gem12          # 호스트 (전체 도메인: gem12.tail4555a7.ts.ne
 ssh root@10.10.10.13       # 컨테이너 — 서브넷 라우트로 직접 닿는다
 ```
 
+### 웹 콘솔 — tailscale serve 포트 노출
+
+웹 UI가 있는 서비스는 `tailscale serve --https=<컨테이너 포트>`로 `https://gem12.tail4555a7.ts.net:<포트>`에 노출한다 (tailnet 전용, 인증서 자동). 포트는 컨테이너 내부 포트를 그대로 쓴다 — Forgejo :3000, n8n :5678, NocoDB :8080. Tailscale Services(`svc:`)는 베타 후 과금이 미정이라 쓰지 않기로 결정했다.
+
 ### 물리 연결 — Wi-Fi로 운영한다
 
 랜선이 부족하므로 **Wi-Fi(Intel AX200, `wlp6s0`)를 주 연결로 쓴다.** AX200은 `iwlwifi` 메인라인 드라이버를 쓰고, Fedora Server는 `NetworkManager-wifi`·`wpa_supplicant`·AX200 펌웨어(`linux-firmware`)를 기본 포함하므로 추가 설치 없이 동작한다.
 
-두 가지를 유의한다.
-
-**Wi-Fi는 Anaconda 설치 관리자의 네트워크 화면에서 연결해둔다.** 이 설정은 설치된 시스템으로 넘어와 첫 부팅부터 인터넷이 붙는다. 건너뛰었다면 첫 부팅 후 콘솔에서 `nmcli`로 연결한다 — 손으로 따라할 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`에 있다. 어느 쪽이든 설치에는 모니터와 **유선 키보드·마우스**가 필요하다.
-
-블루투스 키보드·마우스는 설치에 쓸 수 없다. 블루투스 어댑터가 AX200에 통합돼 있고(`8087:0029`), UEFI 펌웨어와 설치 관리자는 USB HID만 인식한다. 게다가 포맷하면 `/var/lib/bluetooth`의 페어링 키가 사라지므로, 새 시스템에서 페어링하려면 그 작업을 할 입력 장치가 먼저 필요한 순환에 빠진다. 설치를 마친 뒤에는 `bluetoothctl`로 페어링해 쓸 수 있으나, 서버 운영 중에는 콘솔을 쓸 일이 드물어 실익이 적다.
-
 **무선에서는 일반적인 브리지가 동작하지 않는다.** 802.11 규격상 무선 클라이언트는 자기 MAC 주소로만 프레임을 보낼 수 있어, 컨테이너의 다른 MAC이 붙은 프레임을 공유기가 버린다. 그래서 컨테이너가 공유기에서 각자 IP를 받는 물리 브리지 대신 **NAT 브리지**를 쓴다. Incus가 기본으로 만드는 구조가 정확히 이것이다 — `incusbr0`의 DHCP/DNS(dnsmasq)와 마스커레이딩을 Incus가 직접 관리한다.
 
 ```text
-wlp6s0 (공유기 DHCP)
+wlp6s0 (공유기 DHCP, 192.168.35.191)
    │ 마스커레이딩 (Incus 관리)
    ▼
 incusbr0  10.10.10.1/24  (내부 전용, 물리 포트 없음)
@@ -404,19 +479,19 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 ### 공개 범위
 
-당분간 인터넷에 공개하는 서비스는 없다. 모든 접근은 Tailscale VPN을 거친다.
+모든 접근은 Tailscale VPN을 거친다.
 
 | 대상 | 접근 경로 |
 |---|---|
-| Cockpit / SSH / Forgejo / n8n / Immich / Jellyfin / ComfyUI / llama.cpp / 모니터링 | VPN 전용 |
+| Cockpit / SSH / Forgejo / n8n / NocoDB / Immich / Jellyfin / ComfyUI / llama.cpp / 모니터링 | VPN 전용 |
 
 외부에 공개할 서비스가 생기면 그때 리버스 프록시와 도메인을 설정한다. **주소는 IP가 아니라 도메인으로 구성**해서, 장비를 옮길 때 DNS만 바꾸면 되게 한다.
 
 ---
 
-## 6. 백업 — 이 시스템의 유일한 방어선
+## 8. 백업 — 이 시스템의 유일한 방어선
 
-디스크가 1개라 RAID가 없다. btrfs 체크섬이 손상을 탐지해도 고칠 사본이 없으므로, **서버에만 있는 데이터는 디스크가 죽으면 전부 잃는다.** 3단계 백업은 선택이 아니다.
+디스크가 1개라 RAID가 없다. btrfs 체크섬이 손상을 탐지해도 고칠 사본이 없으므로, **서버에만 있는 데이터는 디스크가 죽으면 전부 잃는다.** 3단계 백업은 선택이 아니다. 가동 현황과 남은 단계는 §1-1에 있다.
 
 다만 모든 데이터가 같은 등급은 아니다. 사진과 미디어는 외장 SSD에 원본이 있고 모델 가중치는 재다운로드할 수 있으므로, **서버가 유일한 사본인 것**을 먼저 지킨다.
 
@@ -444,7 +519,7 @@ btrfs 스냅샷. 디스크 고장은 막지 못하지만 실수 삭제와 잘못
 **백업하지 않음** — 재생성하거나 다시 받을 수 있다
 
 - Forgejo 저장소 내용. GitHub 미러가 사본이다
-- LLM / ComfyUI 모델 가중치. 128GB나 되고 재다운로드할 수 있다. **다만 목록과 다운로드 스크립트는 Git에 남긴다.** 이것이 실질적인 백업이다.
+- LLM / ComfyUI 모델 가중치. 재다운로드할 수 있다. **다만 목록과 다운로드 스크립트는 Git에 남긴다.** 이것이 실질적인 백업이다.
 - Jellyfin 미디어. 원본이 외장 SSD에 있다.
 - CI 캐시, Docker 레이어
 - Jellyfin 메타데이터, 트랜스코딩 임시파일
@@ -462,7 +537,7 @@ Litestream이 지원하는 대상은 S3 API 계열(S3, GCS, Azure Blob, SFTP)이
 SQLite (apps 컨테이너)
    │ Litestream — 초 단위 증분 복제
    ▼
-서버 내 별도 경로 (/mnt/data/litestream)
+서버 내 별도 경로 (/mnt/data/backup/litestream)
    │ rclone sync — 시간 단위, 암호화
    ▼
 Google Drive
@@ -494,9 +569,9 @@ sudo smartctl -H /dev/sdX
 
 ---
 
-## 7. Git 전략 — Forgejo + GitHub 미러
+## 9. Git 전략 — Forgejo + GitHub 미러
 
-Forgejo가 주 저장소이고, GitHub에 미러로 복제한다.
+Forgejo가 주 저장소이고, GitHub에 미러로 복제한다. push mirror는 가동 중이며 polydeukes에서 refs 일치를 검증했다 (8시간 주기 + sync_on_commit, PAT는 `op://Personal/GITHUB_MIRROR_PAT`).
 
 ```text
 개발 (MacBook)
@@ -510,155 +585,9 @@ GitHub (개인)     ← 서버가 죽어도 코드는 남아 있음
 
 이 구조의 실익은 **장비를 옮길 때 나타난다.** GEM12를 포맷하고 새 장비를 설치하는 동안에도 GitHub에 모든 코드와 인프라 설정이 있으므로, 새 장비에서 `clone` 받아 재구축하면 된다. Obsidian vault가 이미 GitHub에 있는 것과 같은 원리다.
 
-Forgejo의 push mirror 기능을 쓰면 이 복제가 자동으로 이뤄진다.
-
-**미러가 옮기는 것은 Git 저장소뿐이다.** Issue, PR, Actions 설정, 사용자와 조직 설정, 웹훅은 GitHub로 넘어가지 않는다. 그래서 §6에서 저장소 내용은 백업 대상에서 빼고 **Forgejo 설정 DB만** 백업한다.
+**미러가 옮기는 것은 Git 저장소뿐이다.** Issue, PR, Actions 설정, 사용자와 조직 설정, 웹훅은 GitHub로 넘어가지 않는다. 그래서 §8에서 저장소 내용은 백업 대상에서 빼고 **Forgejo 설정 DB만** 백업한다.
 
 인프라 재구축에 필요한 설정은 가능한 한 Forgejo에 저장한다. 다만 시크릿은 Git에 넣지 않는다.
-
----
-
-## 8. 구축 순서
-
-각 단계에 검증 조건을 달았다. 조건을 만족하지 못하면 다음으로 넘어가지 않는다.
-
-### 0단계 — 포맷 전 (가장 중요)
-
-1. 모니터와 **유선** 키보드·마우스 준비. 블루투스는 설치 단계에서 쓸 수 없다
-2. Wi-Fi SSID와 비밀번호를 손으로 적어둠. Anaconda 설치 관리자의 네트워크 화면에서 입력한다
-3. 모든 코드 저장소의 원격 push 상태 확인
-   ```bash
-   for d in ~/Documents/*/*/; do
-     git -C "$d" status -sb 2>/dev/null | head -1
-   done
-   ```
-4. 원격이 없는 로컬 전용 데이터를 찾아 외장이나 클라우드로 옮김
-5. 모델 파일 목록 저장 (재다운로드 스크립트 작성)
-   ```bash
-   find ~/Documents/models ~/Documents/personal_labs/comfyui-playground/data/models \
-     -name "*.gguf" -o -name "*.safetensors" | sort > models-manifest.txt
-   ```
-6. **dotfiles 커밋과 push** — 이것을 빠뜨리면 부트스트랩 스크립트째 잃는다
-7. 서버에서 쓸 자격증명을 미리 발급해 1Password에 보관
-   - `claude setup-token` 으로 Claude Code 장기 토큰
-   - 맥북 SSH 공개키 (`ssh-add -L` — 1Password 에이전트가 출력) — `02-host.sh` 에 넘긴다
-
-**검증**: 이 장비를 지금 잃어도 잃는 것이 없는 상태인가?
-
-7번을 포맷 전에 하는 이유는 발급 자체에 브라우저가 필요해서다. 포맷 후에는 맥북으로 옮겨가야 하므로 지금 해두는 편이 낫다.
-
-### 1단계 — Fedora Server 설치
-
-Fedora Server를 베어메탈에 설치한다. 데스크톱 환경은 설치하지 않는다.
-
-Anaconda 설치 관리자에서 두 가지를 지정한다.
-
-- **네트워크 화면에서 Wi-Fi를 연결한다.** 이 설정은 설치된 시스템으로 넘어와 첫 부팅부터 인터넷이 붙는다.
-- **수동 파티셔닝으로 btrfs를 지정한다.** Server 기본값은 LVM 위 xfs다 (§3 참조).
-
-첫 부팅 후 네트워크가 없다면 콘솔에서 `nmcli`로 연결한다. 이 시점에는 저장소를 받을 수 없으므로, 사람이 손으로 따라할 절차를 별도 문서로 두었다 — `gem12-first-wifi-tutorial-2026-08-17.md`를 맥북이나 휴대폰으로 열어 진행한다.
-
-**검증**: 재부팅해도 Wi-Fi가 자동 연결되고, 맥북에서 LAN SSH 접속과 Cockpit(`https://<서버>:9090`) 접근 성공
-
-### 1.5단계 — 저장소와 도구
-
-인터넷이 연결되면 dotfiles를 받는다.
-
-```bash
-git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles
-cd ~/dotfiles/commands/incus
-./02-host.sh
-```
-
-**HTTPS로 받는다.** 이 저장소는 공개이므로 인증이 필요 없다. SSH로 받으려면 GitHub 키가 있어야 하는데, 이 기기의 키는 1Password 에이전트에 있고 서버에서 그것을 쓰려면 `op` CLI 인증이 먼저 필요하다. 첫 clone만 HTTPS로 하면 이 순환을 피한다.
-
-나중에 서버에서 push가 필요해지면 두 방법이 있다.
-
-- 맥북에서 `ssh -A`로 접속해 맥북의 1Password 에이전트를 빌려 쓴다. 서버에 키를 두지 않아 더 안전하다
-- 원격을 SSH로 바꾸고 서버 전용 배포 키를 발급한다
-
-**서버에서 `stow`로 전체를 배포하지 않는다.** 서버에 필요한 것은 `commands/incus/` 스크립트뿐이고, `nvim`·`tmux`·`ghostty`·`aerospace` 는 데스크톱 설정이다. 셸 환경은 `02-host.sh` 가 별도로 배포한다.
-
-#### Claude Code
-
-서버에서 Claude Code를 쓰려면 인증 토큰이 필요하다. 브라우저가 없으므로 **맥북에서 발급해 옮긴다.**
-
-```bash
-# 맥북 (브라우저 있음)
-claude setup-token          # 구독 계정으로 장기 토큰을 발급한다
-
-# 서버
-export CLAUDE_CODE_OAUTH_TOKEN="<발급받은 토큰>"
-```
-
-토큰은 1Password Personal 금고의 `CLAUDE_CODE_OAUTH_TOKEN` 항목에 있고, `~/.bashrc.local`에서 `op read`로 주입한다. 저장소에는 넣지 않는다. 설치와 인증 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`의 "Claude Code 설치" 절에 있다.
-
-`~/.claude/.credentials.json` 을 그대로 복사하는 방법도 되지만 쓰지 않는다. 기기에 묶인 세션 자격증명이라 갱신 동작이 예측하기 어렵고, 두 기기가 같은 파일을 쓰면 한쪽의 갱신이 다른 쪽을 무효화할 수 있다.
-
-**검증**: 서버에서 `claude -p "1+1"` 이 응답
-
-### 2단계 — core 컨테이너
-
-Forgejo를 올린다.
-
-**검증**: 맥북에서 Tailscale 접속으로 Forgejo에 push 성공. 회사 tailnet 프로파일로 전환해도 회사 서버에 정상 접속.
-
-### 3단계 — ai 컨테이너
-
-`run-muse-glimmer-server.sh`를 컨테이너와 systemd 서비스로 옮긴다. 현재는 zsh 함수(`glimmer-up`)로 수동 실행하지만, 서버에서는 부팅 시 자동 기동해야 한다.
-
-**검증**: 맥북에서 VPN 경유로 llama.cpp API 호출 성공. 생성 속도가 기존 실측(29~68 tok/s) 수준.
-
-> **주의**: 이 단계 검증에는 GPU 부하가 걸린다. 실행 전 알릴 것.
-
-### 4단계 — ci 컨테이너 + apps 컨테이너
-
-Forgejo Runner 등록, n8n, SQLite와 Litestream, `rclone sync` 스케줄.
-
-이 단계에서 **rclone의 Google Drive 인증**을 한다. 맥북에서 `rclone authorize "drive"`로 토큰을 받아 서버에 붙여넣는다(§4의 OAuth 절 참조).
-
-**검증**: 저장소에 push하면 Actions가 자동 실행되고 배포까지 완료. Litestream이 로컬 경로에 복제하고 `rclone sync`가 Drive에 올린 것까지 확인. GitHub 미러에 커밋이 반영되는지도 함께 본다.
-
-### 5단계 — media 컨테이너 + ComfyUI
-
-우선순위 최하. 설치와 기동 확인까지만 하고 데이터는 나중에 채운다.
-
-**검증**: Immich에 사진 업로드 가능, Jellyfin 기동, ComfyUI에서 클라우드 모델 호출 성공.
-
-### 6단계 — 모니터링
-
-Uptime Kuma를 먼저 붙이고, 필요해지면 Prometheus와 Grafana를 추가한다.
-
-최소 알림 대상은 다음과 같다.
-
-```text
-디스크 사용량 > 85%
-NVMe 수명 경고 / SMART 경고
-btrfs 체크섬 오류 (고칠 사본이 없으므로 즉시 대응해야 한다)
-RAM 사용량 > 90%
-비정상 CPU 온도
-Wi-Fi 연결 끊김
-
-Forgejo 응답 없음
-Litestream 로컬 복제 실패
-rclone sync 실패 (Drive 반영 중단)
-GitHub 미러 push 실패
-```
-
-btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 1개라 자동 복구가 불가능하므로, 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다.
-
----
-
-## 9. 미결 사항
-
-| # | 항목 | 결정 시점 |
-|---|---|---|
-| 2 | 데스크톱 완전 이관 가능 여부 (맥북만으로 충분한가) | 포맷 전 |
-| 3 | 블루레이 리핑 규모 → 미디어 스토리지 계획 | 리핑 시작 시 |
-| 4 | ComfyUI 로컬 모델 중 실제로 필요한 것 선별 (현재 65GB) | ai 컨테이너 구축 시 |
-| 5 | 도메인 확보 여부 (서비스 주소용) | 외부 공개 시 |
-
-특히 **2번이 되돌리기 어려운 결정이다.** 서버로 전환하면 이 장비에서 GNOME 데스크톱은 사라진다. 맥북만으로 평소 작업이 되는지 며칠 미리 시험해보는 편이 안전하다.
 
 ---
 
@@ -685,3 +614,68 @@ btrfs 체크섬 오류는 `btrfs device stats /` 로 확인한다. 디스크가 
 > **2027년 초 새 장비가 도착했을 때, Forgejo와 GitHub에 있는 인프라 설정을 `clone` 받아 재적용하는 것만으로 모든 서비스가 되살아나야 한다.**
 
 이 장비에서 보내는 기간은 그 자체가 목적이 아니라 **재현성을 검증하는 기간**이다. 서비스가 돌아가는 것만으로는 성공이 아니고, 처음부터 다시 세울 수 있어야 성공이다.
+
+---
+
+## 12. 구축 이력 — 완료 단계와 검증 결과
+
+구축 순서의 완료분이다. 각 단계는 검증 조건을 통과한 시점에 닫혔다.
+
+### 0단계 — 포맷 전 준비 (2026-08-17)
+
+- 모든 코드 저장소의 원격 push 상태 확인, 로컬 전용 데이터 대피
+- 모델 파일 manifest 저장 (`models-manifest.txt`) — 재다운로드 스크립트의 근거
+- dotfiles 커밋·push
+- 자격증명 선발급: `claude setup-token` 장기 토큰, 맥북 SSH 공개키 (1Password 보관)
+
+**검증 통과**: 장비를 잃어도 잃는 것이 없는 상태.
+
+### 1단계 — Fedora Server 설치 (2026-08-18)
+
+첫 설치(08-17)는 Anaconda 자동 파티셔닝이 LVM+xfs(루트 16GB)로 잡혀 재설치했고, 두 번째는 수동 파티셔닝으로 **btrfs 단일 파티션 997GB**를 지정해 정상. Wi-Fi는 Anaconda 네트워크 화면에서 연결해 첫 부팅부터 인터넷이 붙었다. 콘솔 절차는 `gem12-first-wifi-tutorial-2026-08-17.md` 참조. 블루투스 키보드는 설치에 쓸 수 없다(UEFI·Anaconda는 USB HID만 인식) — 유선 키보드로 진행했다.
+
+**검증 통과**: 재부팅 후 Wi-Fi 자동 연결, LAN SSH, Cockpit 접근. 호스트 전체 업데이트(372건) + 재부팅 자동 복귀.
+
+### 1.5단계 — 저장소와 도구 (2026-08-18)
+
+- dotfiles: `/root/dotfiles`에 HTTPS로 clone. 갱신은 서버에서 `git pull`. `stow` 전체 배포는 하지 않는다 — 서버에 필요한 것은 `commands/incus/` 스크립트뿐이고 셸 환경은 `02-host.sh`가 배포한다
+- 부트스트랩 01~04 스크립트 전체 통과, 컨테이너 5개 생성 (core/ci/apps/ai/media, Incus btrfs 풀)
+- 1Password CLI 2.39.0: 호스트 + apps. apps는 `op account add` 등록 완료
+- Claude Code 2.1.224: apps에서 검증. 토큰은 `/root/.bashrc.local`에서 `op read`로 주입 — `~/.claude/.credentials.json` 복사 방식은 기기 간 세션 무효화 위험이 있어 쓰지 않는다
+- 일상 접속 사용자 `b95labs` (wheel + incus-admin), root는 키 인증만
+
+**검증 통과**: 서버에서 `claude -p "1+1"` 응답.
+
+### Tailscale (2026-08-18)
+
+§7의 절차대로 설치·인증. 서브넷 라우트 승인, 키 만료 해제. 맥 → 컨테이너 5개 SSH 전 구간 검증 통과.
+
+### 2단계 — core 컨테이너 (2026-08-18)
+
+Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git SSH 2222, 가입 차단. 관리자 `b95labs` (dfg1499@gmail.com — 개인 이메일). polydeukes를 GitHub에서 이관(이슈·PR 58건)하고 push mirror를 걸어 refs 일치를 검증했다. 맥북 polydeukes의 origin은 Forgejo, 기존 GitHub은 `github` 리모트.
+
+**검증 통과**: 맥북에서 Tailscale 경유 push, 회사 tailnet 프로파일 전환 후에도 회사 서버 정상 접속.
+
+### 3단계 — ai 컨테이너 (2026-08-18)
+
+`glimmer.service`: llama.cpp Vulkan 빌드(`/opt/llama.cpp`), 모델 `/mnt/data/models`. 스크립트는 `commands/incus/services/glimmer/{build,download,deploy}.sh`. 컨테이너 재시작 시 자동 기동 검증.
+
+**검증 통과**: 맥북 pi에서 `--provider muse-glimmer-gem12`로 접속. VRAM 19171/24560 MiB, 생성 29.0 tok/s(자유 서술) ~ 43.2 tok/s(정형 출력), DFlash 채택률 13.6~24.4%.
+
+### 4단계 — ci + apps 컨테이너 (2026-08-18, rclone 제외)
+
+- Forgejo Actions 활성화(quadlet `FORGEJO__actions__ENABLED`), Runner v13.0.0을 ci에 설치·등록 (`gem12-ci`, systemd `forgejo-runner.service`, 라벨 ubuntu-latest/node-24/docker). gem12-agents에 타입체크 CI 부착, arxiv_youtube에 PR 자동 리뷰 워크플로 부착
+- n8n: apps Docker, `:5678`. 저장소 `/mnt/data/arxiv` 마운트. 공식 이미지에 Node v24 포함이라 Execute Command로 스크립트 직접 실행 가능. tailscale serve 뒤라 `N8N_SECURE_COOKIE=false` 필수
+- NocoDB: apps Docker(단일 컨테이너 + SQLite 메타), `:8080`. base `arxiv`에 외부 SQLite(arxiv-candidates.db) 연결 — candidate·video_order 그리드 노출. 어드민 비밀번호는 `op://Personal/GEM12_NOCODB`
+- Litestream 0.5.16: RPM 설치, `/etc/litestream.yml`, `file://` 복제 → `/mnt/data/backup/litestream/`. 대상 DB는 WAL 모드 + **`busy_timeout=5000` 필수** (미설정 시 동시 쓰기 97% 실패 실측). 복원 검증 완료
+- rclone → Drive는 §1-1로 이어진다
+
+**검증 통과**: 저장소 push 시 Actions 자동 실행, GitHub 미러 커밋 반영, Litestream 로컬 복제·복원.
+
+---
+
+## Changelog
+
+- **2026-08-18 (문서 재구성)** — 남은 작업을 §1 상단으로, 완료된 구축 단계를 §12로 이동. 서버 접속 실측을 반영: 컨테이너 5개·전 서비스 가동 확인, Tailscale 키 만료 해제 확인(미결에서 제거), 로컬 스냅샷 자동화·rclone·dnf-automatic 미비 확인(남은 작업에 추가). 디스크 사용량 621G(데스크톱 시절) → 29G(서버 전환 후), VRAM 21734 → 19171 MiB, 생성 속도 29~68 → 29.0~43.2 tok/s로 실측 갱신. "데스크톱 완전 이관 가능 여부" 미결은 포맷 완료로 해소되어 제거. 웹 콘솔 포트 노출 규약(tailscale serve)과 NocoDB를 본문에 추가.
+- **2026-08-18** — Fedora Server 44 재설치(btrfs 997GB), 부트스트랩 01~04, Tailscale, Forgejo + polydeukes 마이그레이션, Glimmer, Forgejo Runner, n8n, NocoDB, Litestream 가동 (§12).
+- **2026-08-17** — 초안 작성. 장비 실측, 디스크 예산, 서비스 구성, 백업 설계.
