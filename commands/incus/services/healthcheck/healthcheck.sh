@@ -16,13 +16,12 @@
 # 온도 센서는 hwmon 인덱스가 부팅마다 바뀔 수 있어 칩 이름 + 라벨로 찾는다.
 # amdgpu 가 2개(7900 XTX, 780M)인데 junction/mem 라벨은 XTX 만 내주므로
 # 라벨 매칭이 dGPU 를 고른다.
-#
-# §1-3 목록 중 "GitHub 미러 push 실패"는 Forgejo API 토큰이 필요해 아직 없다 —
-# 계획 문서의 남은 항목 참조.
 
 set -euo pipefail
 
 ENV_FILE=/etc/gem12-healthcheck.env
+# shellcheck source=/dev/null
+[ -f "$ENV_FILE" ] && source "$ENV_FILE"
 
 # 임계값 (계획 §1-3)
 DISK_MAX=85           # %
@@ -99,6 +98,54 @@ incus exec apps -- systemctl is-active --quiet litestream 2>/dev/null || fail "l
 [ "$(systemctl show backup.service -P Result)" = "success" ] || fail "backup-result"
 systemctl is-active --quiet backup.timer || fail "backup-timer"
 
+# ── 컨테이너·서비스 전수 ────────────────────────────────────────────
+# 모니터는 하나지만 msg 에 실패한 점검 이름이 실리므로 어느 컨테이너가
+# 문제인지 알림 본문에서 바로 보인다.
+
+not_running=$(incus list -c ns -f csv | awk -F, '$2 != "RUNNING" {print $1}' | paste -sd, -)
+[ -z "$not_running" ] || fail "container:${not_running}"
+
+# ai 의 llama.cpp 는 glimmer(:8081)·lightning(:8082)이 GPU 를 두고 교대한다
+# (agent-run.sh 가 전환) — 어느 쪽이든 하나 살아 있으면 추론 계층은 정상이다.
+curl -fsm 5 http://10.10.10.14:8081/health >/dev/null \
+  || curl -fsm 5 http://10.10.10.14:8082/health >/dev/null \
+  || fail "llm"
+curl -fsm 5 -o /dev/null http://10.10.10.13:5678/ || fail "n8n"
+curl -fsm 5 http://10.10.10.13:8080/api/v1/health >/dev/null || fail "nocodb"
+incus exec ci -- systemctl is-active --quiet forgejo-runner 2>/dev/null || fail "runner"
+
+# ── GitHub 미러 push ────────────────────────────────────────────────
+# push mirror 의 last_error 를 Forgejo API 로 본다. FORGEJO_TOKEN 은
+# read:repository 스코프 — deploy.sh 가 발급·기입하고, 잃으면 core 에서 재발급:
+#   podman exec --user git forgejo forgejo admin user generate-access-token \
+#     --username b95labs --token-name gem12-healthcheck --scopes read:repository
+
+if [ -n "${FORGEJO_TOKEN:-}" ]; then
+  if mirror_errs=$(FORGEJO_TOKEN="$FORGEJO_TOKEN" python3 - <<'PY'
+import json, os, urllib.request
+base = "http://10.10.10.11:3000/api/v1"
+tok = os.environ["FORGEJO_TOKEN"]
+def get(path):
+    req = urllib.request.Request(base + path, headers={"Authorization": "token " + tok})
+    with urllib.request.urlopen(req, timeout=5) as r:
+        return json.load(r)
+bad = []
+for repo in get("/repos/search?limit=50")["data"]:
+    full = repo["full_name"]
+    for m in get("/repos/%s/push_mirrors" % full):
+        if m.get("last_error"):
+            bad.append(full)
+print(",".join(sorted(set(bad))))
+PY
+  ); then
+    [ -z "$mirror_errs" ] || fail "mirror:${mirror_errs}"
+  else
+    fail "mirror-api"
+  fi
+else
+  fail "mirror-token-missing"
+fi
+
 # ── Kuma push ───────────────────────────────────────────────────────
 
 if [ ${#FAILS[@]} -eq 0 ]; then
@@ -106,9 +153,6 @@ if [ ${#FAILS[@]} -eq 0 ]; then
 else
   status=down msg="${FAILS[*]}"
 fi
-
-# shellcheck source=/dev/null
-[ -f "$ENV_FILE" ] && source "$ENV_FILE"
 
 if [ -n "${KUMA_PUSH_URL:-}" ]; then
   curl -fsSm 10 --get "$KUMA_PUSH_URL" \

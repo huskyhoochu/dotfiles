@@ -33,6 +33,23 @@ else
   warn "${ENV_FILE} created empty — Kuma push 모니터 URL 을 넣어야 알림이 붙는다"
 fi
 
+# Forgejo API 토큰 (미러 push 감시) — 없으면 CLI 로 발급해 기입한다.
+if grep -q '^FORGEJO_TOKEN=.\+' "$ENV_FILE"; then
+  skip "FORGEJO_TOKEN already present"
+else
+  log "Generating Forgejo access token (gem12-healthcheck, read:repository)"
+  if TOKEN=$(incus exec core -- podman exec --user git forgejo \
+      forgejo admin user generate-access-token --username b95labs \
+      --token-name gem12-healthcheck --scopes read:repository </dev/null \
+      | awk 'END{print $NF}') && [ -n "$TOKEN" ]; then
+    sed -i '/^FORGEJO_TOKEN=/d' "$ENV_FILE"
+    printf 'FORGEJO_TOKEN=%s\n' "$TOKEN" >>"$ENV_FILE"
+    log "FORGEJO_TOKEN written to ${ENV_FILE}"
+  else
+    warn "token generation failed — 같은 이름의 토큰이 남아 있으면 Forgejo 설정에서 지우고 재실행"
+  fi
+fi
+
 systemctl daemon-reload
 systemctl enable --now healthcheck.timer >/dev/null 2>&1
 
