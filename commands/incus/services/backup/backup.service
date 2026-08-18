@@ -11,6 +11,9 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+# systemd 는 시스템 서비스에 HOME 을 주지 않는다 — restic 캐시와
+# rclone 설정(/root/.config/rclone)이 HOME 을 요구한다(실측).
+Environment=HOME=/root
 ExecStart=/usr/local/sbin/gem12-backup
 TimeoutStartSec=1800
 Nice=10
