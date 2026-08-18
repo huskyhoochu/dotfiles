@@ -74,6 +74,11 @@ restic ls latest | grep -c cyprien_vault'   # 0 이 아니면 편입된 것
 
 ## 반드시 이 순서로 (아침에 할 일)
 
+**참고**: `healthcheck.service` 가 실패 상태로 보일 것이다. 내용은
+`DOWN: mirror:b95labs/b95labs_vault,b95labs/cyprien_vault,b95labs/funes_days_alter`
+— §1-3 에서 설계한 미러 push 감시가 아래 PAT 문제를 정확히 잡은 것이다. 오탐이 아니며
+1번을 해결하면 자동으로 사라진다.
+
 ### 1. GitHub PAT 의 저장소 범위 확장 — 이것부터
 
 `op://Personal/GITHUB_MIRROR_PAT` 은 fine-grained PAT 이고 현재 **polydeukes 에만**
