@@ -1,0 +1,12 @@
+# 주 1회 prune 타이머 (호스트 /etc/systemd/system/)
+# 일요일 새벽 — 매시 백업(정각+지연 2분)과 겹치지 않는 05:30.
+
+[Unit]
+Description=Weekly restic prune + check
+
+[Timer]
+OnCalendar=Sun *-*-* 05:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

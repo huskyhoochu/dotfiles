@@ -22,6 +22,8 @@ luarocks
 neovim
 oh-my-posh
 opencode
+rclone
+restic
 ripgrep
 spicetify-cli
 sqlite

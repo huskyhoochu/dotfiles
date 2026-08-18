@@ -1,0 +1,13 @@
+# Litestream 설정 — apps 컨테이너 /etc/litestream.yml (계획 §8, §12 4단계)
+#
+# SQLite 를 초 단위로 로컬 복제한다. Drive 업로드는 여기서 하지 않는다 —
+# Litestream 은 Drive 를 지원하지 않으므로(§8), 이 복제본 디렉토리를
+# 백업 파이프라인(services/backup/)의 restic 이 시간 단위로 실어 나른다.
+#
+# 대상 DB 조건: WAL 모드 + busy_timeout=5000 필수 — 미설정 시 동시 쓰기
+# 97% 실패 실측 (§12 4단계).
+
+dbs:
+  - path: /mnt/data/sqlite/arxiv-candidates.db
+    replicas:
+      - url: file:///mnt/data/backup/litestream/arxiv-candidates

@@ -1,0 +1,17 @@
+# 매시 백업 1회 실행 — backup.timer 가 부른다 (호스트 /etc/systemd/system/)
+# 스크립트는 서버의 dotfiles 클론에서 직접 실행한다 (git pull 로 배포).
+#
+# TimeoutStartSec: 초기 풀백업이나 Wi-Fi 저속 구간을 견딘다.
+
+[Unit]
+Description=btrfs snapshot + restic backup to Google Drive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/dotfiles/commands/incus/services/backup/backup.sh
+TimeoutStartSec=1800
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
