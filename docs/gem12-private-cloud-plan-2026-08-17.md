@@ -153,7 +153,7 @@ vault 에서 문학 원고를 별도 vault 로 분리한다.
 - vault 로컬 클론은 `~/Documents/personal/cyprien_vault` 하나뿐 (638MB, obsidian-git
   자동 커밋). alter 의 스크립트들이 참조하는 `~/Documents/obsidian/cyprien_vault` 경로는
   존재하지 않는다 — **이관하는 김에 스크립트 경로를 고쳐야 한다**. alter 로컬 클론은
-  맥에서 발견되지 않음 (위치 사용자 확인 필요)
+  없어서 `~/Documents/personal/funes_days_alter` 로 새로 받았다 (2026-08-18)
 - 발행 파이프라인 (`funes_days_alter/scripts/`): `publish_post.sh` 가 ① og 카드 생성
   ② vault 커밋·push ③ alter 빈 커밋 push(배포 트리거) ④ gh commit status 폴링.
   Vercel 빌드는 `sync_remote.sh` 가 **GitHub 의 cyprien_vault 를 gh 로 clone** 해
@@ -171,8 +171,10 @@ vault 에서 문학 원고를 별도 vault 로 분리한다.
 4. 스크립트 정비: sync_local/publish_post 의 vault 경로 정정, 미러 반영 대기 단계 추가
 5. 발행 리허설: publish_post.sh dry-run → 실발행 1회로 전 구간 검증
 
-**미결 (사용자 결정)**: 문학 vault 의 이름 / 분리 방식(스냅샷 새출발 vs 히스토리 추출) /
-GitHub 미러 여부. Forgejo 태생으로 두면 §8 교리대로 매시 restic 백업에 자동 포함된다.
+**확정 (사용자 결정 2026-08-18)**: 새 vault 이름 **manuscript_vault** / 분리는 **스냅샷
+새출발**(15년 이력은 cyprien_vault 에 그대로 남는다 — obsidian-git 자동 커밋 위주라 추적
+가치 낮음) / **GitHub 미러도 건다** (Forgejo + restic + GitHub 3겹). 실행은 별도 회차 —
+남은 유일한 입력은 **문학 원고가 든 폴더 지정**(실행 시 확인).
 
 ---
 
