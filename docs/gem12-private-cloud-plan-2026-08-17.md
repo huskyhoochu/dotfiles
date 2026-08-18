@@ -27,12 +27,7 @@
 
 ### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
 
-Immich·Jellyfin·ComfyUI 는 가동 중이다 — 구성과 검증 결과는 §12 7단계. 남은 것:
-
-- [ ] Immich 웹 초기 설정 — 관리자 계정 생성 + **관리 → 설정에서 Machine Learning 비활성화**(ML 컨테이너 미배포라 로그 소음 방지) + 사진 1장 업로드(§12 7단계의 마지막 검증 항목)
-- [ ] Jellyfin 웹 초기 마법사 — 관리자 계정, 트랜스코딩을 VAAPI·`/dev/dri/renderD129` 로 설정
-
-사진·영화 반입 절차는 `docs/gem12-media-import-tutorial-2026-08-18.md`(외장 SSD 실측 기준) 참조.
+**완료** (2026-08-18) — Immich·Jellyfin·ComfyUI 가동, 웹 초기 설정까지 종료. 구성과 검증 결과는 §12 7단계, 반입 절차는 `docs/gem12-media-import-tutorial-2026-08-18.md`. 외장 SSD 사진 반입은 진행 중이다 — 삼동이 앨범(274개)으로 경로 검증 후, 나머지는 SSD 를 서버에 직결해 폴더별 앨범으로 전송한다.
 
 ### 1-3. 모니터링 — 남은 단계
 
@@ -803,7 +798,7 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 - 커뮤니티 챗 노드(gabe-init/ComfyUI-Openrouter_node, 커밋 고정)는 gemini/gpt 이미지 계열용으로 병행
 - **비용 실측**: seedream-5.0-lite 2K 이미지 $0.035, seedance-2.5 4초 720p **$0.92** — 비디오는 초 단위 과금이 크므로 시험은 seedance-2.0-mini 로
 
-**검증**: Immich ping·3컨테이너 가동, Jellyfin /health·VAAPI 프로파일, ComfyUI 클라우드 이미지 생성 성공(gemini 경유 1장 + seedream 2K 1장 실측), healthcheck 3항목 추가 후 OK·`DOWN: jellyfin` 회귀 실측, deploy 2회차 멱등. 미디어 반입 절차는 `docs/gem12-media-import-tutorial-2026-08-18.md`(외장 SSD exFAT 실측). 남은 것: Immich·Jellyfin 웹 초기 설정(§1-2), Seedance 비디오 노드의 실과금 검증은 사용자가 필요할 때 웹 UI 에서.
+**검증 통과**: Immich ping·3컨테이너 가동 + 웹 초기 설정(관리자·ML off) 후 **외장 SSD 사진 274개(1.9GB)를 immich-cli 로 앨범 업로드, 사용자 확인** — 반입 규약은 폴더당 앨범 1개, `._*`(exFAT 의 macOS AppleDouble) 제외, API 키 최소 권한은 asset 업로드·읽기 + album 전부 + **user.read**(CLI 접속 확인용, 실측). Jellyfin /health·VAAPI 프로파일 + 웹 마법사 완료(VAAPI `renderD129`, Nfo·아트워크 파일 저장 켬 — 재구축 원칙, 트릭플레이·챕터 추출 끔 — 파생물 생성 배제). ComfyUI 클라우드 이미지 생성 성공(gemini 1장 + seedream 2K 1장 실측). healthcheck 3항목 추가 후 OK·`DOWN: jellyfin` 회귀 실측, deploy 2회차 멱등. Seedance 비디오 노드의 실과금 검증은 사용자가 필요할 때 웹 UI 에서.
 
 ---
 
