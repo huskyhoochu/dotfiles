@@ -39,10 +39,13 @@ IMAGE_MODELS = [
     "bytedance-seed/seedream-4.5",
 ]
 VIDEO_MODELS = [
-    "bytedance/seedance-2.5",            # 최신 — 최대 30초. 4초 720p $0.92 실측 (초당 약 $0.23)
+    "bytedance/seedance-2.5",            # 최신 — 최대 30초. 초당 약 $0.23. R2 URL 참조로 실사 시트 반영 실증 (2026-08-19)
     "bytedance/seedance-2.0",
     "bytedance/seedance-2.0-fast",
-    "bytedance/seedance-2.0-mini",       # 최저가 — 시험용으로 이것부터
+    "bytedance/seedance-2.0-mini",       # ByteDance 최저가
+    "kwaivgi/kling-v3.0-std",            # 초당 $0.084 (5초 ~$0.42) — 참조 기반 인물 일관성 강점, 720p 전용
+    "kwaivgi/kling-v3.0-pro",            # 초당 $0.112
+    "alibaba/wan-2.7",
 ]
 ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"]
 # 프롬프트 변환용 텍스트 모델 — 저렴한 순. 챗 완성 엔드포인트라 /models 목록 실측.
@@ -476,7 +479,7 @@ NODE_CLASS_MAPPINGS = {
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "OpenRouterSeedreamImage": "Seedream Image (OpenRouter)",
-    "OpenRouterSeedanceVideo": "Seedance Video (OpenRouter)",
+    "OpenRouterSeedanceVideo": "Video Gen (OpenRouter — Seedance·Kling·Wan)",
     "ZenMuxSeedanceVideo": "Seedance Video (ZenMux)",
     "OpenRouterPromptCraft": "Prompt Craft (OpenRouter LLM)",
     "R2ImageURL": "Image → R2 Public URL",

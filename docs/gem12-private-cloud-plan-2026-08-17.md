@@ -833,6 +833,8 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 - 커뮤니티 챗 노드(gabe-init/ComfyUI-Openrouter_node, 커밋 고정)는 gemini/gpt 이미지 계열용으로 병행
 - **비용 실측**: seedream-5.0-lite 2K 이미지 $0.035, seedance-2.5 4초 720p **$0.92** — 비디오는 초 단위 과금이 크므로 시험은 seedance-2.0-mini 로
 
+**AI 캐릭터 파이프라인 (2026-08-19)**: 캐릭터 시트(t2i) → 영상(t2v) 경로 확립. ByteDance API 는 실사 인물 이미지 입력을 딥페이크 방지 필터로 차단한다(reference·first_frame 공통 실측, AI 생성 얼굴도 "실사성 기준" 오탐) — 해소는 **Seedance 2.5 의 URL 전용 참조**: Cloudflare R2 공개 버킷 `gem12-refs`(시크릿 `op://Personal/CLOUDFLARE_*`)에 `R2ImageURL` 노드가 참조를 올려 URL 로 전달, **실사 시트 반영 영상 생성 실증**. 워크플로 4종: t2i-character-sheet / t2v-character(반실사, 앵커 키프레임) / t2v-seedance / t2v-photoreal(실사, R2 참조). 비디오 노드 콤보에 Kling 3.0(초당 $0.084~)·Wan 2.7 병행 — 같은 OpenRouter `/videos` 엔드포인트라 모델 전환은 드롭다운이다. 실측 함정: 손으로 쓴 워크플로 JSON 의 링크 슬롯이 프런트엔드 직렬화 순서(IMAGE 옵션 입력 우선)와 어긋나면 로드 시 링크가 소리 없이 버려진다.
+
 **검증 통과**: Immich ping·3컨테이너 가동 + 웹 초기 설정(관리자·ML off) 후 **외장 SSD 사진 274개(1.9GB)를 immich-cli 로 앨범 업로드, 사용자 확인** — 반입 규약은 폴더당 앨범 1개, `._*`(exFAT 의 macOS AppleDouble) 제외, API 키 최소 권한은 asset 업로드·읽기 + album 전부 + **user.read**(CLI 접속 확인용, 실측). Jellyfin /health·VAAPI 프로파일 + 웹 마법사 완료(VAAPI `renderD129`, Nfo·아트워크 파일 저장 켬 — 재구축 원칙, 트릭플레이·챕터 추출 끔 — 파생물 생성 배제). ComfyUI 클라우드 이미지 생성 성공(gemini 1장 + seedream 2K 1장 실측). healthcheck 3항목 추가 후 OK·`DOWN: jellyfin` 회귀 실측, deploy 2회차 멱등. Seedance 비디오 노드의 실과금 검증은 사용자가 필요할 때 웹 UI 에서.
 
 ---
