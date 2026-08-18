@@ -1,0 +1,38 @@
+# Jellyfin — 블루레이 백업 재생 (media 컨테이너의 Quadlet 정의, 계획 §1-2)
+#
+# 780M VAAPI 트랜스코딩: mesa-va-drivers-freeworld 가 전제다 — deploy.sh 의
+# 멱등 전제 단계가 설치·검증한다 (Fedora 기본 mesa 는 특허 문제로 H.264/HEVC
+# 코덱이 빠져 있다). 트랜스코딩 활성화는 웹 UI 에서 한다:
+#   대시보드 → 재생 → 트랜스코딩 → VAAPI, 장치 /dev/dri/renderD129
+#   (이름이 보존된다 — 780M 은 renderD129, renderD128 은 ai 컨테이너의 7900 XTX
+#    몫이라 여기 없다. 2026-08-18 실측)
+#
+# AddDevice 는 개별 노드로 적는다 — 디렉토리 형태(/dev/dri)는 Incus 중첩 환경의
+# podman 이 "no devices found: invalid argument" 로 열거에 실패한다 (실측).
+#
+# 미디어 파일은 /mnt/data/jellyfin/media 아래에 둔다 — 반입 절차는
+# docs/gem12-media-import-tutorial-2026-08-18.md 참조.
+
+[Unit]
+Description=Jellyfin media server
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/jellyfin/jellyfin:10
+ContainerName=jellyfin
+AddDevice=/dev/dri/card0
+AddDevice=/dev/dri/renderD129
+# 호스트의 tailscale serve 가 같은 번호의 HTTPS 포트로 프록시한다 (규약):
+#   https://gem12.tail4555a7.ts.net:8096
+PublishPort=8096:8096
+Volume=/mnt/data/jellyfin/config:/config
+Volume=/mnt/data/jellyfin/cache:/cache
+Volume=/mnt/data/jellyfin/media:/media
+Volume=/etc/localtime:/etc/localtime:ro
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

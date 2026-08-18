@@ -113,6 +113,9 @@ curl -fsm 5 http://10.10.10.14:8081/health >/dev/null \
 curl -fsm 5 -o /dev/null http://10.10.10.13:5678/ || fail "n8n"
 curl -fsm 5 http://10.10.10.13:8080/api/v1/health >/dev/null || fail "nocodb"
 incus exec ci -- systemctl is-active --quiet forgejo-runner 2>/dev/null || fail "runner"
+curl -fsm 5 http://10.10.10.15:2283/api/server/ping >/dev/null || fail "immich"
+curl -fsm 5 http://10.10.10.15:8096/health >/dev/null || fail "jellyfin"
+curl -fsm 5 http://10.10.10.14:8188/system_stats >/dev/null || fail "comfyui"
 
 # ── GitHub 미러 push ────────────────────────────────────────────────
 # push mirror 의 last_error 를 Forgejo API 로 본다. FORGEJO_TOKEN 은

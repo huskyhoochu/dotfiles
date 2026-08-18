@@ -1,0 +1,35 @@
+# Immich 서버 — 사진 보관 (media 컨테이너의 Quadlet 정의, 계획 §1-2)
+#
+# ML 컨테이너는 배포하지 않는다 (사용자 결정 2026-08-18 — 최소 구성). 첫 로그인 후
+# 관리자 설정 → Machine Learning 을 꺼야 잡 스케줄러의 접속 오류 로그가 멈춘다
+# (immich-app/immich#23037). 스마트 검색이 필요해지면 그때 ML 컨테이너를 추가한다.
+#
+# v3 메이저 태그 — forgejo:16 과 같은 수용 기준 (breaking change 는 v4 에서만).
+
+[Unit]
+Description=Immich photo server
+Requires=immich-postgres.service immich-valkey.service
+After=immich-postgres.service immich-valkey.service network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/immich-app/immich-server:v3
+ContainerName=immich-server
+Network=immich.network
+# 호스트의 tailscale serve 가 같은 번호의 HTTPS 포트로 프록시한다 (규약):
+#   https://gem12.tail4555a7.ts.net:2283
+PublishPort=2283:2283
+Volume=/mnt/data/immich/library:/data
+Volume=/etc/localtime:/etc/localtime:ro
+# DB_PASSWORD 는 /etc/immich.env (root 600) — env.example 참조
+EnvironmentFile=/etc/immich.env
+Environment=DB_HOSTNAME=immich-postgres
+Environment=DB_USERNAME=postgres
+Environment=DB_DATABASE_NAME=immich
+Environment=REDIS_HOSTNAME=immich-valkey
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

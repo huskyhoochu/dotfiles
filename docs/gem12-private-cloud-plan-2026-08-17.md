@@ -27,13 +27,12 @@
 
 ### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
 
-Immich, Jellyfin, ComfyUI를 media·ai 컨테이너에 올린다. 설치와 기동 확인까지만 하고 데이터는 나중에 채운다.
+Immich·Jellyfin·ComfyUI 는 가동 중이다 — 구성과 검증 결과는 §12 7단계. 남은 것:
 
-- [ ] media 컨테이너 `mesa-va-drivers-freeworld` 교체 — RPM Fusion이 mesa 26.1.6 리빌드를 낼 때까지 보류, Jellyfin 구축 전 재시도
-- [ ] Immich / Jellyfin 배치 (Podman, 780M VAAPI)
-- [ ] ComfyUI 배치 (ai 컨테이너, 클라우드 모델 라우팅 + 로컬 노드)
+- [ ] Immich 웹 초기 설정 — 관리자 계정 생성 + **관리 → 설정에서 Machine Learning 비활성화**(ML 컨테이너 미배포라 로그 소음 방지) + 사진 1장 업로드(§12 7단계의 마지막 검증 항목)
+- [ ] Jellyfin 웹 초기 마법사 — 관리자 계정, 트랜스코딩을 VAAPI·`/dev/dri/renderD129` 로 설정
 
-**검증**: Immich에 사진 업로드 가능, Jellyfin 기동, ComfyUI에서 클라우드 모델 호출 성공.
+사진·영화 반입 절차는 `docs/gem12-media-import-tutorial-2026-08-18.md`(외장 SSD 실측 기준) 참조.
 
 ### 1-3. 모니터링 — 남은 단계
 
@@ -54,7 +53,8 @@ Prometheus + Grafana 는 필요해지면 추가한다. 그때 온도 메트릭�
 | 항목 | 결정 시점 |
 |---|---|
 | 블루레이 리핑 규모 → 미디어 스토리지 계획 | 리핑 시작 시 |
-| ComfyUI 로컬 모델 중 실제로 필요한 것 선별 (백업 목록 기준 65GB) | ComfyUI 배치 시 |
+| ComfyUI 로컬 모델 도입 여부 — 2026-08-18 클라우드 전용(OpenRouter)으로 가동, 로컬 모델(백업 목록 65GB)은 보류 | 로컬 생성 필요가 생길 때 |
+| /mnt/data/media 의 restic 백업 제외 전환 — 사진·영화 원본은 외장 SSD(§4)인데 현재 서버 사본이 매시 Drive 백업에 포함된다 | 미디어 대량 반입 시 |
 | 도메인 확보 여부 (서비스 주소용) | 외부 공개 시 |
 | 차기 장비 보드 확정 — Taichi Lite(우선) vs Steel Legend(절약, §1-6) | 구매 시 |
 | 차기 장비 케이스 — 최종 후보 Jonsbo N5 vs Lian Li V3000 Plus (§1-6) | 시스템 구축 시 재검토 |
@@ -162,8 +162,8 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 | core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) + Uptime Kuma 2.5 (Quadlet, :3001) | 전부 active |
 | ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
 | apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
-| ai (10.10.10.14) | `glimmer.service` — llama.cpp Vulkan, `10.10.10.14:8081` | active, health ok |
-| media (10.10.10.15) | 컨테이너만 가동. 서비스는 §1-2에서 올린다 | RUNNING |
+| ai (10.10.10.14) | llama.cpp Vulkan — `glimmer.service`(:8081)·`lightning.service`(:8082) GPU 교대 + `comfyui.service`(:8188, --cpu, OpenRouter 클라우드 전용) | 전부 정상 |
+| media (10.10.10.15) | Immich v3(Quadlet ×3, :2283) + Jellyfin 10(Quadlet, :8096, VAAPI H264/HEVC) | 전부 active |
 | 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
 | 모니터링·업데이트 (호스트) | `healthcheck.timer` 5분(점검 → Kuma push), `dnf5-automatic.timer` 매일 06:00 보안 업데이트 (호스트 + 컨테이너 5개) | 전부 active |
 
@@ -178,6 +178,9 @@ https://gem12.tail4555a7.ts.net:3000           # Forgejo  (tailscale serve, tail
 https://gem12.tail4555a7.ts.net:3001           # Uptime Kuma
 https://gem12.tail4555a7.ts.net:5678           # n8n
 https://gem12.tail4555a7.ts.net:8080           # NocoDB
+https://gem12.tail4555a7.ts.net:2283           # Immich
+https://gem12.tail4555a7.ts.net:8096           # Jellyfin
+https://gem12.tail4555a7.ts.net:8188           # ComfyUI
 ```
 
 에이전트 루프 투입 (경계 원칙 — 맥은 단발 신호만, 루프·도구 실행·추론은 전부 서버 안):
@@ -281,7 +284,7 @@ Jellyfin 미디어                                미정
 | **Forgejo + Actions** | Git 저장소와 CI/CD. GitHub로 미러 복제. |
 | **Tailscale** (호스트) | 개인 계정 tailnet 접속 + 컨테이너 대역(10.10.10.0/24) 서브넷 라우팅. 컨테이너가 아니라 호스트에 직접 설치한다. |
 | **llama.cpp + Muse Glimmer 30B** | 로컬 LLM 추론. 7900 XTX 사용. |
-| **ComfyUI** | 이미지·영상 작업. 클라우드 모델(Seedream / GPT Image / Veo / Gemini) 위주, 로컬 노드 병행. |
+| **ComfyUI** | 이미지·영상 작업. OpenRouter 클라우드 전용 — ByteDance Seedream 5.0(이미지)·Seedance 2.5/2.0(비디오)을 자작 노드로, 기타 모델은 커뮤니티 챗 노드로. 로컬 모델은 보류(§1-5). |
 | **SQLite + Litestream** | 업무 기록, 지식저장소, 온톨로지의 저장 계층. 서비스별 파일 분리. |
 | **n8n** | 자동화 워크플로. 외부 서비스 연동은 n8n 웹 UI에서 설정한다. |
 | **NocoDB** | SQLite 위 그리드 UI. 사람이 후보를 보고 고르는 화면. |
@@ -376,8 +379,8 @@ GEM12 / Fedora Server (베어메탈) + Incus
 │   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §8 참조)
 │
 ├── ai            6 vCPU / 24GB   Fedora + Podman  ← /dev/dri (7900 XTX)
-│   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter)
-│   └── ComfyUI (클라우드 모델 라우팅 + 로컬 노드)
+│   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter / Lightning 교대)
+│   └── ComfyUI (--cpu, OpenRouter 클라우드 전용 — Seedream·Seedance)
 │
 └── media         4 vCPU / 8GB    Fedora + Podman  ← /dev/dri (780M)
     ├── Immich
@@ -472,7 +475,7 @@ IOMMU 17 → 03:00.0  RX 7900 XTX  → ai     (LLM 추론 + ComfyUI)
 IOMMU 23 → c8:00.0  Radeon 780M  → media  (VAAPI 트랜스코딩)
 ```
 
-서버 전환으로 데스크톱 렌더링 몫이 사라져 VRAM에 여유가 있다. Muse Glimmer는 24560MiB 중 19171MiB를 점유한다(2026-08-18 실측). 남는 약 5GB는 **ComfyUI 로컬 노드 몫**이다 — 평소 ComfyUI는 클라우드 모델을 쓰므로 VRAM을 거의 안 쓰지만, 업스케일이나 컨트롤넷을 로컬에서 실행할 때 쓴다. Glimmer 설정은 128k 컨텍스트 그대로 둔다(학습된 상한이 131072라 더 늘려도 실익이 없다).
+서버 전환으로 데스크톱 렌더링 몫이 사라져 VRAM에 여유가 있다. Muse Glimmer는 24560MiB 중 19171MiB를 점유한다(2026-08-18 실측). ComfyUI 는 클라우드 전용 `--cpu` 로 돌아 VRAM 을 아예 쓰지 않는다(§12 7단계) — 남는 약 5GB 는 로컬 노드를 도입하는 경우의 몫으로 남아 있다(§1-5 보류). Glimmer 설정은 128k 컨텍스트 그대로 둔다(학습된 상한이 131072라 더 늘려도 실익이 없다).
 
 ---
 
@@ -787,10 +790,26 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 
 **검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. UI 초기 설정(내장 SQLite 선택 — Litestream 은 물리지 않는다: 모니터링 이력은 시간 단위 손실 허용이고 매시 restic 백업에 이미 포함) 후 push 도달 실측 통과, `gem12-health` 모니터 Up.
 
+### 7단계 — media 컨테이너 + ComfyUI (2026-08-18)
+
+**Immich** (media, Quadlet 4개 — `commands/incus/services/immich/`): server v3 + PostgreSQL(VectorChord, 공식 조합 태그) + Valkey 9, 사용자 정의 네트워크로 이름 DNS. ML 컨테이너는 미배포(최소 구성, 사용자 결정) — 웹 설정에서 ML 비활성화 필요(§1-2). DB 비밀번호 `op://Personal/GEM12_IMMICH_DB` → `/etc/immich.env`.
+
+**Jellyfin** (media, Quadlet — `services/jellyfin/`): 보류됐던 mesa-va-drivers-freeworld 가 26.1.6 리빌드 등장으로 해소 — deploy.sh 의 멱등 전제 단계가 설치하고 `vainfo` 의 H264/HEVC 프로파일 등장을 게이트로 삼는다(통과 실측). 실측 함정: Quadlet `AddDevice` 는 디렉토리(/dev/dri)로 주면 "no devices found" — **개별 노드**(card0·renderD129)로 적어야 한다.
+
+**ComfyUI** (ai, native systemd — `services/comfyui/`): v0.33.2 고정, python3.13 venv(ai 기본 3.14 는 torch 생태계 cp314 휠 공백), CPU torch, `--cpu` 로 VRAM 경합 봉쇄(배포 전후 VRAM 불변 실측). 클라우드는 OpenRouter 단일 키(`LLM_KEY`) —
+
+- **ByteDance 최신 라인업은 전용 엔드포인트에 있다** (챗 완성 `/models` 목록에는 없음, 사용자 정정으로 발견): 이미지 `POST /api/v1/images` 에 seedream-5-0-pro/lite(2026-08 출시), 비디오 `POST /api/v1/videos`(잡 제출→폴링→다운로드) 에 seedance-2.5/2.0 계열
+- 자작 노드 2개(`services/comfyui/openrouter-media/` → custom_nodes)로 연결 — Seedream Image·Seedance Video. 실측 반영: seedream 5.0 은 해상도 2K/4K 만 수용, `unsigned_urls` 는 이름과 달리 Bearer 인증 필요
+- 커뮤니티 챗 노드(gabe-init/ComfyUI-Openrouter_node, 커밋 고정)는 gemini/gpt 이미지 계열용으로 병행
+- **비용 실측**: seedream-5.0-lite 2K 이미지 $0.035, seedance-2.5 4초 720p **$0.92** — 비디오는 초 단위 과금이 크므로 시험은 seedance-2.0-mini 로
+
+**검증**: Immich ping·3컨테이너 가동, Jellyfin /health·VAAPI 프로파일, ComfyUI 클라우드 이미지 생성 성공(gemini 경유 1장 + seedream 2K 1장 실측), healthcheck 3항목 추가 후 OK·`DOWN: jellyfin` 회귀 실측, deploy 2회차 멱등. 미디어 반입 절차는 `docs/gem12-media-import-tutorial-2026-08-18.md`(외장 SSD exFAT 실측). 남은 것: Immich·Jellyfin 웹 초기 설정(§1-2), Seedance 비디오 노드의 실과금 검증은 사용자가 필요할 때 웹 UI 에서.
+
 ---
 
 ## Changelog
 
+- **2026-08-18 (구축 5단계 완료 — media + ComfyUI, §12 7단계)** — Immich(ML 제외 Quadlet 구성)·Jellyfin(freeworld 26.1.6 리빌드 등장으로 보류 해소, VAAPI H264/HEVC 실측)·ComfyUI(python3.13 venv + CPU torch, OpenRouter 클라우드 전용) 가동. 사용자 정정으로 OpenRouter 전용 이미지/비디오 엔드포인트에서 ByteDance 2026-08 라인업(seedream-5.0, seedance-2.5)을 발견해 자작 노드 2개로 연결 — 기존 키 하나로 최신 모델 전부 커버. healthcheck·tailscale serve 에 3개 서비스 편입, 미디어 반입 튜토리얼 작성(외장 SSD exFAT 실측). 교훈: 유료 생성 API 검증을 승인 없이 반복해 비용을 태웠다 — 이후 유료 호출 검증은 비용 제시·승인 후 최저가 1회로 제한한다.
 - **2026-08-18 (점검 범위 확장 — 컨테이너 전수 + 미러 push 감시)** — gem12-healthcheck 에 컨테이너 5개 RUNNING 전수, llm(glimmer/lightning 교대 — 둘 중 하나), n8n·NocoDB·forgejo-runner, GitHub 미러 push `last_error`(Forgejo API, 토큰은 deploy.sh 가 CLI 발급) 점검을 추가해 §1-3 의 "미러 push 실패 감시" 잔여 항목 해소. 첫 실행이 glimmer 정지를 잡았는데 lightning 교대 운용에 의한 정상 상태로 판명 — 단독 점검을 "둘 중 하나"로 정정(오탐 실측). 남은 것: Kuma 알림 채널 등록(DB 실측으로 미등록 확인).
 - **2026-08-18 (모니터링 + 자동 보안 업데이트 가동)** — §1-3·§1-4 의 두 항목 수행(§12 6단계): Uptime Kuma(core Quadlet, :3001) + 호스트 점검 타이머(`gem12-healthcheck` 5분, §1-3 목록을 Kuma push 로 전달), `dnf5-plugin-automatic` 을 호스트+컨테이너 5개에 보안 업데이트 자동 적용으로 활성화. Prometheus 없이 push 모니터 방식으로 목록을 덮는 결정. 남은 것: Kuma UI 초기 설정(계정·알림 채널·push URL 기입), GitHub 미러 push 감시(Forgejo API 토큰 필요), LAN 고정 임대.
 - **2026-08-18 (백업 파이프라인 가동)** — §1-1 의 1·2단계 완성(§12 5단계): 매시 btrfs 스냅샷 + restic→Drive, 복원 리허설 통과가 완료 판정. 계획 문구와 실측이 갈린 지점 반영 — rclone 은 apps 컨테이너가 아니라 **호스트에서** 돌린다(호스트에 이미 설치돼 있었고 스냅샷 권한·전 컨테이너 데이터 접근이 호스트에만 있음), 도구는 rclone crypt 대신 **restic(rclone 백엔드)** 채택, Forgejo 는 미러 유무 선별 없이 **디렉토리 전체 백업**(57MB, 용량 문제 시 선별 전환). §1-4 재현성 정비를 겸사 완료(사용자 요청): litestream·n8n·NocoDB·러너·tailscale serve 를 스크립트로 고정. 남은 것: 3단계 오프라인 SSD, rclone 개인 client_id(공용 client_id 2026년 중 퇴역 예고).

@@ -1,0 +1,7 @@
+# Immich 컨테이너 간 네트워크 (media 컨테이너의 Quadlet 정의)
+#
+# 사용자 정의 네트워크라야 컨테이너 이름 DNS(immich-server → immich-postgres)가
+# 붙는다 — podman 기본 네트워크에는 이름 해석이 없다. .container 파일이
+# Network=immich.network 로 참조하면 quadlet 이 의존을 자동 주입한다.
+
+[Network]

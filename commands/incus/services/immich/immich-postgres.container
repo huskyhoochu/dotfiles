@@ -1,0 +1,31 @@
+# Immich PostgreSQL — VectorChord 내장 공식 이미지 (media 컨테이너의 Quadlet 정의)
+#
+# 태그는 Immich 공식 compose 의 정확한 조합을 그대로 쓴다 — DB 확장(VectorChord)
+# 버전은 업스트림 검증 조합에서 벗어나지 않는다.
+#
+# 백업: /mnt/data/immich/postgres 는 호스트 /mnt/data/media/ 아래라 매시 restic 에
+# 포함된다. btrfs 스냅샷 기반이라 crash-consistent — postgres 가 WAL 로 복구한다.
+
+[Unit]
+Description=Immich PostgreSQL (VectorChord)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+ContainerName=immich-postgres
+Network=immich.network
+Volume=/mnt/data/immich/postgres:/var/lib/postgresql/data
+Volume=/etc/localtime:/etc/localtime:ro
+# POSTGRES_PASSWORD 는 /etc/immich.env (root 600) — env.example 참조
+EnvironmentFile=/etc/immich.env
+Environment=POSTGRES_USER=postgres
+Environment=POSTGRES_DB=immich
+Environment=POSTGRES_INITDB_ARGS=--data-checksums
+ShmSize=128m
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+# ComfyUI — 클라우드 전용 이미지 생성 (ai 컨테이너의 systemd 유닛)
+# 배포는 deploy.sh 가 한다. 설치·버전 고정은 build.sh 참조.
+#
+# --cpu: OpenRouter 클라우드 전용이라 GPU 가 필요 없고, 같은 컨테이너의
+# glimmer/lightning(VRAM 상주)과의 경합을 코드 수준에서 봉쇄한다.
+# 로컬 모델을 쓰게 되면 이 플래그와 torch 백엔드를 함께 재검토한다 (계획 §1-5).
+
+[Unit]
+Description=ComfyUI (cloud-only via OpenRouter)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/comfyui
+# LLM_KEY (OpenRouter) — /etc/comfyui.env (root 600), env.example 참조
+EnvironmentFile=/etc/comfyui.env
+# systemd 는 HOME 을 주지 않는다 — 캐시 경로 탐색이 HOME 을 요구한다 (§12 실측 함정)
+Environment=HOME=/root
+ExecStart=/opt/comfyui/venv/bin/python main.py \
+  --listen 10.10.10.14 --port 8188 --cpu \
+  --output-directory /mnt/data/comfyui/output
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

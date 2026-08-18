@@ -19,6 +19,9 @@ declare -A SERVES=(
   [3001]="http://10.10.10.11:3001"   # Uptime Kuma (core)
   [5678]="http://10.10.10.13:5678"   # n8n (apps)
   [8080]="http://10.10.10.13:8080"   # NocoDB (apps)
+  [2283]="http://10.10.10.15:2283"   # Immich (media)
+  [8096]="http://10.10.10.15:8096"   # Jellyfin (media)
+  [8188]="http://10.10.10.14:8188"   # ComfyUI (ai)
 )
 
 for port in "${!SERVES[@]}"; do
