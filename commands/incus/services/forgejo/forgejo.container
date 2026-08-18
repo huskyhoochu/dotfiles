@@ -31,6 +31,7 @@ Environment=FORGEJO__server__ROOT_URL=https://gem12.tail4555a7.ts.net:3000/
 Environment=FORGEJO__server__SSH_DOMAIN=10.10.10.11
 Environment=FORGEJO__server__SSH_PORT=2222
 Environment=FORGEJO__security__INSTALL_LOCK=true
+Environment=FORGEJO__actions__ENABLED=true
 Environment=FORGEJO__service__DISABLE_REGISTRATION=true
 
 [Service]
