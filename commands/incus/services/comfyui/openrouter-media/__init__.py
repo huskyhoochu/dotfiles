@@ -38,6 +38,18 @@ VIDEO_MODELS = [
     "bytedance/seedance-2.0-mini",       # 최저가 — 시험용으로 이것부터
 ]
 ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"]
+# 프롬프트 변환용 텍스트 모델 — 저렴한 순. 챗 완성 엔드포인트라 /models 목록 실측.
+CRAFT_MODELS = [
+    "bytedance-seed/seed-2.0-lite",
+    "bytedance-seed/seed-2-1-turbo",
+    "openai/gpt-5-image-mini",
+]
+
+CRAFT_SYSTEM = """You turn a user's natural-language request (any language) into \
+a prompt for an image/video generation model. Respond with ONLY the prompt itself: \
+a rich English description — subject, setting, style, lighting, composition, \
+camera/lens or motion terms. One paragraph, no line breaks, no markdown, \
+no commentary. Describe only what should appear."""
 
 
 def _key():
@@ -171,11 +183,59 @@ class OpenRouterSeedanceVideo:
         return (video_from_file(out_path),)
 
 
+class OpenRouterPromptCraft:
+    """자연어 요청 → 생성 프롬프트 (chat completions).
+
+    출력은 프롬프트 하나뿐이다. OpenRouter 의 이미지·비디오 엔드포인트에는
+    negative prompt 필드가 없고(실측), 없는 개념을 문구로 흉내 내지 않는다
+    (사용자 결정 2026-08-18 — 부존재 서술 금지).
+    """
+
+    CATEGORY = "OpenRouter"
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("prompt",)
+    FUNCTION = "craft"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "request": ("STRING", {"multiline": True, "default": "", "tooltip": "만들고 싶은 장면을 자연어로 (한국어 가능)"}),
+                "model": (CRAFT_MODELS,),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 2**31 - 1, "tooltip": "값을 바꾸면 같은 요청도 다시 변환한다 (캐시 무효화)"}),
+            },
+            "optional": {
+                "model_override": ("STRING", {"default": ""}),
+            },
+        }
+
+    def craft(self, request, model, seed, model_override=""):
+        payload = {
+            "model": model_override or model,
+            "messages": [
+                {"role": "system", "content": CRAFT_SYSTEM},
+                {"role": "user", "content": request},
+            ],
+            "temperature": 0.7,
+        }
+        if seed:
+            payload["seed"] = seed
+        body = json.loads(_request("POST", API_BASE + "/chat/completions", payload))
+        text = body["choices"][0]["message"]["content"].strip()
+        if text.startswith("```"):
+            text = text.strip("`").lstrip("json").strip()
+        if not text:
+            raise RuntimeError("empty prompt from model")
+        return (text,)
+
+
 NODE_CLASS_MAPPINGS = {
     "OpenRouterSeedreamImage": OpenRouterSeedreamImage,
     "OpenRouterSeedanceVideo": OpenRouterSeedanceVideo,
+    "OpenRouterPromptCraft": OpenRouterPromptCraft,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "OpenRouterSeedreamImage": "Seedream Image (OpenRouter)",
     "OpenRouterSeedanceVideo": "Seedance Video (OpenRouter)",
+    "OpenRouterPromptCraft": "Prompt Craft (OpenRouter LLM)",
 }

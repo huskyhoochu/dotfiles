@@ -34,6 +34,13 @@ log "Prerequisites OK"
 log "Deploying systemd unit"
 incus exec "$CONTAINER" -- mkdir -p /mnt/data/comfyui/output
 incus file push "${SCRIPT_DIR}/comfyui.service" "${CONTAINER}/etc/systemd/system/comfyui.service"
+
+# 기본 워크플로 (웹 UI 사이드바의 Workflows 에 나타난다) — t2i·t2v 정본
+incus exec "$CONTAINER" -- mkdir -p /opt/comfyui/user/default/workflows
+for wf in "${SCRIPT_DIR}"/workflows/*.json; do
+  incus file push "$wf" "${CONTAINER}/opt/comfyui/user/default/workflows/$(basename "$wf")"
+done
+log "Default workflows deployed (t2i-seedream, t2v-seedance)"
 incus exec "$CONTAINER" -- systemctl daemon-reload
 incus exec "$CONTAINER" -- systemctl restart comfyui
 incus exec "$CONTAINER" -- systemctl enable comfyui >/dev/null 2>&1
