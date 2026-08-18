@@ -18,7 +18,7 @@
 
 1·2단계(매시 btrfs 스냅샷 + restic→Drive)는 가동 중이다 — 구성은 §8, 구축 기록과 복원 리허설 결과는 §12 5단계.
 
-- [ ] **3단계 — 오프라인 사본.** 암호화 외장 SSD, 분기 1회 갱신 + SMART 확인.
+3단계(오프라인 사본)는 가동 중이다 — `gem12-offline-copy`(`commands/incus/services/backup/offline-copy.sh`)가 매시 스냅샷 최신본에서 핵심 데이터 tar 를 외장 SSD `gem12-offline/` 에 뜬다. **비암호화** (사용자 결정 2026-08-18 — 집 안 보관 매체라 즉시 읽기 우선). 분기 1회 SSD 연결 시 실행하며 SMART 확인이 내장돼 있다. 첫 사본 2026-08-18: 183MB, 검증 통과, SMART PASSED.
 - [ ] **rclone 개인 client_id 전환.** 공용 client_id 는 2026년 중 퇴역 예고(rclone 공지) + 분당 쿼터 공유로 403 재시도가 생긴다(복원 리허설 실측). 발급은 Google Cloud Console 에서 진행 중(2026-08-18) — 프로젝트 생성 → Drive API 활성화 → OAuth 동의 화면 외부 + **앱 게시(테스트 모드는 refresh token 7일 만료)** → 데스크톱 앱 클라이언트 ID. 발급되면 남은 처리:
   1. client_id/secret 을 `op://Personal/GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET` 에 보관
   2. 맥에서 재인증 — `rclone authorize "drive" "<client_id>" "<client_secret>"` (토큰은 클라이언트에 묶여 재발급 필요, "확인되지 않은 앱" 경고는 고급→이동), 새 토큰으로 `GEM12_RCLONE_DRIVE_TOKEN` 갱신
@@ -49,7 +49,6 @@ Prometheus + Grafana 는 필요해지면 추가한다. 그때 온도 메트릭�
 |---|---|
 | 블루레이 리핑 규모 → 미디어 스토리지 계획 | 리핑 시작 시 |
 | ComfyUI 로컬 모델 도입 여부 — 2026-08-18 클라우드 전용(OpenRouter)으로 가동, 로컬 모델(백업 목록 65GB)은 보류 | 로컬 생성 필요가 생길 때 |
-| /mnt/data/media 의 restic 백업 제외 전환 — 사진·영화 원본은 외장 SSD(§4)인데 현재 서버 사본이 매시 Drive 백업에 포함된다 | 미디어 대량 반입 시 |
 | 도메인 확보 여부 (서비스 주소용) | 외부 공개 시 |
 | 차기 장비 보드 확정 — Taichi Lite(우선) vs Steel Legend(절약, §1-6) | 구매 시 |
 | 차기 장비 케이스 — 최종 후보 Jonsbo N5 vs Lian Li V3000 Plus (§1-6) | 시스템 구축 시 재검토 |
@@ -264,7 +263,7 @@ Jellyfin 미디어                                미정
 
 **용량 계획에 여유가 생긴다.** 위 배분에서 Immich 50GB와 Jellyfin 몫은 상한이 아니라 "들어가는 만큼 넣는다"가 된다. 부족하면 선택적으로 정리하면 되고, 서버가 원본을 책임지지 않으므로 무엇을 뺄지 자유롭게 정할 수 있다.
 
-**백업 등급이 내려간다.** 서버의 사진은 이미 사본이므로 Google Drive까지 3중으로 올릴 필요가 약하다. §8에서 "여유가 되면 백업"으로 분류한다. 다만 외장 SSD도 고장 나고 두 사본이 모두 집 안에 있으면 화재나 도난에 함께 사라지므로, **외장 SSD의 SMART 상태를 정기적으로 확인**한다.
+**백업 등급이 내려간다.** 서버의 사진·미디어는 이미 사본이므로 Google Drive 백업에서 제외한다 (§8 "백업하지 않음", 2026-08-18 확정). 외장 SSD 원본 + 서버 사본의 이중화가 방어선이고, 두 사본이 모두 집 안에 있는 잔여 위험은 수용한다. 그래서 **외장 SSD의 SMART 상태를 정기적으로 확인**한다 — `gem12-offline-copy` 실행에 내장돼 있다.
 
 빈 M.2 슬롯이 하나 있으므로 나중에 2TB를 추가할 수 있다. 모델과 미디어를 옮기면 1TB는 시스템과 앱 데이터 전용이 되고 위 배분에서 230GB(모델 150G + ComfyUI 80G)가 빠진다. 다만 **당분간은 디스크를 추가하지 않고 1TB로 운영한다.**
 
@@ -605,11 +604,9 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 Forgejo 는 선별하지 않고 디렉토리 통째로 싣는다 (2026-08-18 결정) — 현재 전체가 57MB 라 GitHub 미러가 있는 저장소를 걸러내는 로직의 위험이 절감 효과보다 크다. 용량이 문제될 때 미러 있는 저장소의 git 내용만 선별 제외로 전환한다.
 
-**여유가 되면 백업** — 다른 곳에 사본이 있다
+**백업하지 않음** — 다른 곳에 원본이 있거나 재생성할 수 있다
 
-- Immich 사진. 원본이 외장 SSD에 있어 서버 쪽은 이미 사본이다. 다만 두 사본이 모두 집 안에 있으므로 화재나 도난에는 함께 사라진다. 용량이 허락하면 올린다.
-
-**백업하지 않음** — 재생성하거나 다시 받을 수 있다
+- **Immich 사진 라이브러리 · Jellyfin 미디어** — 원본이 외장 SSD 다. 용량(사진 55G + 영화 126G)이 Drive 백업에 맞지 않아 제외한다 (사용자 결정 2026-08-18, backup.sh 의 exclude). 서버 사본 + SSD 원본의 이중화로 방어하되, 두 사본이 모두 집 안에 있어 화재·도난에는 함께 사라진다 — 이 잔여 위험은 수용한다. **Immich 의 postgres(앨범 구조·메타데이터)는 소용량이라 Drive 백업에 남는다**
 
 - LLM / ComfyUI 모델 가중치. 재다운로드할 수 있다. **다만 목록과 다운로드 스크립트는 Git에 남긴다.** 이것이 실질적인 백업이다.
 - Jellyfin 미디어. 원본이 외장 SSD에 있다.
@@ -641,13 +638,16 @@ Litestream은 로컬 경로(`file://`)로 복제하고, 매시 restic 백업이 
 
 ### 3단계 — 오프라인 사본
 
-암호화된 외장 SSD. 계정 잠김이나 클라우드 접근 불가에 대비한다. 분기 1회 갱신이면 충분하다.
-
-사진과 미디어 원본이 담긴 외장 SSD도 이 등급에 속한다. 서버와 함께 이 SSD가 사진의 두 사본을 이루므로, **갱신할 때 SMART 상태를 함께 확인**한다.
+외장 SSD(SanDisk Extreme 1TB, exFAT)에 핵심 데이터의 비암호화 tar 를 둔다. 계정 잠김이나 클라우드 접근 불가에 대비하며, 집 안 보관 매체라 즉시 읽기를 암호화보다 우선한다 (사용자 결정 2026-08-18). 분기 1회, SSD 를 서버에 연결한 김에 실행한다.
 
 ```bash
-sudo smartctl -H /dev/sdX
+sudo mount -o rw /dev/sdX1 /mnt/ssd
+sudo gem12-offline-copy     # commands/incus/services/backup/offline-copy.sh
 ```
+
+매시 btrfs 스냅샷의 최신본에서 restic 과 같은 제외 규칙으로 tar 를 떠 `gem12-offline/` 에 최신 2개를 보존하고, SSD 의 SMART 확인(USB 브리지라 `-d sat` 필요 — 실측)까지 겸한다.
+
+이 SSD 는 사진·영화의 **원본** 보관도 겸한다 — 서버 사본과 함께 미디어의 이중화를 이루는 매체가 같은 물건이다.
 
 ### 서버 밖에 둘 것
 
@@ -804,6 +804,7 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 
 ## Changelog
 
+- **2026-08-18 (백업 3단계 가동 + 미디어 백업 교리 확정)** — §1-1 의 3단계(오프라인 사본)를 `gem12-offline-copy` 스크립트로 가동: 매시 스냅샷 최신본에서 핵심 데이터 tar(183MB) → 외장 SSD, **비암호화**(사용자 결정 — 계획의 "암호화 SSD" 문구 폐기), SMART 확인 내장(PASSED). 미디어 백업 교리 확정: Immich 사진 라이브러리·Jellyfin 미디어는 용량(55G+126G) 때문에 Drive 백업에서 제외(backup.sh exclude), 이중화는 외장 SSD 원본 + 서버 사본이 맡는다 — "여유가 되면 백업" 등급 폐지. Immich postgres 는 백업 유지. 외장 SSD 사진·영화 대량 반입 진행(폴더별 앨범, systemd 일회 유닛).
 - **2026-08-18 (구축 5단계 완료 — media + ComfyUI, §12 7단계)** — Immich(ML 제외 Quadlet 구성)·Jellyfin(freeworld 26.1.6 리빌드 등장으로 보류 해소, VAAPI H264/HEVC 실측)·ComfyUI(python3.13 venv + CPU torch, OpenRouter 클라우드 전용) 가동. 사용자 정정으로 OpenRouter 전용 이미지/비디오 엔드포인트에서 ByteDance 2026-08 라인업(seedream-5.0, seedance-2.5)을 발견해 자작 노드 2개로 연결 — 기존 키 하나로 최신 모델 전부 커버. healthcheck·tailscale serve 에 3개 서비스 편입, 미디어 반입 튜토리얼 작성(외장 SSD exFAT 실측). 교훈: 유료 생성 API 검증을 승인 없이 반복해 비용을 태웠다 — 이후 유료 호출 검증은 비용 제시·승인 후 최저가 1회로 제한한다.
 - **2026-08-18 (점검 범위 확장 — 컨테이너 전수 + 미러 push 감시)** — gem12-healthcheck 에 컨테이너 5개 RUNNING 전수, llm(glimmer/lightning 교대 — 둘 중 하나), n8n·NocoDB·forgejo-runner, GitHub 미러 push `last_error`(Forgejo API, 토큰은 deploy.sh 가 CLI 발급) 점검을 추가해 §1-3 의 "미러 push 실패 감시" 잔여 항목 해소. 첫 실행이 glimmer 정지를 잡았는데 lightning 교대 운용에 의한 정상 상태로 판명 — 단독 점검을 "둘 중 하나"로 정정(오탐 실측). 남은 것: Kuma 알림 채널 등록(DB 실측으로 미등록 확인).
 - **2026-08-18 (모니터링 + 자동 보안 업데이트 가동)** — §1-3·§1-4 의 두 항목 수행(§12 6단계): Uptime Kuma(core Quadlet, :3001) + 호스트 점검 타이머(`gem12-healthcheck` 5분, §1-3 목록을 Kuma push 로 전달), `dnf5-plugin-automatic` 을 호스트+컨테이너 5개에 보안 업데이트 자동 적용으로 활성화. Prometheus 없이 push 모니터 방식으로 목록을 덮는 결정. 남은 것: Kuma UI 초기 설정(계정·알림 채널·push URL 기입), GitHub 미러 push 감시(Forgejo API 토큰 필요), LAN 고정 임대.

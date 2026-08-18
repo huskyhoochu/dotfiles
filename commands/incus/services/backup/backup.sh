@@ -12,7 +12,7 @@
 #    일반 디렉토리라 여기 함께 잡힌다. 컨테이너 루트fs 는 별도 서브볼륨이라
 #    안 잡힌다 — 그쪽은 Incus 내장 스냅샷 스케줄의 몫, deploy.sh 참조)
 # 2. 스냅샷에서 restic 백업 — SQLite(WAL)를 멈추지 않고 crash-consistent 하게 뜬다
-# 3. ai(모델 가중치)·ci(CI 캐시)는 §8 교리대로 제외한다
+# 3. ai(모델 가중치)·ci(CI 캐시)·jellyfin 미디어(원본이 외장 SSD)는 §8 교리대로 제외한다
 #
 # 시크릿: /root/.restic-password (op://Personal/GEM12_RESTIC_PASSWORD),
 #         /root/.config/rclone/rclone.conf 의 [gdrive] (op://Personal/GEM12_RCLONE_DRIVE_TOKEN)
@@ -65,9 +65,13 @@ mountpoint -q "$BIND" && umount "$BIND"
 mount --bind "${SNAP_DIR}/${SNAP_NAME}" "$BIND"
 trap 'umount "$BIND" 2>/dev/null || true' EXIT
 
+# 사진·영화 원본은 외장 SSD 에 있고 용량이 Drive 백업에 맞지 않는다 (사용자 결정
+# 2026-08-18). Immich 는 원본 라이브러리만 빼고 DB(postgres — 앨범·메타)는 남긴다.
 restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/ai" \
   --exclude "${BIND}/mnt/data/ci" \
+  --exclude "${BIND}/mnt/data/media/jellyfin/media" \
+  --exclude "${BIND}/mnt/data/media/immich/library" \
   --tag auto --quiet
 log "restic backup done"
 
