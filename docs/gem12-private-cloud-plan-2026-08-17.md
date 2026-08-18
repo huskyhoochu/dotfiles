@@ -19,7 +19,11 @@
 1·2단계(매시 btrfs 스냅샷 + restic→Drive)는 가동 중이다 — 구성은 §8, 구축 기록과 복원 리허설 결과는 §12 5단계.
 
 - [ ] **3단계 — 오프라인 사본.** 암호화 외장 SSD, 분기 1회 갱신 + SMART 확인.
-- [ ] **rclone 개인 client_id 발급.** 공용 client_id 는 2026년 중 퇴역 예고(rclone 공지) + 분당 쿼터 공유로 403 재시도가 생긴다(복원 리허설 실측). 발급 후 호스트 `[gdrive]` remote 에 client_id/secret 을 추가한다.
+- [ ] **rclone 개인 client_id 전환.** 공용 client_id 는 2026년 중 퇴역 예고(rclone 공지) + 분당 쿼터 공유로 403 재시도가 생긴다(복원 리허설 실측). 발급은 Google Cloud Console 에서 진행 중(2026-08-18) — 프로젝트 생성 → Drive API 활성화 → OAuth 동의 화면 외부 + **앱 게시(테스트 모드는 refresh token 7일 만료)** → 데스크톱 앱 클라이언트 ID. 발급되면 남은 처리:
+  1. client_id/secret 을 `op://Personal/GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET` 에 보관
+  2. 맥에서 재인증 — `rclone authorize "drive" "<client_id>" "<client_secret>"` (토큰은 클라이언트에 묶여 재발급 필요, "확인되지 않은 앱" 경고는 고급→이동), 새 토큰으로 `GEM12_RCLONE_DRIVE_TOKEN` 갱신
+  3. 호스트 `[gdrive]` remote 에 client_id/secret/새 토큰 반영 (restic 저장소는 무관 — 기존 백업 이력 그대로)
+  4. 다음 정각 회차에서 403 재시도 소멸 실측 → 이 항목 체크 + Changelog 기록
 
 ### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
 
