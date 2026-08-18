@@ -15,8 +15,8 @@ Type=oneshot
 Environment=HOME=/root
 Environment=RESTIC_REPOSITORY=rclone:gdrive:gem12-backup
 Environment=RESTIC_PASSWORD_FILE=/root/.restic-password
-ExecStart=/usr/bin/restic prune --limit-upload 1024 -o rclone.connections=2 --quiet
-ExecStart=/usr/bin/restic check --limit-download 2048 -o rclone.connections=2 --read-data-subset=5%%
+ExecStart=/usr/bin/restic prune --limit-upload 4096 -o rclone.connections=4 --quiet
+ExecStart=/usr/bin/restic check --limit-download 4096 -o rclone.connections=4 --read-data-subset=5%%
 TimeoutStartSec=3600
 Nice=10
 IOSchedulingClass=best-effort
