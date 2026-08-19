@@ -1,21 +1,26 @@
-# vault 이관 인수인계 — 2026-08-19 새벽 작업
+# vault 이관 실행 기록 — 2026-08-19
 
-§1-7 실행 결과와, 사람이 해야 할 남은 작업을 적는다.
+§1-7 을 실행하며 겪은 것과 그때 내린 판단을 적는다. 절차는 끝났고, 여기 남는 값은
+**재현이 필요할 때 쓸 명령어와 실측으로 확인한 함정**이다.
 
-## 지금 어떤 상태인가
+## 최종 상태
 
-세 저장소가 Forgejo 원본 체제로 옮겨졌고 새 vault 가 만들어졌다.
+세 저장소가 Forgejo 원본 + GitHub private 미러 체제로 옮겨졌고 새 vault 가 만들어졌다.
 
 | 저장소 | Forgejo | GitHub 미러 | 로컬 |
 |---|---|---|---|
-| `cyprien_vault` | `b95labs/cyprien_vault` (327M) | 등록됨, **반영 대기** | origin=Forgejo, github=GitHub |
-| `funes_days_alter` | `b95labs/funes_days_alter` | 등록됨, **반영 대기** | origin=Forgejo, github=GitHub |
-| `b95labs_vault` | `b95labs/b95labs_vault` (신규) | 등록됨, **반영 대기** | origin=Forgejo, github=GitHub |
+| `cyprien_vault` | `b95labs/cyprien_vault` | 반영됨 | origin=Forgejo, github=GitHub |
+| `funes_days_alter` | `b95labs/funes_days_alter` | 반영됨 | origin=Forgejo, github=GitHub |
+| `b95labs_vault` | `b95labs/b95labs_vault` (신규) | 반영됨 | origin=Forgejo, github=GitHub |
 
-`~/Documents/personal/b95labs_vault` 가 Obsidian 에 등록돼 있다. 열면 바로 쓸 수 있다.
+셋 다 local=forgejo=github 3중 일치를 확인했다.
+`~/Documents/personal/b95labs_vault` 는 Obsidian 에 등록돼 있다.
 
-restic 백업은 `/mnt/data/core` 를 포함하므로 세 저장소 모두 매시 백업에 편입된다.
-업로드 상한 1 MiB/s 가 걸려 있어 대량 유입이 회선을 점유하지 않는다.
+**검증한 것**: 이관본 339개 파일 전수 대조(차이는 의도한 이미지 경로 수정 2건뿐),
+`sync_remote` 경로 재현(미러 clone → 변환 → astro build 80페이지), 실발행 1회
+(미러 가드 통과 → Vercel success), 백업 편입(`restic ls` 로 저장소 3개 확인).
+
+restic 백업은 `/mnt/data/core` 를 포함하므로 세 저장소 모두 매시 백업에 들어간다.
 
 **첫 대량 사이클은 한 번 실패했다.** 02:17 실행이 Google Drive 500 을 반복해서 받다
 24분 만에 `Fatal: unable to save snapshot` 으로 죽었다. 원인은 rclone **공용
@@ -47,7 +52,7 @@ client_id** 의 분당 쿼터다 — 로그의 `project_number:202264815644` 가
 우선순위가 올라갔다 — 공용 client_id 의 쿼터를 전 세계 rclone 사용자와 나누는 한
 대량 유입 때마다 같은 위험이 있다.
 
-아침 확인 (정시 타이머가 새 설정으로 잘 도는지):
+백업이 실패했을 때의 확인·복구:
 
 ```bash
 ssh root@gem12 'systemctl show backup.service -p Result --value'   # success 여야 한다
@@ -72,28 +77,23 @@ restic ls latest | grep -c cyprien_vault'   # 0 이 아니면 편입된 것
 
 0 이면 `systemctl start backup.service` 로 한 번 돌리면 된다.
 
-## 반드시 이 순서로 (아침에 할 일)
+## 실행 순서와 그때의 판단 (전부 완료)
 
-**참고**: `healthcheck.service` 가 실패 상태로 보일 것이다. 내용은
-`DOWN: mirror:b95labs/b95labs_vault,b95labs/cyprien_vault,b95labs/funes_days_alter`
-— §1-3 에서 설계한 미러 push 감시가 아래 PAT 문제를 정확히 잡은 것이다. 오탐이 아니며
-1번을 해결하면 자동으로 사라진다.
+순서에 의존성이 있었다. 아래는 그 이유와 함께 남기는 기록이다.
 
-### 1. GitHub PAT 의 저장소 범위 확장 — 이것부터
+### 1. GitHub PAT 의 저장소 범위 확장 ✅
 
-`op://Personal/GITHUB_MIRROR_PAT` 은 fine-grained PAT 이고 현재 **polydeukes 에만**
-접근이 허용돼 있다. 나머지 세 저장소는 404 라 미러 push 가 403 으로 실패한다.
+`op://Personal/GITHUB_MIRROR_PAT` 은 fine-grained PAT 이라 **저장소를 하나씩 허용**해야
+한다. 이관 직후에는 polydeukes 에만 허용돼 있어 나머지 셋은 404, 미러 push 가 403 으로
+실패했다. `healthcheck.service` 가 이걸 `DOWN: mirror:...` 로 정확히 잡아냈다(오탐 아님).
 
-GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
-→ 해당 토큰 → **Repository access** 에 아래 세 개를 추가한다.
-
-- `huskyhoochu/cyprien_vault`
-- `huskyhoochu/funes_days_alter`
-- `huskyhoochu/b95labs_vault`
-
+**API 로는 바꿀 수 없다.** GitHub → Settings → Developer settings → Personal access
+tokens → Fine-grained tokens → 해당 토큰 → **Repository access** 에서 저장소를 추가한다.
 권한은 polydeukes 와 같게 **Contents: Read and write**.
 
-### 2. 미러 동기화 트리거
+앞으로 Forgejo 에 새 저장소를 만들고 미러를 걸 때마다 이 작업이 필요하다.
+
+### 2. 미러 동기화 트리거 ✅
 
 가장 쉬운 길은 웹 UI 다. `https://gem12.tail4555a7.ts.net:3000` → 각 저장소 →
 설정 → 미러 → **지금 동기화**.
@@ -125,55 +125,60 @@ incus exec core -- podman exec forgejo sqlite3 /data/gitea/gitea.db \
 gh api repos/huskyhoochu/b95labs_vault/commits/main --jq .sha   # 85f6c552… 여야 한다
 ```
 
-### 3. alter 의 GitHub push — 2번 이후에만
+### 3. alter 의 GitHub push — 불필요했다
 
-**순서가 중요하다.** GitHub 의 `funes_days_alter` 는 아직 옛 스크립트(cyprien_vault 를
-clone)를 갖고 있어 현재 배포가 안전하다. 새 스크립트는 `b95labs_vault` 를 clone 하므로,
-vault 미러가 비어 있는 상태에서 alter 만 먼저 올리면 **다음 Vercel 빌드가 실패한다.**
+여기에 순서 의존성이 있었다. GitHub 의 `funes_days_alter` 는 새 스크립트를 받으면
+`b95labs_vault` 를 clone 하는데, **vault 미러가 비어 있는 상태에서 alter 만 먼저
+올리면 다음 Vercel 빌드가 실패한다.** 그래서 밤사이엔 Forgejo 에만 push 하고 GitHub
+쪽은 보류했다.
+
+결과적으로 2번에서 미러가 켜지자 push mirror 가 alter 의 새 커밋도 함께 밀어 올려
+수동 push 가 필요 없어졌다. 순서도 자연히 지켜졌다 — vault 미러가 채워진 뒤 alter 가
+반영됐다.
+
+### 4. 실발행 1회 ✅
+
+발행 소재를 찾다가 몇 가지를 확인했다. 최신 글에는 고칠 오타가 없었고(남의 글을 임의로
+바꾸는 건 부적절), 이관 대상 80편은 구 vault 와 파일 단위로 완전 일치했다. og 카드가
+없는 5편은 누락이 아니라 전부 `draft: true` 초안이라 생성기가 정상적으로 건너뛴 것이었다.
+
+그래서 실질 변경 없이 배포만 재실행했는데, **리허설 목적으로는 오히려 이상적**이었다 —
+새 파이프라인이 전 구간을 도는 동안 사이트 내용은 그대로 유지됐다.
 
 ```bash
 cd ~/Documents/personal/funes_days_alter
-git push github main
+pnpm publish:post          # 또는 pnpm publish:post <슬러그>
 ```
 
-### 4. 실발행 1회 (검증의 마지막 구간)
+5단계가 순서대로 지나갔다: og 75편 확인 → vault 변경 없음 → **미러 반영 확인
+(85f6c552)** → Forgejo push `67aa54e..7c02ff0` → Vercel pending ×4 → **success**.
 
-기존 포스트에 무해한 수정(오타 등)을 넣고 발행한다. Q5 에서 (b)로 정한 방식이다.
+3/5 가 이번 이관의 핵심 산출물이다. GitHub 이 비동기 미러가 됐으니, 이 가드가 없으면
+반영 전에 빌드가 시작돼 **옛 원고로 "성공"하는 오배포**가 난다.
 
-```bash
-cd ~/Documents/personal/b95labs_vault
-# projects/funes_days_blog/<슬러그>/<파일>.md 를 한 줄 고친다
+배포 검증: 메인 200, `career` 200, 경로를 고친 이미지 2개가 Astro 자산으로 정상
+렌더링, sitemap 79 URL.
 
-cd ~/Documents/personal/funes_days_alter
-pnpm publish:post <슬러그>
-```
+### 5. cyprien_vault 에서 이동 항목 삭제 ✅
 
-5단계가 순서대로 지나가면 된다. 3/5 "GitHub 미러 반영 대기"가 새로 들어간 가드다 —
-미러가 반영될 때까지 최대 10분 기다렸다가 배포를 트리거한다. 완료되면
-`https://funes-days.com` 에서 수정이 보인다.
-
-### 5. cyprien_vault 에서 이동 항목 삭제 — 4번 통과 후
-
-발행이 검증되기 전에는 지우지 않는다.
+지우기 전에 339개 파일을 전수 대조했다(`filecmp`). 차이는 의도한 이미지 경로 수정
+2건뿐이었다.
 
 ```bash
 cd ~/Documents/personal/cyprien_vault
 git rm -r "Efforts/On/funes_days_blog" "Efforts/On/funes_days_roadmap" \
           "Efforts/On/reelmi" "Efforts/On/weave" "Efforts/On/youtube_summary"
-git rm "Efforts/Later/셀프호스팅 자율 개발 파이프라인 구축.md" \
-       "Efforts/Later/할일 관리는 결국 가장 단순하게.md" \
-       "Efforts/Later/AI 에이전트 보안 SaaS 아키텍처 설계.md" \
-       "Efforts/Later/AI 에이전트 보안 SaaS 시장성 분석.md" \
-       "Efforts/Later/Amazon S3 Files 리서치 리포트.md" \
-       "Efforts/Later/Meshy AI 반려동물 앱 도입 검토.md" \
-       "Efforts/Later/Obsidian vault를 Claude Code의 RAG 백엔드로 설정하는 방법 — 리서치 리포트.md"
+git rm "Efforts/Later/셀프호스팅 자율 개발 파이프라인 구축.md" ...  # 사업·개발 7건
 git rm -r "Efforts/Archived/moon_bird" "Efforts/Archived/ai-paper-newsletter" \
           "Efforts/Archived/youtube" "Efforts/Archived/Notes"
 git commit -m "vault backup: 활성 작업을 b95labs_vault 로 이관"
 git push
 ```
 
-이력은 git 에 그대로 남는다. 지우는 것은 작업 트리의 사본뿐이다.
+이력은 git 에 그대로 남는다. 지운 것은 작업 트리의 사본뿐이다.
+
+남은 것: `Efforts/On/youth`(성당 회의록), `Archived/오늘부터 하모니`·`dorim`(연재·연극),
+`Later/` 의 묵주기도·산만한 목표들·소설 2.
 
 ## 새 vault 를 다른 노트북에서 쓰려면
 
@@ -207,21 +212,28 @@ git clone ssh://git@10.10.10.11:2222/b95labs/b95labs_vault.git
 
 **dotfiles**
 
-- `commands/incus/services/backup/backup.sh` — restic 업로드 1 MiB/s 상한
-- `commands/incus/services/backup/backup-prune.service` — prune 업로드·check 다운로드 상한
+- `backup.sh` — 업로드 4 MiB/s 상한, `rclone.connections=2`, **`--tpslimit 4`**
+- `backup-prune.service` — prune·check 에 같은 설정
 
-**funes_days_alter/scripts** (커밋 `67aa54e`, Forgejo 에만 반영됨)
+**funes_days_alter/scripts** (커밋 `67aa54e`)
 
 - `publish_post.sh` — vault 경로 교체, **미러 반영 가드**(3/5 단계) 추가
 - `sync_local.sh` — 경로 교체, BSD/GNU `sed -i` 분기 (맥에서 실패하던 것)
 - `sync_remote.sh` — clone 대상을 `b95labs_vault` 로
 - `og/generate.mjs` — `VAULT_POSTS` 경로 교체
 
+**새로 만든 것**
+
+- `b95labs_vault` — `projects/` + `journal/` + `CLAUDE.md` 계약, 노트 127개
+
 **검증한 것**
 
-- `sync_local.sh` 80편 동기화, 이미지 경로 `./` 변환 정상
-- `astro build` 통과 — 80 페이지, 이미지 123개
-- `publish_post.sh --dry-run` 5단계 통과
+- 이관본 339개 파일 전수 대조 (차이는 의도한 경로 수정 2건)
+- `sync_local` 80편 + `astro build` 80페이지·이미지 123개
+- `sync_remote` 경로 재현 — 미러 clone → 변환 → 빌드 통과
+- `publish_post` dry-run + **실발행 1회** (미러 가드 통과, Vercel success)
+- 다른 노트북용 clone 재현 (플러그인·설정 계승 확인)
+- restic 백업 편입 — 968MiB, rateLimit 0건, `restic ls` 로 저장소 3개 확인
 
 ## 알아둘 것
 

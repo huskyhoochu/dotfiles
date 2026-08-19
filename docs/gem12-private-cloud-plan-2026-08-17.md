@@ -143,7 +143,7 @@ N5의 커뮤니티 실사용 근거: 상하 분리 챔버 덕에 GPU 온도는 �
 
 **이식 방식과 성공 기준의 충돌.** NVMe를 그대로 옮기면 §11의 재구축 검증을 건너뛰게 된다. 절충: 이식으로 빠르게 가동하되, HDD를 스크래치 삼아 부트스트랩 스크립트만으로 재구축 리허설을 1회 수행해 §11을 별도로 통과시킨다. 무선 어댑터가 AX200에서 보드 내장 Wi-Fi 7로 바뀌므로 인터페이스 이름 변경에 따른 네트워크 설정 갱신은 어차피 필요하다.
 
-### 1-7. Obsidian vault·블로그 저장소 이관 (2026-08-19 실행 — 미러 반영만 대기)
+### 1-7. Obsidian vault·블로그 저장소 이관 (2026-08-19 완료)
 
 cyprien_vault 와 funes_days_alter 를 Forgejo 원본 + GitHub push mirror 체제로 옮기고,
 vault 에서 활성 작업을 별도 vault 로 분리했다.
@@ -178,7 +178,11 @@ Reitz 의 CLAUDE.md 계약. 소형 vault 에 임베딩·벡터 DB 를 두지 않
 검증: `sync_local` 80편 + `astro build` 통과(80 페이지·이미지 123개),
 `publish_post --dry-run` 5단계 통과. 실발행 1회는 사람이 아침에 한다.
 
-남은 절차와 순서 의존성은 `docs/gem12-vault-migration-handover-2026-08-19.md` 에 있다.
+실행 이력과 실측 함정은 `docs/gem12-vault-migration-handover-2026-08-19.md` 에 있다.
+
+**완료 후 상태**: cyprien_vault 는 아카이브(Atlas 39M·첨부 181M·Calendar·창작 Efforts +
+15년 이력), b95labs_vault 는 일(노트 127개). 이관본은 339개 파일을 전수 대조해 검증한
+뒤 원본에서 지웠고, 지운 이력은 git 에 그대로 남는다.
 
 **실측 (2026-08-18)**:
 
@@ -203,8 +207,10 @@ Reitz 의 CLAUDE.md 계약. 소형 vault 에 임베딩·벡터 DB 를 두지 않
 5. ✅ 스크립트 정비: 네 파일의 vault 경로 정정, 미러 반영 대기 단계 추가,
    `sed -i` BSD/GNU 분기 (맥에서 로컬 발행이 실패하던 원인)
 6. ✅ 발행 리허설: sync 80편 + astro build + publish_post dry-run 통과
-7. ⏳ **사람 몫**: PAT 범위 확장 → 미러 동기화 → alter GitHub push → 실발행 1회
-   → cyprien 에서 이동 항목 삭제. 순서 의존성이 있다 (핸드오버 문서 참조)
+7. ✅ PAT 범위 확장·미러 동기화(사용자, 웹 UI) → **실발행 1회 통과**(og 75편 확인,
+   미러 가드 통과, Vercel success) → cyprien 에서 이동 항목 삭제(339개 파일 전수
+   대조 후). alter 의 GitHub push 는 미러가 대신해 별도 작업이 필요 없었다.
+   최종 확인: 세 저장소 모두 local=forgejo=github 3중 일치
 
 **확정 (사용자 결정 2026-08-18 → 2026-08-19 개정)**: 새 vault 이름 **b95labs_vault**
 (개인사업자 상호) / 분리는 **스냅샷 새출발** / **GitHub 미러도 건다** (Forgejo + restic +
