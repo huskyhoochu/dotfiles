@@ -14,6 +14,11 @@
 Description=Muse Glimmer 30B llama.cpp server
 After=network-online.target
 Wants=network-online.target
+# GPU 가 죽으면 llama-server 는 영원히 못 뜬다 — 재시작은 회복이 아니라 은폐가 된다.
+# 실측 2026-08-20: dGPU 하드 행 뒤 72회를 돌았고, 유닛은 내내 activating 으로 보여
+# 로딩 중과 구분되지 않았다. 5회에서 failed 로 확정해 점검과 대시보드에 드러낸다.
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -23,7 +28,7 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   --host 10.10.10.14 --port 8081 \
   -dev Vulkan0 \
   -ngl 99 \
-  -c 131072 \
+  -c 98304 \
   -fa on -ctk q8_0 -ctv q8_0 \
   -md /mnt/data/models/dflash-Muse-Glimmer-30B-Q4_K_M.gguf \
   --spec-type draft-dflash --spec-draft-n-max 15 \

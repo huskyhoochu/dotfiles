@@ -92,6 +92,19 @@ log "restic backup done"
 
 # ── 3. 보존 정책 ────────────────────────────────────────────────────
 # forget 은 태그만 정리한다. 실제 데이터 회수(prune)는 주 1회 backup-prune 이 한다.
+#
+# 그 전에 스테일 락을 치운다. restic 저장소 락은 Drive 위의 파일이라 프로세스가
+# 죽으면 남는다 — 위쪽 flock 은 로컬이고 커널이 회수하므로 층이 다르다.
+# backup 은 shared lock 이라 통과하지만 forget 은 exclusive 라 막힌다. 그래서
+# 락 하나가 백업은 멀쩡한 채 보존 정리만 골라 세운다.
+# 실측 2026-08-20: 08-19 17:13 의 락이 18시간 방치돼 매시 forget 이 실패했고,
+# 스냅샷이 정리되지 않은 채 쌓였다. unlock 은 기본적으로 30분 넘게 갱신되지 않은
+# 락만 지운다(--remove-all 을 쓰지 않으므로 살아 있는 백업은 건드리지 않는다).
+
+restic unlock \
+  -o rclone.connections=2 \
+  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
+  --quiet
 
 restic forget --keep-hourly 24 --keep-daily 7 --keep-weekly 8 \
   -o rclone.connections=2 \

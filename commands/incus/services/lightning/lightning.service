@@ -16,6 +16,11 @@ Description=Nemotron 3.5 Lightning llama.cpp server
 After=network-online.target
 Wants=network-online.target
 Conflicts=glimmer.service
+# GPU 가 죽으면 llama-server 는 영원히 못 뜬다 — 재시작은 회복이 아니라 은폐가 된다.
+# 실측 2026-08-20: dGPU 하드 행 뒤 glimmer 가 72회를 돌았고, 유닛은 내내
+# activating 으로 보여 로딩 중과 구분되지 않았다. 5회에서 failed 로 확정한다.
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Service]
 Type=simple
