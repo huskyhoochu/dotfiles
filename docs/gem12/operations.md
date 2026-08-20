@@ -13,7 +13,7 @@
 | Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
 | core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) + Uptime Kuma 2.5 (Quadlet, :3001) | 전부 active |
 | ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
-| apps (10.10.10.13) | n8n · NocoDB (Docker), Litestream 0.5.16, op CLI, Claude Code | 전부 가동 |
+| apps (10.10.10.13) | n8n · NocoDB (Docker), op CLI, Claude Code | 전부 가동 |
 | ai (10.10.10.14) | llama.cpp Vulkan — `glimmer.service`(:8081)·`lightning.service`(:8082) GPU 교대 + `comfyui.service`(:8188, --cpu, OpenRouter 클라우드 전용) | 전부 정상 |
 | media (10.10.10.15) | Immich v3(Quadlet ×3, :2283) + Jellyfin 10(Quadlet, :8096, VAAPI H264/HEVC) | 전부 active |
 | 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
@@ -93,7 +93,7 @@ AOOSTAR GEM12+ 공식 사양은 다음과 같다. 실측값과 맞춰보면 확�
 | 데이터 | 원본 위치 | 복구 경로 |
 |---|---|---|
 | 코드 저장소 | Forgejo (core) | GitHub push mirror |
-| SQLite DB (arxiv-candidates 등) | apps `/mnt/data/sqlite/` | Litestream → `/mnt/data/backup/litestream/` |
+| SQLite DB 8개 (gitea · kuma · flue-agents · arxiv-candidates · cognee · cache · n8n · jellyfin) | 컨테이너별 `/mnt/data/<컨테이너>/…` | **호스트** Litestream → `/mnt/data/backup/litestream/` |
 | LLM 모델 (GGUF) | ai `/mnt/data/models/` | HuggingFace 재다운로드 — `commands/incus/services/glimmer/download.sh` |
 | Obsidian vault | GitHub | clone |
 | 사진 · 블루레이 백업본 | **외장 SSD** | 서버의 Immich/Jellyfin 몫은 사본 |
@@ -491,6 +491,22 @@ Forgejo 는 선별하지 않고 디렉토리 통째로 싣는다 (2026-08-18 결
 - CI 캐시, Docker 레이어
 - Jellyfin 메타데이터, 트랜스코딩 임시파일
 - Immich 썸네일
+
+### Litestream은 호스트에서 돈다
+
+**컨테이너 안에 두면 다른 컨테이너의 DB 에 닿을 수 없다.** 각 컨테이너는
+`source: /mnt/data/<자기이름>` 을 `/mnt/data` 로 마운트받으므로, apps 안의
+Litestream 은 core 의 `gitea.db` 를 볼 방법이 없다. 2026-08-20 실측에서 이
+배치 때문에 SQLite 9개 중 **2개만 복제되고 있었고, Forgejo 전체가 담긴
+`gitea.db` 가 빠져 있었다** — git 저장소는 미러에서 되찾아도 이슈와 PR 은
+못 되찾는다.
+
+복제는 특정 컨테이너의 부속물이 아니라 인프라 층이므로, btrfs 스냅샷·restic 과
+같은 자리(호스트)에 둔다. 현재 대상 8개, 복원 리허설 통과(gitea.db →
+integrity ok, 이슈 94건·저장소 7개 확인).
+
+`nocodb/noco.db` 만 제외한다 — `journal_mode=delete` 라 Litestream 이 읽을 WAL 이
+없다. WAL 전환은 서비스 정지가 필요해 매시 restic 에 맡긴다.
 
 ### Litestream은 Google Drive에 직접 쓸 수 없다
 

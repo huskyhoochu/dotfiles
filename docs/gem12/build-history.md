@@ -211,6 +211,12 @@ dGPU 하드 행 사고(§Changelog)를 계기로 감시와 백업의 구조적 �
 
 ## Changelog
 
+- **2026-08-20 (Litestream 호스트 이전 — 복제 대상 2→8)** — apps 컨테이너 안의 Litestream 은 다른 컨테이너의 DB 에 **구조적으로** 닿을 수 없었다(컨테이너는 `source: /mnt/data/<자기이름>` 만 마운트받는다). 그 결과 SQLite 9개 중 2개만 복제되고 있었고 **Forgejo 전체가 담긴 `gitea.db` 가 빠져 있었다** — 매시 restic 만으로는 최대 1시간 손실이고, git 저장소는 미러에서 되찾아도 이슈·PR 은 못 되찾는다. 원인은 나쁜 설계가 아니라 도입 시점의 관성이다: 컨테이너 데이터 분리가 먼저 있었고(옳다), Litestream 이 나중에 apps 의 DB 문제를 풀며 그 안에 설치됐다.
+
+  복제는 컨테이너의 부속물이 아니라 인프라 층이므로 호스트로 옮겼다. 대상 8개(gitea · uptime-kuma · flue-agents · arxiv-candidates · polydeukes-cognee · cache · n8n · jellyfin), 복제본도 apps 종속 경로에서 `/mnt/data/backup/litestream/` 으로 중립화했다. **복원 리허설 통과** — `gitea.db` 를 복제본에서 되살려 integrity ok, 이슈 94건·저장소 7개 확인. 새로 편입된 `flue-agents.db` 는 restic 이 `/mnt/data/ci` 를 통째로 제외하므로(CI 캐시 전제) 이 복제본이 유일한 백업 경로가 된다.
+
+  `nocodb/noco.db` 는 `journal_mode=delete` 라 제외했다 — WAL 이 없으면 Litestream 이 읽을 것이 없다. 전환은 서비스 정지가 필요해 매시 restic 에 맡긴다. 헬스체크의 litestream 점검도 apps 그룹에서 host 로 옮기고, **sync 로그 점검을 하나 더 걸었다** — 서비스가 active 여도 복제가 멈출 수 있고, 그 구분은 같은 날 백업에서 실측했다(restic backup 성공 뒤 forget 이 18시간 죽어 있었는데 "백업은 성공"으로 보였다).
+
 - **2026-08-20 (rclone 개인 client_id 전환 — §1-1 완료)** — Google Cloud Console 에서 데스크톱 앱 클라이언트 ID 를 발급해 전환했다. 맥에서 `rclone authorize "drive" "<id>" "<secret>"` 로 재인증하고, 호스트 `[gdrive]` 에 client_id·client_secret·token 세 값을 함께 넣었다(token 만 갈면 refresh 가 공용 client 로 나가 실패한다). **전환 직후 실측: 매시 백업 88초 → 34초, `rateLimitExceeded`·500·재시도 전부 0건.** 이전에는 재시도 대기가 실제 시간을 잡아먹고 있었다 — 08-19 진단("500 은 파생이고 근본은 분당 요청 수")이 맞았다는 증거다. 이에 따라 `tpslimit` 을 4 → 10(burst 5)으로 완화했고 이 값에서도 오류 0건. 남은 것: 대량 유입 시 재확인(요청이 가장 몰리는 `backup-prune` 이 첫 신호가 될 것).
 
 - **2026-08-20 (dGPU 하드 행 사고 — 감시가 사고를 못 잡은 이유까지)** — Glimmer 가 프롬프트 캐시 축출(350MiB 해제) 중 `radv/amdgpu: CS rejected (-13)` 로 dGPU 가 하드 행에 빠졌다. `leaking bo va` 수십 건 → KFD 경로 커널 oops 2건 → 재바인딩이 `vram size read: 0` / `discovery failed: -2` 로 실패. 드라이버 재로드로는 안 풀려 **호스트 재부팅**으로 회복했다(SMU 초기화 성공, Vulkan0 정상 인식, 맥→Glimmer 33.9 tok/s 확인). 사용자는 자동 재부팅을 거부했으므로 사람이 판단해 재부팅한다.
