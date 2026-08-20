@@ -559,7 +559,11 @@ IOMMU 17 → 03:00.0  RX 7900 XTX  → ai     (LLM 추론 + ComfyUI)
 IOMMU 23 → c8:00.0  Radeon 780M  → media  (VAAPI 트랜스코딩)
 ```
 
-서버 전환으로 데스크톱 렌더링 몫이 사라져 VRAM에 여유가 있다. Muse Glimmer는 24560MiB 중 19171MiB를 점유한다(2026-08-18 실측). ComfyUI 는 클라우드 전용 `--cpu` 로 돌아 VRAM 을 아예 쓰지 않는다(§12 7단계) — 남는 약 5GB 는 로컬 노드를 도입하는 경우의 몫으로 남아 있다(§1-5 보류). Glimmer 설정은 128k 컨텍스트 그대로 둔다(학습된 상한이 131072라 더 늘려도 실익이 없다).
+서버 전환으로 데스크톱 렌더링 몫이 사라졌지만 **VRAM 여유는 넉넉하지 않다**. Muse Glimmer 가 24560MiB 중 18918MiB 를 점유해 여유가 5641MiB 다(2026-08-20 실측). ComfyUI 는 클라우드 전용 `--cpu` 로 돌아 VRAM 을 아예 쓰지 않는다(§12 7단계) — 남는 5.6GB 는 로컬 노드를 도입하는 경우의 몫이다(§1-5 보류).
+
+Glimmer 컨텍스트는 **96k**(`-c 98304`)다. 학습된 상한이 131072라 더 늘릴 실익은 없고, 반대로 줄인 이유는 VRAM 압박이다 — 2026-08-20 dGPU 하드 행이 프롬프트 캐시 축출(350MiB 해제) 순간에 났다(§12 changelog). 다만 `kv_unified=true`+`--no-warmup` 이라 유휴 VRAM 은 320MiB 만 줄었고, 효과는 부하 시 상한이 25% 낮아지는 것으로 나타난다.
+
+슬롯 수(`-np`)는 지정하지 않는다. 기본값 auto 에서 llama.cpp 가 4 를 고르고 `kv_unified=true` 로 공용 KV 풀을 쓰므로 **슬롯이 4개여도 요청 하나가 `-c` 전량을 쓴다.** `-np 2` 를 시험해 보고 되돌렸다(2026-08-20) — 명시하는 순간 `kv_unified=false` 로 전환해 `-c` 를 슬롯 수로 나눈다. `n_ctx_slot` 이 98304→49152 로 반토막 나는데 VRAM 이득은 197MiB 뿐이라 값이 맞지 않았다. VRAM 압박은 `-c` 자체를 줄여서 잡는다.
 
 ---
 
@@ -915,7 +919,7 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 
 - **2026-08-20 (dGPU 하드 행 사고 — 감시가 사고를 못 잡은 이유까지)** — Glimmer 가 프롬프트 캐시 축출(350MiB 해제) 중 `radv/amdgpu: CS rejected (-13)` 로 dGPU 가 하드 행에 빠졌다. `leaking bo va` 수십 건 → KFD 경로 커널 oops 2건 → 재바인딩이 `vram size read: 0` / `discovery failed: -2` 로 실패. 드라이버 재로드로는 안 풀려 **호스트 재부팅**으로 회복했다(SMU 초기화 성공, Vulkan0 정상 인식, 맥→Glimmer 33.9 tok/s 확인). 사용자는 자동 재부팅을 거부했으므로 사람이 판단해 재부팅한다.
 
-  조치 셋. ① `backup.sh` 의 forget 앞에 `restic unlock` — 저장소 락은 Drive 위의 **파일**이라 프로세스가 죽으면 남고, backup 은 shared lock 이라 통과하지만 forget 은 exclusive 라 막힌다. 08-19 17:13 의 락이 18시간 방치돼 매시 forget 이 죽었고 **백업은 "성공"으로 보이는데 보존 정리만 조용히 실패**했다. 락 해제 후 처음으로 `Done.` 완주. ② glimmer·lightning 에 `StartLimitBurst=5` — GPU 가 죽으면 llama-server 는 영원히 못 뜨는데 `Restart=on-failure` 만 있어 **72회를 돌았고 유닛은 내내 `activating` 이라 로딩 중과 구분되지 않았다.** 재시작이 회복이 아니라 은폐가 되는 경우다. ③ glimmer 컨텍스트 128K→96K — VRAM 여유가 5321 MiB 뿐이라 축출이 잦았다. 다만 `kv_unified=true`+`--no-warmup` 이라 유휴 VRAM 은 320 MiB 만 줄었다(효과는 부하 시 상한이 25% 낮아지는 것으로 나타난다). **남은 축은 `n_slots=4`** — 슬롯 4개가 각각 96K 를 채우면 여전히 여유를 넘으므로 축출은 계속 일어난다.
+  조치 셋. ① `backup.sh` 의 forget 앞에 `restic unlock` — 저장소 락은 Drive 위의 **파일**이라 프로세스가 죽으면 남고, backup 은 shared lock 이라 통과하지만 forget 은 exclusive 라 막힌다. 08-19 17:13 의 락이 18시간 방치돼 매시 forget 이 죽었고 **백업은 "성공"으로 보이는데 보존 정리만 조용히 실패**했다. 락 해제 후 처음으로 `Done.` 완주. ② glimmer·lightning 에 `StartLimitBurst=5` — GPU 가 죽으면 llama-server 는 영원히 못 뜨는데 `Restart=on-failure` 만 있어 **72회를 돌았고 유닛은 내내 `activating` 이라 로딩 중과 구분되지 않았다.** 재시작이 회복이 아니라 은폐가 되는 경우다. ③ glimmer 컨텍스트 128K→96K — VRAM 여유가 5321 MiB 뿐이라 축출이 잦았다. 다만 `kv_unified=true`+`--no-warmup` 이라 유휴 VRAM 은 320 MiB 만 줄었다(효과는 부하 시 상한이 25% 낮아지는 것으로 나타난다). `-np 2` 로 슬롯을 줄이는 안도 시험했으나 되돌렸다 — 명시하는 순간 `kv_unified=false` 로 전환해 `-c` 를 슬롯 수로 나누는 탓에 `n_ctx_slot` 이 반토막(98304→49152) 나는데 VRAM 이득은 197MiB 뿐이었다(§6).
 
   그리고 감시 자체의 결함이 드러났다. Kuma 이력에 12:12~12:35 구간이 **통째로 비어 있었다** — 단일 push 모니터 + 집계 status 구조에서는 이미 down 인 상태(`backup-result`)에 새 장애가 겹쳐도 status 가 그대로라 Kuma 가 상태 변화로 보지 않는다. **먼저 난 장애가 뒤에 난 장애를 가린다.** 가동률 12.81% 로 상시 빨간불이라 알림 채널을 붙여도 무의미했을 상태였다. 점검을 7개 그룹(host·backup·core·apps·ci·ai·media)으로 나눠 그룹마다 `KUMA_PUSH_URL_<그룹>` 에 신고하도록 고쳤다. 매 실행에서 7개 전부 보낸다 — 실패한 그룹만 보내면 나머지가 하트비트를 잃어 오탐이 된다. 격리 검증 통과(ai 에 실패 주입 → ai 만 down, 나머지 6개 up 유지), 7개 URL 모두 HTTP 200. 실측 함정: 그룹 배열 이름을 `GROUPS` 로 두면 bash 특수 변수(GID 배열)와 충돌해 첫 배포가 root 의 GID 3개를 돌았다 — `CHECK_GROUPS` 로 바꿨다. 남은 것: 알림 채널 등록, 기존 `gem12-health` 모니터 정리.
 

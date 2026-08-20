@@ -91,11 +91,14 @@ Qwen3-Coder-Next는 CPU 오프로드 탓에 17 tok/s로 떨어져 실용 범위 
 | 항목 | 명령 | 보관처 | 상태 |
 |---|---|---|---|
 | Claude Code 장기 토큰 | `claude setup-token` | 1Password Personal 금고 `CLAUDE_CODE_OAUTH_TOKEN` | **발급 완료 (맥북)** |
-| rclone Google Drive 토큰 | `rclone authorize "drive"` | 1Password | |
+| rclone Drive client_id·secret | Google Cloud Console → OAuth 클라이언트(**데스크톱 앱**) | 1Password `GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET` | **발급 완료 (2026-08-20)** |
+| rclone Drive 토큰 | `CID=$(op read ...) CSEC=$(op read ...) sh -c 'rclone authorize "drive" "$CID" "$CSEC"'` | 1Password `GEM12_RCLONE_DRIVE_TOKEN` | 재설치 때 재인증 필요 |
 | 맥북 SSH 공개키 | 맥북에서 `ssh-add -L` — 1Password 에이전트가 공개키를 출력한다 | 이미 1Password에 있음 | |
 | GitHub PAT (필요시) | github.com 설정 | 1Password | |
 
 **발급은 맥북에서 하는 편이 낫다.** 토큰은 기기에 묶이지 않으므로 발급 위치와 사용 위치가 달라도 되고, 이 기기에서 발급하면 포맷과 함께 잃는다.
+
+**rclone 은 인자 없이 `rclone authorize "drive"` 를 돌리면 안 된다** — 공용 client_id 의 토큰이 나온다. 분당 쿼터를 전 세계 rclone 사용자와 나누는 구조라 대량 유입 때 백업이 죽는다(2026-08-19 실측). 개인 client_id·secret 을 인자로 넘겨야 하고, 복원한 `rclone.conf` 의 `[gdrive]` 에는 client_id·client_secret·token **세 값이 함께** 있어야 한다.
 
 서버에서는 환경변수로 넘긴다. `bashrc.template` 이 마지막에 `~/.bashrc.local` 을 읽으므로 그 파일에 둔다. 저장소에서 관리하지 않는 파일이다.
 

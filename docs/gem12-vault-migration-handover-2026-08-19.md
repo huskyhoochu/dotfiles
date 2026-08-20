@@ -44,13 +44,22 @@ client_id** 의 분당 쿼터다 — 로그의 `project_number:202264815644` 가
 `funes_days_alter.git` 세 개가 백업에 들어간 것을 확인했다. 이 설정은
 `backup.sh`·`backup-prune.service` 에 정식 반영해 배포했다.
 
+> **후속 (2026-08-20)**: 개인 client_id 로 전환하면서 근본이 사라졌다 — 공용
+> client_id 는 분당 쿼터를 전 세계 rclone 사용자와 나누는 구조였다. 전환만으로
+> `rateLimitExceeded`·500·재시도가 0건이 되고 매시 백업이 88초→34초로 줄어,
+> `tpslimit` 을 **10**(burst 5)으로 완화했다. 아래 값 4 는 08-19 당시 기록이다.
+
 교훈 하나: **오류 메시지가 아니라 오류 분포를 세어야 했다.** 눈에 띄는 500 을 쫓느라
 두 번 헛짚었고, 유형별로 집계하자 바로 드러났다.
 
-**근본 해결은 §1-1 에 이미 미결로 있는 개인 client_id 전환**이다 (Google Cloud
-콘솔에서 OAuth 클라이언트를 만들어 `rclone config` 에 넣는 웹 작업). 이번 일로
-우선순위가 올라갔다 — 공용 client_id 의 쿼터를 전 세계 rclone 사용자와 나누는 한
-대량 유입 때마다 같은 위험이 있다.
+근본 해결은 개인 client_id 전환이었고 **2026-08-20 에 완료됐다**(§1-1). 공용
+client_id 는 분당 쿼터를 전 세계 rclone 사용자와 나누는 구조라, 그 위에서 무엇을
+조여도 대량 유입 때마다 같은 위험이 남았다. 전환 후 실측은 위 후속 상자에 적었다.
+
+시크릿은 `op://Personal/GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET` 이고,
+호스트 `/root/.config/rclone/rclone.conf`(600) 의 `[gdrive]` 에 client_id·
+client_secret·token **세 값이 함께** 있어야 한다 — token 만 갈면 refresh 가 공용
+client 로 나가 실패한다.
 
 백업이 실패했을 때의 확인·복구:
 
@@ -58,8 +67,13 @@ client_id** 의 분당 쿼터다 — 로그의 `project_number:202264815644` 가
 ssh root@gem12 'systemctl show backup.service -p Result --value'   # success 여야 한다
 ```
 
-`exit-code` 로 나오면 락을 풀고 다시 돌린다. **실패 뒤에는 반드시 락을 풀어야 한다** —
-스테일 락이 남으면 이후 모든 백업이 막힌다.
+`exit-code` 로 나오면 다시 돌린다. 스테일 락은 **2026-08-20 부터 `backup.sh` 가
+`forget` 앞에서 자동으로 푼다** — 저장소 락은 Drive 위의 파일이라 프로세스가 죽으면
+남고, `backup` 은 shared lock 이라 통과하지만 `forget` 은 exclusive 라 막힌다.
+그래서 락 하나가 **백업은 멀쩡한 채 보존 정리만 골라 세운다**(08-19 17:13 의 락이
+18시간 방치돼 매시 forget 이 죽은 실측이 있다).
+
+자동 해제가 어떤 이유로 듣지 않을 때만 수동으로 푼다:
 
 ```bash
 ssh root@gem12
@@ -86,6 +100,7 @@ restic ls latest | grep -c cyprien_vault'   # 0 이 아니면 편입된 것
 `op://Personal/GITHUB_MIRROR_PAT` 은 fine-grained PAT 이라 **저장소를 하나씩 허용**해야
 한다. 이관 직후에는 polydeukes 에만 허용돼 있어 나머지 셋은 404, 미러 push 가 403 으로
 실패했다. `healthcheck.service` 가 이걸 `DOWN: mirror:...` 로 정확히 잡아냈다(오탐 아님).
+2026-08-20 부터 헬스체크가 7개 그룹으로 나뉘어, mirror 점검은 `gem12-backup` 모니터에 뜬다.
 
 **API 로는 바꿀 수 없다.** GitHub → Settings → Developer settings → Personal access
 tokens → Fine-grained tokens → 해당 토큰 → **Repository access** 에서 저장소를 추가한다.
@@ -212,7 +227,7 @@ git clone ssh://git@10.10.10.11:2222/b95labs/b95labs_vault.git
 
 **dotfiles**
 
-- `backup.sh` — 업로드 4 MiB/s 상한, `rclone.connections=2`, **`--tpslimit 4`**
+- `backup.sh` — 업로드 4 MiB/s 상한, `rclone.connections=2`, **`--tpslimit 4`** (2026-08-20 개인 client_id 전환으로 10 으로 완화됨)
 - `backup-prune.service` — prune·check 에 같은 설정
 
 **funes_days_alter/scripts** (커밋 `67aa54e`)
@@ -242,8 +257,10 @@ git clone ssh://git@10.10.10.11:2222/b95labs/b95labs_vault.git
   읽어두는 편이 낫다
 - **Forgejo git SSH 는 `10.10.10.11:2222` 직결이다.** 호스트가 포워딩하지 않으므로
   Tailscale 서브넷 라우트가 있어야 닿는다. HTTPS(:3000)는 tailscale serve 로 열려 있다
-- **대량 push 직후 첫 restic 사이클의 로그를 한 번 보라.** Drive 분당 요청 쿼터
-  경고 이력이 있다. 상한을 걸어 완화했지만 확인해 두면 좋다
+- **대량 push 직후 첫 restic 사이클의 로그를 한 번 보라.** 2026-08-20 개인
+  client_id 전환으로 분당 쿼터 문제 자체는 사라졌지만(429·500·재시도 0건), 개인
+  쿼터도 무한은 아니다. 429 가 다시 보이면 `tpslimit`(현재 10)을 먼저 내린다 —
+  요청이 가장 몰리는 `backup-prune`(주 1회 일 05:30)이 첫 신호가 될 것이다
 
   ```bash
   ssh root@gem12 'journalctl -u backup.service -n 40 --no-pager'

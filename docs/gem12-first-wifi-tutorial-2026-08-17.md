@@ -283,8 +283,12 @@ op read 'op://Personal/OPENROUTER_API_KEY/자격 증명'     # 읽히지 않는�
 | `OPENROUTER_API_KEY` | `op://Personal/OPENROUTER_API_KEY/credential` | AI 파이프라인 리뷰 모델 |
 | `ZENMUX_API_KEY` | `op://Personal/ZENMUX_API_KEY/credential` | `pi`의 zenmux 프로바이더 |
 | `HUGGING_FACE_API_KEY` | `op://Personal/HUGGING_FACE_API_KEY/credential` | 모델 재다운로드 |
+| `GEM12_RCLONE_CLIENT_ID` | `op://Personal/GEM12_RCLONE_CLIENT_ID/credential` | Drive 개인 OAuth 클라이언트 |
+| `GEM12_RCLONE_CLIENT_SECRET` | `op://Personal/GEM12_RCLONE_CLIENT_SECRET/credential` | 위와 한 쌍 |
+| `GEM12_RCLONE_DRIVE_TOKEN` | `op://Personal/GEM12_RCLONE_DRIVE_TOKEN/credential` | 백업 대상 Drive 접근 토큰 |
+| `GEM12_RESTIC_PASSWORD` | `op://Personal/GEM12_RESTIC_PASSWORD/credential` | restic 저장소 암호 |
 
-새 시크릿(rclone Google Drive 토큰 등)을 만들 때는 Personal 금고에 **API 자격 증명** 유형으로, 위처럼 대문자 스네이크 케이스 이름을 붙여 저장한다. 그러면 경로가 `op://Personal/<이름>/credential`로 일관된다.
+새 시크릿을 만들 때는 Personal 금고에 **API 자격 증명** 유형으로, 위처럼 대문자 스네이크 케이스 이름을 붙여 저장한다. 그러면 경로가 `op://Personal/<이름>/credential`로 일관된다 — 값이 두 개인 rclone client_id·secret 도 항목을 둘로 나눠 이 규약을 지킨다.
 
 ### 세션은 30분 뒤 만료된다
 
