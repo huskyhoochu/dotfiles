@@ -1,7 +1,7 @@
 # 기획부터 머지까지 — AI 개발 파이프라인 설계
 
 > 날짜: 2026-08-17 (월)
-> 전제 인프라: `gem12-private-cloud-plan-2026-08-17.md`
+> 전제 인프라: [operations.md](operations.md)
 > 상태: 설계. Fedora Server 설치 전이라 실행 검증은 하지 않았다.
 
 ## 한줄 요약
@@ -263,7 +263,7 @@ CI 쪽 함의: 추론 엔드포인트가 죽으면 작업이 **무한 대기**�
 
 ## 6. 구축 순서
 
-인프라 구축(`gem12-private-cloud-plan` §8)이 4단계까지 끝난 뒤 시작한다.
+인프라 구축([build-history.md](build-history.md))이 4단계까지 끝난 뒤 시작한다.
 
 1. **Glimmer 바인드 주소 변경** → 검증: ci 컨테이너에서 `curl 10.10.10.14:8081/v1/models` 응답
 2. **`pi`로 먼저 손으로 돌려본다** — 이슈 하나를 골라 `pi -p --provider muse-glimmer` 실행 → 검증: 코드 수정이 말이 되는가. **여기서 Glimmer의 완주율을 처음 확인한다**

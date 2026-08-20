@@ -4,7 +4,7 @@
 # 호스트에서 root 로 실행한다. 여러 번 실행해도 안전하다.
 #   sudo ./build.sh
 #
-# Vulkan 을 쓰는 이유는 docs/gem12-private-cloud-plan-2026-08-17.md §4 에 있다.
+# Vulkan 을 쓰는 이유는 docs/gem12/operations.md §5 에 있다.
 # 요약하면 RDNA3 는 RADV 드라이버로 충분하고, ROCm 전체 스택이 필요 없다.
 
 source "$(dirname "$0")/../../lib.sh"

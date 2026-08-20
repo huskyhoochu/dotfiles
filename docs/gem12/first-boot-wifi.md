@@ -7,7 +7,7 @@
 이 문서는 서버가 인터넷에 붙기 전에 필요하므로 서버에서 열 수 없다. **맥북이나 휴대폰 브라우저로 GitHub에서 열어** 옆에 두고 따라간다.
 
 ```text
-https://github.com/huskyhoochu/dotfiles/blob/main/docs/gem12-first-wifi-tutorial-2026-08-17.md
+https://github.com/huskyhoochu/dotfiles/blob/main/docs/gem12/first-boot-wifi.md
 ```
 
 모든 명령은 서버 앞에 앉아 모니터와 **유선 키보드**로 친다.
@@ -200,7 +200,7 @@ incus exec ci -- docker run --rm hello-world
 # 맥북에서: ssh b95labs@192.168.35.69 → sudo -v, incus list
 ```
 
-이후 절차는 `commands/incus/README.md`와 `gem12-private-cloud-plan-2026-08-17.md` §8을 따른다.
+이후 절차는 `commands/incus/README.md` 와 [build-history.md](build-history.md) 를 따른다.
 
 ---
 

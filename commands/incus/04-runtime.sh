@@ -2,7 +2,7 @@
 # 컨테이너별 런타임 설치
 #
 # containers.conf 의 런타임 열을 보고 Docker 또는 Podman 을 넣는다.
-# 하나로 통일하지 않는 이유는 docs/gem12-private-cloud-plan-2026-08-17.md §4 에 있다.
+# 하나로 통일하지 않는 이유는 docs/gem12/operations.md §5 에 있다.
 # 요약하면 CI와 앱은 기존 compose 자산과 Actions Runner 때문에 Docker 이고,
 # core/ai/media 는 systemd 직접 관리와 rootless GPU 접근 때문에 Podman 이다.
 
@@ -126,4 +126,4 @@ echo "Next: deploy services inside each container."
 echo "  incus exec core -- bash    # core  - Forgejo"
 echo "  incus exec ai -- bash      # ai    - llama.cpp, ComfyUI"
 echo
-echo "Build order: docs/gem12-private-cloud-plan-2026-08-17.md section 8."
+echo "Build order: docs/gem12/build-history.md"

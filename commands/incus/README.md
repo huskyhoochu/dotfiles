@@ -1,6 +1,6 @@
 # Incus 부트스트랩 스크립트
 
-GEM12를 Fedora Server + Incus 서버로 세우는 스크립트 모음. 설계 근거는 `docs/gem12-private-cloud-plan-2026-08-17.md`에 있다.
+GEM12를 Fedora Server + Incus 서버로 세우는 스크립트 모음. 설계 근거는 `docs/gem12/`에 있다 — 현재 구성은 `operations.md`, 구축 이력은 `build-history.md`.
 
 ## stow 패키지가 아니다
 
@@ -15,7 +15,7 @@ GEM12를 Fedora Server + Incus 서버로 세우는 스크립트 모음. 설계 �
 
 Fedora Server 설치를 마치고 콘솔에 로그인한 상태에서 시작한다.
 
-**첫 Wi-Fi 연결은 스크립트가 아니라 사람이 한다.** 저장소를 받을 네트워크가 아직 없기 때문이다. `docs/gem12-first-wifi-tutorial-2026-08-17.md` 를 맥북이나 휴대폰으로 열어 따라간다. Anaconda 설치 관리자에서 Wi-Fi를 설정했다면 이미 붙어 있으므로 확인만 하면 된다.
+**첫 Wi-Fi 연결은 스크립트가 아니라 사람이 한다.** 저장소를 받을 네트워크가 아직 없기 때문이다. `docs/gem12/first-boot-wifi.md` 를 맥북이나 휴대폰으로 열어 따라간다. Anaconda 설치 관리자에서 Wi-Fi를 설정했다면 이미 붙어 있으므로 확인만 하면 된다.
 
 ```bash
 # 인터넷이 연결되면 저장소를 받는다. git 은 Server 기본 구성에 없다.
@@ -45,7 +45,7 @@ cd ~/dotfiles/commands/incus
 
 | 파일 | 역할 |
 |---|---|
-| `01-network.sh` | Wi-Fi 연결 검증과 복구 (nmcli). 첫 연결은 `docs/gem12-first-wifi-tutorial-2026-08-17.md` |
+| `01-network.sh` | Wi-Fi 연결 검증과 복구 (nmcli). 첫 연결은 `docs/gem12/first-boot-wifi.md` |
 | `02-host.sh` | 시간대, SSH 키 인증, Cockpit, Incus 초기화(스토리지 풀·NAT 브리지·firewalld) |
 | `03-containers.sh` | `containers.conf` 정의대로 컨테이너 생성, GPU 장치 연결 |
 | `04-runtime.sh` | 컨테이너별 Docker/Podman 설치 |

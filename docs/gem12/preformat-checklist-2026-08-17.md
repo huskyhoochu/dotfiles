@@ -2,7 +2,7 @@
 
 > 날짜: 2026-08-17 (월) 점검 기준
 > 대상: GEM12 (Fedora Workstation → Fedora Server + Incus 전환)
-> 관련 문서: `gem12-private-cloud-plan-2026-08-17.md`, `gem12-ai-pipeline-2026-08-17.md`, `gem12-first-wifi-tutorial-2026-08-17.md`
+> 관련 문서: [README.md](README.md), [ai-pipeline.md](ai-pipeline.md), [first-boot-wifi.md](first-boot-wifi.md)
 
 포맷은 되돌릴 수 없다. 이 목록을 순서대로 지우면서 진행한다. **A와 B를 끝내기 전에는 포맷하지 않는다.**
 
@@ -107,7 +107,7 @@ Qwen3-Coder-Next는 CPU 오프로드 탓에 17 tok/s로 떨어져 실용 범위 
 export CLAUDE_CODE_OAUTH_TOKEN="<맥북에서 발급한 토큰>"
 ```
 
-서버에 `op` CLI를 인증해두면 평문 대신 1Password에서 읽어올 수 있다. 설치와 인증 절차는 `gem12-first-wifi-tutorial-2026-08-17.md`의 "1Password CLI" 절에 있다.
+서버에 `op` CLI를 인증해두면 평문 대신 1Password에서 읽어올 수 있다. 설치와 인증 절차는 [first-boot-wifi.md](first-boot-wifi.md) 의 "1Password CLI" 절에 있다.
 
 ```bash
 export CLAUDE_CODE_OAUTH_TOKEN="$(op read 'op://Personal/CLAUDE_CODE_OAUTH_TOKEN/credential')"
@@ -181,9 +181,9 @@ done
 
 ## 포맷 후 첫 단계
 
-`gem12-private-cloud-plan-2026-08-17.md` §8 의 1단계부터 진행한다.
+[build-history.md](build-history.md) 의 1단계부터 진행한다.
 
 1. Fedora Server 설치 — Anaconda 네트워크 화면에서 Wi-Fi 연결, 수동 파티셔닝으로 btrfs 지정
-2. 첫 부팅 후 네트워크 확인 — 안 붙어 있으면 `gem12-first-wifi-tutorial-2026-08-17.md` 를 따라 `nmcli` 로 연결
+2. 첫 부팅 후 네트워크 확인 — 안 붙어 있으면 [first-boot-wifi.md](first-boot-wifi.md) 를 따라 `nmcli` 로 연결
 3. `git clone https://github.com/huskyhoochu/dotfiles.git ~/dotfiles`
 4. `cd ~/dotfiles/commands/incus && SSH_PUBKEY="..." ./02-host.sh`

@@ -2,7 +2,7 @@
 
 > 작성: 2026-08-18 · 대상 SSD: SanDisk Extreme SSD 1TB (exFAT, 실측 2026-08-18)
 > 사진은 Immich(:2283)로, 영화는 Jellyfin(:8096)으로 넣는다. 두 서비스의 구축 기록은
-> gem12-private-cloud-plan §12 7단계 참조.
+> [build-history.md](build-history.md) 7단계 참조.
 
 ## 전제
 
