@@ -19,11 +19,13 @@
 1·2단계(매시 btrfs 스냅샷 + restic→Drive)는 가동 중이다 — 구성은 §8, 구축 기록과 복원 리허설 결과는 §12 5단계.
 
 3단계(오프라인 사본)는 가동 중이다 — `gem12-offline-copy`(`commands/incus/services/backup/offline-copy.sh`)가 매시 스냅샷 최신본에서 핵심 데이터 tar 를 외장 SSD `gem12-offline/` 에 뜬다. **비암호화** (사용자 결정 2026-08-18 — 집 안 보관 매체라 즉시 읽기 우선). 분기 1회 SSD 연결 시 실행하며 SMART 확인이 내장돼 있다. 첫 사본 2026-08-18: 183MB, 검증 통과, SMART PASSED.
-- [ ] **rclone 개인 client_id 전환** — 우선순위 상향(2026-08-19). 공용 client_id 는 2026년 중 퇴역 예고(rclone 공지) + 분당 쿼터 공유로 403 재시도가 생긴다(복원 리허설 실측). **vault 이관 402MB 유입 때 이것 때문에 백업이 실제로 죽었다** — Drive 500 이 반복되며 24분 만에 `Fatal: unable to save snapshot`. 임시 대응으로 `-o rclone.connections=2` 를 걸었으나(기본 5), 대량 유입이 또 있으면 재발할 수 있다. 발급은 Google Cloud Console 에서 진행 중(2026-08-18) — 프로젝트 생성 → Drive API 활성화 → OAuth 동의 화면 외부 + **앱 게시(테스트 모드는 refresh token 7일 만료)** → 데스크톱 앱 클라이언트 ID. 발급되면 남은 처리:
-  1. client_id/secret 을 `op://Personal/GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET` 에 보관
-  2. 맥에서 재인증 — `rclone authorize "drive" "<client_id>" "<client_secret>"` (토큰은 클라이언트에 묶여 재발급 필요, "확인되지 않은 앱" 경고는 고급→이동), 새 토큰으로 `GEM12_RCLONE_DRIVE_TOKEN` 갱신
-  3. 호스트 `[gdrive]` remote 에 client_id/secret/새 토큰 반영 (restic 저장소는 무관 — 기존 백업 이력 그대로)
-  4. 다음 정각 회차에서 403 재시도 소멸 실측 → 이 항목 체크 + Changelog 기록
+- [x] **rclone 개인 client_id 전환** — 완료 (2026-08-20). 공용 client_id 는 분당 쿼터를 전 세계 rclone 사용자와 나누는 구조라 403 재시도가 잦았고, vault 이관 402MB 유입 때 백업이 실제로 죽었다. Google Cloud Console 에서 데스크톱 앱 클라이언트 ID 를 발급해 전환했다.
+
+  **전환 직후 실측**: 매시 백업 88초 → **34초**, `rateLimitExceeded`·500·재시도 전부 **0건**. 이전에는 재시도 대기가 실제 시간을 잡아먹고 있었다. 이에 따라 `tpslimit` 을 4 → **10**(burst 5)으로 완화했고 이 값에서도 오류 0건 — backup·unlock·forget·prune·check 다섯 곳 전부.
+
+  구성: 시크릿은 `op://Personal/GEM12_RCLONE_CLIENT_ID`·`GEM12_RCLONE_CLIENT_SECRET`. 호스트 `/root/.config/rclone/rclone.conf`(600) 의 `[gdrive]` 에 client_id·client_secret·token **세 값이 함께** 있어야 한다 — token 만 갈면 refresh 가 공용 client 로 나가 실패한다. 재인증은 맥에서 `CID=$(op read ...) CSEC=$(op read ...) sh -c 'rclone authorize "drive" "$CID" "$CSEC"'`, 출력된 JSON 이 conf 의 `token =` 값이다("확인되지 않은 앱" 경고는 고급→이동). restic 저장소는 무관 — 기존 백업 이력 그대로다.
+
+  개인 쿼터도 무한은 아니다. 대량 유입 때 429 가 보이면 tpslimit 을 먼저 내린다 — 요청이 가장 몰리는 `backup-prune`(주 1회 일 05:30)에서 먼저 날 가능성이 크다.
 
 ### 1-2. 구축 5단계 — media 컨테이너 + ComfyUI
 
@@ -685,7 +687,7 @@ LAN 안에서는 키 인증 전용 SSH를 열어두되 비밀번호 로그인은
 
 **전송 대역에 상한을 둔다** (2026-08-19): 업로드 4 MiB/s(≈32 Mbps), 주간 check 다운로드 4 MiB/s, rclone 연결 4개. 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소 이관 같은 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다. 총 전송량이 아니라 **순간 점유율**이 같이 쓰는 사람에게 체감되는 값이라, 며칠에 나눠 올리는 것보다 이쪽이 본질적 해법이다(나눠 올리면 이후 git gc 가 팩을 재작성해 재업로드가 생긴다).
 
-**대량 유입에는 대역이 아니라 요청 빈도를 묶어야 한다.** 402MB 유입에서 백업이 세 번 죽었다. 오류를 유형별로 세니 `rateLimitExceeded` 22 대 500 이 11 — **500 은 쿼터 초과의 파생이고 근본은 분당 요청 수**였다. 동시성이나 대역을 낮춰도 총 요청 수는 그대로라 쿼터는 똑같이 소진된다(이 둘로 두 번 헛짚었다). rclone `--tpslimit 4`(+`--tpslimit-burst 2`, `--drive-pacer-min-sleep 200ms`, 재시도 20회)를 걸자 **968MiB 를 11분 20초에 rateLimit 0건으로** 통과했다. 개인 client_id 로 전환하면 이 제한을 완화할 수 있다.
+**대량 유입에는 대역이 아니라 요청 빈도를 묶어야 한다.** 402MB 유입에서 백업이 세 번 죽었다. 오류를 유형별로 세니 `rateLimitExceeded` 22 대 500 이 11 — **500 은 쿼터 초과의 파생이고 근본은 분당 요청 수**였다. 동시성이나 대역을 낮춰도 총 요청 수는 그대로라 쿼터는 똑같이 소진된다(이 둘로 두 번 헛짚었다). rclone `--tpslimit 4`(+`--tpslimit-burst 2`, `--drive-pacer-min-sleep 200ms`, 재시도 20회)를 걸자 **968MiB 를 11분 20초에 rateLimit 0건으로** 통과했다. 2026-08-20 개인 client_id 전환 후 이 제한을 **10**(burst 5)으로 완화했다 — 전환만으로 429·500·재시도가 0건이 됐고 매시 백업이 88초→34초로 줄었다(§1-1).
 
 **반드시 백업** — 서버가 유일한 사본이다
 
@@ -908,6 +910,8 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 ---
 
 ## Changelog
+
+- **2026-08-20 (rclone 개인 client_id 전환 — §1-1 완료)** — Google Cloud Console 에서 데스크톱 앱 클라이언트 ID 를 발급해 전환했다. 맥에서 `rclone authorize "drive" "<id>" "<secret>"` 로 재인증하고, 호스트 `[gdrive]` 에 client_id·client_secret·token 세 값을 함께 넣었다(token 만 갈면 refresh 가 공용 client 로 나가 실패한다). **전환 직후 실측: 매시 백업 88초 → 34초, `rateLimitExceeded`·500·재시도 전부 0건.** 이전에는 재시도 대기가 실제 시간을 잡아먹고 있었다 — 08-19 진단("500 은 파생이고 근본은 분당 요청 수")이 맞았다는 증거다. 이에 따라 `tpslimit` 을 4 → 10(burst 5)으로 완화했고 이 값에서도 오류 0건. 남은 것: 대량 유입 시 재확인(요청이 가장 몰리는 `backup-prune` 이 첫 신호가 될 것).
 
 - **2026-08-20 (dGPU 하드 행 사고 — 감시가 사고를 못 잡은 이유까지)** — Glimmer 가 프롬프트 캐시 축출(350MiB 해제) 중 `radv/amdgpu: CS rejected (-13)` 로 dGPU 가 하드 행에 빠졌다. `leaking bo va` 수십 건 → KFD 경로 커널 oops 2건 → 재바인딩이 `vram size read: 0` / `discovery failed: -2` 로 실패. 드라이버 재로드로는 안 풀려 **호스트 재부팅**으로 회복했다(SMU 초기화 성공, Vulkan0 정상 인식, 맥→Glimmer 33.9 tok/s 확인). 사용자는 자동 재부팅을 거부했으므로 사람이 판단해 재부팅한다.
 
