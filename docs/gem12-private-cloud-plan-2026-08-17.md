@@ -33,7 +33,10 @@
 
 Uptime Kuma + 호스트 점검 타이머는 가동 중이다 — 구성과 점검 항목은 §12 6단계. 남은 것:
 
-- [ ] **Kuma 알림 채널 등록** — 웹 UI 설정 → 알림에서 채널(Telegram·메일 등)을 만들고 `gem12-health` 모니터에 연결한다. 채널이 없는 동안 down 은 대시보드에서만 보인다 (2026-08-18 Kuma DB 실측: notification 테이블 비어 있음). 관리자 계정(SQLite 내장 DB)·push 모니터(하트비트 300초, 재시도 2)·`KUMA_PUSH_URL` 기입은 완료 — push 도달 실측 통과
+- [ ] **Kuma 알림 채널 등록** — 웹 UI 설정 → 알림에서 채널(Telegram·메일 등)을 만들고 모니터 7개에 연결한다. 채널이 없는 동안 down 은 대시보드에서만 보인다 (2026-08-18 Kuma DB 실측: notification 테이블 비어 있음). 관리자 계정(SQLite 내장 DB)·push 모니터·URL 기입은 완료 — 7개 모두 HTTP 200 실측 통과
+- [ ] **기존 `gem12-health` 모니터 정리** — 7개 분리로 대체됐다. 새 모니터들이 며칠 정상 동작하는 것을 본 뒤 지운다
+
+모니터 분리 완료 (2026-08-20) — 단일 모니터 + 집계 status 구조에서는 **먼저 난 장애가 뒤에 난 장애를 가린다**. 이미 down 인 상태에 새 장애가 겹쳐도 status 가 그대로라 Kuma 가 상태 변화로 보지 않기 때문이다. 실측: 08-19 17:13 의 restic 락으로 down 인 동안 dGPU 가 죽었는데 이력에 흔적이 없었다(12:12~12:35 공백). 가동률도 12.81% 로 상시 빨간불이었다. 점검을 `host`·`backup`·`core`·`apps`·`ci`·`ai`·`media` 로 나눠 그룹마다 `KUMA_PUSH_URL_<그룹>` 으로 신고한다. 매 실행에서 7개 전부 보낸다 — 실패한 그룹만 보내면 나머지가 하트비트를 잃어 오탐이 된다. 격리 검증 통과(ai 에 실패를 주입해 ai 만 down, 나머지 6개 up 유지).
 
 Prometheus + Grafana 는 필요해지면 추가한다. 그때 온도 메트릭은 node_exporter 의 hwmon 컬렉터가 그대로 노출하므로(`k10temp`=CPU, `amdgpu`=GPU, `nvme`) 별도 도구가 필요 없다.
 
@@ -872,13 +875,18 @@ Forgejo 16.0.2: Podman Quadlet(`commands/incus/services/forgejo/`), SQLite, Git 
 media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업의 감시가 우선이다. Prometheus 없이 **Uptime Kuma push 모니터(dead-man switch) 방식**으로 §1-3 알림 목록을 덮는 결정 — 점검 스크립트가 5분마다 결과를 신고하고, 신고가 끊기는 것 자체도 down 으로 잡힌다.
 
 - Uptime Kuma 2.5: core 에 Quadlet(`commands/incus/services/uptime-kuma/`), `:3001` + tailscale serve 등록. 데이터는 `/mnt/data/uptime-kuma`(호스트 `/mnt/data/core/` 아래)라 매시 restic 백업에 자동 포함
-- 호스트 점검 타이머: `commands/incus/services/healthcheck/` — 5분마다 `/usr/local/sbin/gem12-healthcheck` 실행. 점검 항목: 디스크 >85% · RAM >90% · `btrfs device stats --check`(고칠 사본이 없으므로 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다) · `smartctl -H` · 온도(k10temp Tctl >95°C, amdgpu junction >105°C·mem >100°C, nvme Composite >70°C) · 기본 라우트(Wi-Fi 단절) · 컨테이너 5개 RUNNING 전수 · Forgejo healthz · llm 추론 계층(glimmer :8081 과 lightning :8082 는 GPU 를 두고 교대 운용되므로 **둘 중 하나** 응답이면 정상 — glimmer 단독 점검은 lightning 가동 중 오탐, 실측) · n8n · NocoDB health · forgejo-runner(ci) · litestream(apps) · `backup.service` Result 와 `backup.timer`(rclone→Drive 중단 감지) · GitHub 미러 push(전 저장소 push mirror 의 `last_error` 를 Forgejo API 로 조회). 실패 시 실패한 점검 이름 목록과 함께 down 을 push 한다 — 모니터는 하나지만 알림 본문(msg)에서 어느 컨테이너·서비스가 문제인지 바로 보인다
-- 시크릿: `/etc/gem12-healthcheck.env`(600) 에 `KUMA_PUSH_URL`(분실 시 Kuma 모니터 화면에서 재확인)과 `FORGEJO_TOKEN`(read:repository — deploy.sh 가 Forgejo CLI 로 발급·기입, 분실 시 재발급). 둘 다 재발급 가능해 1Password 에 두지 않는다
+- 호스트 점검 타이머: `commands/incus/services/healthcheck/` — 5분마다 `/usr/local/sbin/gem12-healthcheck` 실행. 점검 항목: 디스크 >85% · RAM >90% · `btrfs device stats --check`(고칠 사본이 없으므로 오류가 나오면 해당 파일을 백업에서 되살리고 디스크 교체를 검토한다) · `smartctl -H` · 온도(k10temp Tctl >95°C, amdgpu junction >105°C·mem >100°C, nvme Composite >70°C) · 기본 라우트(Wi-Fi 단절) · 컨테이너 5개 RUNNING 전수 · Forgejo healthz · llm 추론 계층(glimmer :8081 과 lightning :8082 는 GPU 를 두고 교대 운용되므로 **둘 중 하나** 응답이면 정상 — glimmer 단독 점검은 lightning 가동 중 오탐, 실측) · n8n · NocoDB health · forgejo-runner(ci) · litestream(apps) · `backup.service` Result 와 `backup.timer`(rclone→Drive 중단 감지) · GitHub 미러 push(전 저장소 push mirror 의 `last_error` 를 Forgejo API 로 조회). 실패 시 실패한 점검 이름 목록과 함께 down 을 push 한다
+- **모니터 7개로 분리 (2026-08-20)**: 점검을 `host`(디스크·RAM·btrfs·SMART·온도·기본 라우트) · `backup`(backup.service Result·timer·미러 push) · `core` · `apps` · `ci` · `ai` · `media`(각 컨테이너 RUNNING + 그 안의 서비스) 로 나눠 그룹마다 `KUMA_PUSH_URL_<그룹>` 에 신고한다. 매 실행에서 **7개 전부** 보낸다 — 실패한 그룹만 보내면 나머지가 하트비트를 잃어 오탐이 되기 때문이다. URL 이 없는 그룹은 journal 기록만 하고 넘어가므로 모니터를 만들기 전에도 배포·검증이 된다
+- 나눈 근거는 실측이다: 단일 모니터 + 집계 status 에서는 **이미 down 인 상태에 새 장애가 겹쳐도 status 가 그대로라 Kuma 가 상태 변화로 보지 않는다.** 08-19 17:13 의 restic 락으로 down 인 동안 dGPU 가 죽었는데 이력에 흔적이 없었다(12:12~12:35 공백). 가동률 12.81%. **먼저 난 장애가 뒤에 난 장애를 가린다**
+- 실측 함정: 그룹 배열을 `GROUPS` 로 두면 안 된다 — bash 특수 변수(현재 사용자의 GID 배열)라 대입해도 셸이 덮어쓴다. 첫 배포에서 그룹 대신 root 의 GID 3개(1000 985 10)를 돌았다. `CHECK_GROUPS` 로 쓴다
+- 시크릿: `/etc/gem12-healthcheck.env`(600) 에 `KUMA_PUSH_URL_<그룹>` 7개(분실 시 Kuma 모니터 화면에서 재확인)와 `FORGEJO_TOKEN`(read:repository — deploy.sh 가 Forgejo CLI 로 발급·기입, 분실 시 재발급). 둘 다 재발급 가능해 1Password 에 두지 않는다. deploy.sh 는 기존 env 를 덮지 않고 없는 변수만 빈 값으로 덧붙인다
 - 온도 센서는 hwmon 인덱스가 아니라 **칩 이름 + 라벨로 매칭** — amdgpu 가 2개(XTX·780M)인데 junction/mem 라벨은 XTX 만 내주므로 라벨이 dGPU 를 고른다
 - 자동 보안 업데이트: `commands/incus/services/dnf-automatic/` — 호스트 + 컨테이너 5개에 `dnf5-plugin-automatic` 설치, `/etc/dnf/automatic.conf` 에 `upgrade_type=security`·`apply_updates=yes`, `dnf5-automatic.timer`(매일 06:00 + 무작위 60분). Fedora 44 는 dnf5 라 패키지·타이머 이름이 dnf5-* 다
 - 실측 함정: 루프 안 `incus exec` 가 stdin 을 삼켜 컨테이너 목록 순회가 첫 항목에서 끊긴다 — `</dev/null` 필수
 
-**검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. UI 초기 설정(내장 SQLite 선택 — Litestream 은 물리지 않는다: 모니터링 이력은 시간 단위 손실 허용이고 매시 restic 백업에 이미 포함) 후 push 도달 실측 통과, `gem12-health` 모니터 Up.
+**검증 통과**: 6곳 모두 `dnf5-automatic.timer` enabled·active + 설정 md5 일치. 첫 healthcheck 전 항목 통과. Kuma `:3001` HTTP 응답. UI 초기 설정(내장 SQLite 선택 — Litestream 은 물리지 않는다: 모니터링 이력은 시간 단위 손실 허용이고 매시 restic 백업에 이미 포함) 후 push 도달 실측 통과.
+
+**분리 검증 통과 (2026-08-20)**: 7개 push URL 모두 HTTP 200. 격리 실측 — `ai` 그룹에 실패를 주입하니 `ai=down (comfyui)` 이고 나머지 6개는 `up` 을 유지했다. 기존 구조에서는 불가능했던 동작이다.
 
 ### 7단계 — media 컨테이너 + ComfyUI (2026-08-18)
 
@@ -900,6 +908,12 @@ media(§1-2)보다 먼저 올렸다 — 이미 돌고 있는 서비스와 백업
 ---
 
 ## Changelog
+
+- **2026-08-20 (dGPU 하드 행 사고 — 감시가 사고를 못 잡은 이유까지)** — Glimmer 가 프롬프트 캐시 축출(350MiB 해제) 중 `radv/amdgpu: CS rejected (-13)` 로 dGPU 가 하드 행에 빠졌다. `leaking bo va` 수십 건 → KFD 경로 커널 oops 2건 → 재바인딩이 `vram size read: 0` / `discovery failed: -2` 로 실패. 드라이버 재로드로는 안 풀려 **호스트 재부팅**으로 회복했다(SMU 초기화 성공, Vulkan0 정상 인식, 맥→Glimmer 33.9 tok/s 확인). 사용자는 자동 재부팅을 거부했으므로 사람이 판단해 재부팅한다.
+
+  조치 셋. ① `backup.sh` 의 forget 앞에 `restic unlock` — 저장소 락은 Drive 위의 **파일**이라 프로세스가 죽으면 남고, backup 은 shared lock 이라 통과하지만 forget 은 exclusive 라 막힌다. 08-19 17:13 의 락이 18시간 방치돼 매시 forget 이 죽었고 **백업은 "성공"으로 보이는데 보존 정리만 조용히 실패**했다. 락 해제 후 처음으로 `Done.` 완주. ② glimmer·lightning 에 `StartLimitBurst=5` — GPU 가 죽으면 llama-server 는 영원히 못 뜨는데 `Restart=on-failure` 만 있어 **72회를 돌았고 유닛은 내내 `activating` 이라 로딩 중과 구분되지 않았다.** 재시작이 회복이 아니라 은폐가 되는 경우다. ③ glimmer 컨텍스트 128K→96K — VRAM 여유가 5321 MiB 뿐이라 축출이 잦았다. 다만 `kv_unified=true`+`--no-warmup` 이라 유휴 VRAM 은 320 MiB 만 줄었다(효과는 부하 시 상한이 25% 낮아지는 것으로 나타난다). **남은 축은 `n_slots=4`** — 슬롯 4개가 각각 96K 를 채우면 여전히 여유를 넘으므로 축출은 계속 일어난다.
+
+  그리고 감시 자체의 결함이 드러났다. Kuma 이력에 12:12~12:35 구간이 **통째로 비어 있었다** — 단일 push 모니터 + 집계 status 구조에서는 이미 down 인 상태(`backup-result`)에 새 장애가 겹쳐도 status 가 그대로라 Kuma 가 상태 변화로 보지 않는다. **먼저 난 장애가 뒤에 난 장애를 가린다.** 가동률 12.81% 로 상시 빨간불이라 알림 채널을 붙여도 무의미했을 상태였다. 점검을 7개 그룹(host·backup·core·apps·ci·ai·media)으로 나눠 그룹마다 `KUMA_PUSH_URL_<그룹>` 에 신고하도록 고쳤다. 매 실행에서 7개 전부 보낸다 — 실패한 그룹만 보내면 나머지가 하트비트를 잃어 오탐이 된다. 격리 검증 통과(ai 에 실패 주입 → ai 만 down, 나머지 6개 up 유지), 7개 URL 모두 HTTP 200. 실측 함정: 그룹 배열 이름을 `GROUPS` 로 두면 bash 특수 변수(GID 배열)와 충돌해 첫 배포가 root 의 GID 3개를 돌았다 — `CHECK_GROUPS` 로 바꿨다. 남은 것: 알림 채널 등록, 기존 `gem12-health` 모니터 정리.
 
 - **2026-08-19 (§1-7 vault 이관 — 분리 방향 역전)** — cyprien_vault·funes_days_alter 를 Forgejo 원본으로 옮기고 활성 작업을 `b95labs_vault`(신규 29M)로 분리. **계획과 반대로 갔다**: 원고를 빼는 대신 아카이브를 제자리에 두고 일 노트를 뺐다 — 원고·메모·첨부가 vault 의 대부분이고 15년 이력의 주인공이라, 옮기면 활성 vault 가 죽은 이력 384M 를 끌고 다니게 된다. 새 vault 는 ACE 를 버리고 `projects/` + `journal/` 로 시작하며 루트 CLAUDE.md 를 사람·AI 계약으로 둔다(AI 쓰기 화이트리스트, provenance frontmatter). 2026년 AI 협업 PKM 관행 조사(Karpathy LLM Wiki, Google OKF, Reitz CLAUDE.md 계약)에 근거. 발행 파이프라인에 **미러 반영 가드**를 넣었다 — GitHub 이 비동기 미러가 되면서 반영 전 배포가 옛 원고로 "성공"하는 오배포 경로가 생겼고, 이관 중 실제로 지연을 관측했다. 부수 발견: `sync_local.sh` 의 `sed -i` 가 BSD(macOS)에서 실패해 로컬 발행이 애초에 동작하지 않았다. 실측 함정: GITHUB_MIRROR_PAT 은 fine-grained 라 저장소별 허용이 필요하고 웹 UI 로만 바꿀 수 있다. 검증: sync 80편 + astro build + dry-run 5단계 통과. 남은 것: PAT 범위 확장 → 미러 동기화 → alter GitHub push → 실발행 1회 → cyprien 정리(순서 의존, 핸드오버 문서). **부수 사고**: 402MB 유입으로 백업이 세 번 죽었다. 동시성 축소·대역 완화로 두 번 헛짚은 뒤 오류를 유형별로 집계해 원인을 잡았다 — `rateLimitExceeded` 22 대 500 이 11, 즉 **500 은 파생이고 근본은 분당 요청 수**다. rclone `--tpslimit 4` 로 요청 빈도를 묶자 968MiB 를 11분 20초에 rateLimit 0건으로 통과했고, vault 저장소 3개의 백업 편입을 `restic ls` 로 확인했다. 교훈: 로그가 시끄러울 때는 마지막 오류가 아니라 오류의 분포를 세라. §1-1 의 개인 client_id 전환이 근본 해결이며 우선순위를 올렸다.
 - **2026-08-18 (백업 3단계 가동 + 미디어 백업 교리 확정)** — §1-1 의 3단계(오프라인 사본)를 `gem12-offline-copy` 스크립트로 가동: 매시 스냅샷 최신본에서 핵심 데이터 tar(183MB) → 외장 SSD, **비암호화**(사용자 결정 — 계획의 "암호화 SSD" 문구 폐기), SMART 확인 내장(PASSED). 미디어 백업 교리 확정: Immich 사진 라이브러리·Jellyfin 미디어는 용량(55G+126G) 때문에 Drive 백업에서 제외(backup.sh exclude), 이중화는 외장 SSD 원본 + 서버 사본이 맡는다 — "여유가 되면 백업" 등급 폐지. Immich postgres 는 백업 유지. 외장 SSD 사진·영화 대량 반입 진행(폴더별 앨범, systemd 일회 유닛).
