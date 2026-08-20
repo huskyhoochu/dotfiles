@@ -10,11 +10,14 @@
 #   생성 29.0 tok/s (자유 서술) / 43.2 tok/s (정형 출력)
 #   DFlash 채택률 13.6% / 24.4% — 정형 출력일수록 오른다
 #
-# -np 2 는 슬롯 수를 명시한 값이다. 기본값 -1(auto)에서 llama.cpp 가 4 를 골랐는데,
-# kv_unified=true 라 슬롯들이 공용 KV 풀을 쓰므로 슬롯이 많을수록 동시에 잡히는
-# 컨텍스트 총량 상한이 올라간다. 2026-08-20 dGPU 하드 행이 프롬프트 캐시 축출
-# 순간에 났고 VRAM 여유가 5.6GB 뿐이라, 상한을 절반으로 낮춰 압박을 줄인다.
-# 무인 파이프라인은 순차 실행이라 4 슬롯을 쓸 일이 없다 (사용자 결정).
+# -np(슬롯 수)는 일부러 지정하지 않는다. 기본값 -1(auto)에서 llama.cpp 가 4 를
+# 고르고 kv_unified=true 로 슬롯들이 공용 KV 풀을 쓴다 — 슬롯이 4개여도 요청
+# 하나가 -c 전량을 쓸 수 있다.
+#
+# `-np 2` 를 시험해 보고 되돌렸다 (2026-08-20 실측): 명시하는 순간 llama.cpp 가
+# kv_unified=false 로 전환해 -c 를 슬롯 수로 나눈다. n_ctx_slot 이 98304→49152 로
+# 반토막 나는데 VRAM 이득은 197 MiB(여유 5641→5838)뿐이라 값이 맞지 않았다.
+# VRAM 압박은 -c 자체를 줄여서 잡는다.
 
 [Unit]
 Description=Muse Glimmer 30B llama.cpp server
@@ -35,7 +38,6 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   -dev Vulkan0 \
   -ngl 99 \
   -c 98304 \
-  -np 2 \
   -fa on -ctk q8_0 -ctv q8_0 \
   -md /mnt/data/models/dflash-Muse-Glimmer-30B-Q4_K_M.gguf \
   --spec-type draft-dflash --spec-draft-n-max 15 \
