@@ -71,14 +71,16 @@ trap 'umount "$BIND" 2>/dev/null || true' EXIT
 # 업로드 상한 4 MiB/s(≈32 Mbps): 평상시 매시 백업은 수 MB 라 상한에 닿지 않고, 저장소
 # 이관 같은 대량 유입 때만 작동해 공유 Wi-Fi 점유를 막는다 (사용자 결정 2026-08-19).
 #
-# tpslimit 4 는 실패에서 배운 값이다. 402MB 유입 때 백업이 세 번 죽었는데, 오류를
-# 유형별로 세어 보니 rateLimitExceeded 22 : 500 이 11 이었다 — 500 은 쿼터 초과의
-# 파생이고 근본은 분당 요청 수다. 동시성(connections)이나 대역(limit-upload)을 낮춰도
-# 총 요청 수는 그대로라 쿼터는 똑같이 소진된다. 초당 트랜잭션 자체를 묶어야 넘어간다.
-# 이 설정으로 968MiB 를 11분 20초에 rateLimit 0건으로 통과했다(2026-08-19 실측).
+# tpslimit 은 Drive 분당 쿼터를 넘지 않기 위한 값이다. 402MB 유입 때 백업이 세 번
+# 죽었는데, 오류를 유형별로 세어 보니 rateLimitExceeded 22 : 500 이 11 이었다 —
+# 500 은 쿼터 초과의 파생이고 근본은 분당 요청 수다. 동시성(connections)이나
+# 대역(limit-upload)을 낮춰도 총 요청 수는 그대로라 쿼터는 똑같이 소진된다.
+# 초당 트랜잭션 자체를 묶어야 넘어간다(2026-08-19 실측, 당시 값 4).
 #
-# 근본 해결은 개인 client_id 전환(§1-1) — 공용 client_id 의 분당 쿼터를 전 세계 rclone
-# 사용자와 나누는 구조다. 전환하면 tpslimit 을 올리거나 뺄 수 있다.
+# 2026-08-20 개인 client_id 로 전환하면서 10 으로 완화했다. 공용 client_id 는 분당
+# 쿼터를 전 세계 rclone 사용자와 나누는 구조였고, 전환 직후 실측에서 매시 백업이
+# 88초 → 34초로 줄고 rateLimitExceeded·500·재시도가 전부 0건이 됐다. 개인 쿼터도
+# 무한은 아니므로 대량 유입 때 429 가 보이면 이 값을 먼저 내린다.
 restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/ai" \
   --exclude "${BIND}/mnt/data/ci" \
@@ -86,7 +88,7 @@ restic backup "${BIND}/mnt/data" \
   --exclude "${BIND}/mnt/data/media/immich/library" \
   --limit-upload 4096 \
   -o rclone.connections=2 \
-  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
+  -o rclone.args="serve restic --stdio --tpslimit 10 --tpslimit-burst 5 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
   --tag auto --quiet
 log "restic backup done"
 
@@ -103,12 +105,12 @@ log "restic backup done"
 
 restic unlock \
   -o rclone.connections=2 \
-  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
+  -o rclone.args="serve restic --stdio --tpslimit 10 --tpslimit-burst 5 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
   --quiet
 
 restic forget --keep-hourly 24 --keep-daily 7 --keep-weekly 8 \
   -o rclone.connections=2 \
-  -o rclone.args="serve restic --stdio --tpslimit 4 --tpslimit-burst 2 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
+  -o rclone.args="serve restic --stdio --tpslimit 10 --tpslimit-burst 5 --drive-pacer-min-sleep 200ms --retries 20 --low-level-retries 20" \
   --quiet
 
 log "Done."
