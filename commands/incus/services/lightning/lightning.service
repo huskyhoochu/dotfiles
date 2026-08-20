@@ -31,6 +31,7 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   -dev Vulkan0 \
   -ngl 99 \
   -c 65536 \
+  -np 2 \
   --jinja \
   --no-warmup
 Restart=on-failure
