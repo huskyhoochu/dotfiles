@@ -42,7 +42,10 @@ NVME_MAX=70           # °C — Composite
 NVME_DEV=/dev/nvme0n1
 
 # 그룹별 실패 목록. fail <그룹> <이름> 으로 쌓는다.
-GROUPS=(host backup core apps ci ai media)
+# 이름을 CHECK_GROUPS 로 두는 이유: GROUPS 는 bash 특수 변수(현재 사용자의 GID
+# 배열)라 대입해도 셸이 덮어쓴다. 실측 2026-08-20 — 첫 배포에서 그룹 대신
+# GID 3개(1000 985 10)를 돌았다.
+CHECK_GROUPS=(host backup core apps ci ai media)
 declare -A FAILS=()
 fail() { FAILS[$1]+="${FAILS[$1]:+ }$2"; }
 
@@ -178,7 +181,7 @@ fi
 # URL 이 없는 그룹은 로그만 남긴다 — 모니터를 아직 안 만든 동안에도 나머지는 돈다.
 
 overall=0
-for g in "${GROUPS[@]}"; do
+for g in "${CHECK_GROUPS[@]}"; do
   if [ -z "${FAILS[$g]:-}" ]; then
     status=up msg=OK
   else
