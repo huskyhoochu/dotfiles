@@ -117,7 +117,14 @@ temp_check nvme-temp nvme Composite "$NVME_MAX"
 
 curl -fsm 5 http://10.10.10.11:3000/api/healthz >/dev/null || fail core "forgejo"
 
-incus exec apps -- systemctl is-active --quiet litestream 2>/dev/null || fail apps "litestream"
+# litestream 은 2026-08-20 호스트로 옮겼다 — 컨테이너 안에서는 다른 컨테이너의
+# DB 에 닿을 수 없어 9개 중 2개만 복제되고 있었다(gitea.db 누락).
+systemctl is-active --quiet litestream || fail host "litestream"
+
+# 서비스가 살아 있어도 복제가 멈출 수 있다. 최근 sync 로그가 없으면 실패로 본다
+# — 백업에서 배운 것과 같다: "돌고 있다"와 "일하고 있다"는 다르다.
+[ "$(journalctl -u litestream --since '2 minutes ago' -o cat 2>/dev/null \
+  | grep -c 'replica sync')" -gt 0 ] || fail host "litestream-idle"
 
 # rclone→Drive 실패는 backup.service 의 마지막 실행 결과로 잡는다.
 [ "$(systemctl show backup.service -P Result)" = "success" ] || fail backup "backup-result"
