@@ -33,6 +33,23 @@ else
   warn "${ENV_FILE} created empty — Kuma push 모니터 URL 을 넣어야 알림이 붙는다"
 fi
 
+# 점검이 7개 그룹으로 나뉘면서 push URL 도 그룹마다 필요해졌다 (2026-08-20).
+# 기존 파일을 덮으면 FORGEJO_TOKEN 이 날아가므로 없는 변수만 빈 값으로 덧붙인다.
+MISSING=()
+for g in HOST BACKUP CORE APPS CI AI MEDIA; do
+  grep -q "^KUMA_PUSH_URL_${g}=" "$ENV_FILE" && continue
+  printf 'KUMA_PUSH_URL_%s=\n' "$g" >>"$ENV_FILE"
+  MISSING+=("$g")
+done
+if [ ${#MISSING[@]} -gt 0 ]; then
+  warn "${ENV_FILE} 에 빈 항목을 추가했다: ${MISSING[*],,} — Kuma 에서 push 모니터를 만들어 URL 을 채운다"
+fi
+
+# 구식 단일 변수는 더 이상 읽히지 않는다. 지우지는 않고 알리기만 한다.
+if grep -q '^KUMA_PUSH_URL=' "$ENV_FILE"; then
+  warn "${ENV_FILE} 의 KUMA_PUSH_URL 은 이제 쓰이지 않는다 — 그룹별 변수로 옮기고 지운다"
+fi
+
 # Forgejo API 토큰 (미러 push 감시) — 없으면 CLI 로 발급해 기입한다.
 if grep -q '^FORGEJO_TOKEN=.\+' "$ENV_FILE"; then
   skip "FORGEJO_TOKEN already present"
