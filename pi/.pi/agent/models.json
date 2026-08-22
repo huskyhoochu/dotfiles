@@ -34,7 +34,30 @@
           "input": [
             "text"
           ],
-          "contextWindow": 131072,
+          "contextWindow": 98304,
+          "maxTokens": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
+    "qwen-gem12": {
+      "baseUrl": "http://10.10.10.14:8083/v1",
+      "api": "openai-completions",
+      "apiKey": "none",
+      "models": [
+        {
+          "id": "qwen3.8",
+          "name": "Qwen 3.8-27B (GEM12 ai 컨테이너)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 65536,
           "maxTokens": 16384,
           "cost": {
             "input": 0,
