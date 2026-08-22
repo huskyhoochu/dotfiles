@@ -36,6 +36,7 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   --alias muse-glimmer \
   --host 10.10.10.14 --port 8081 \
   -dev Vulkan0 \
+  --metrics \
   -ngl 99 \
   -c 98304 \
   -fa on -ctk q8_0 -ctv q8_0 \

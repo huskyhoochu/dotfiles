@@ -41,6 +41,7 @@ ExecStart=/opt/llama.cpp/build/bin/llama-server \
   --alias qwen3.8 \
   --host 10.10.10.14 --port 8083 \
   -dev Vulkan0 \
+  --metrics \
   -ngl 99 \
   -c 65536 \
   -fa on \
