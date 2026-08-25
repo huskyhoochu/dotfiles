@@ -477,7 +477,7 @@ CSEC=$(op read "op://Personal/GEM12_RCLONE_CLIENT_SECRET/credential") \
 
 - **Forgejo 데이터 디렉토리 전체** — 설정 DB(Issue, PR, Actions 설정, 사용자·조직 설정, 웹훅), **미러 없는 Forgejo 태생 저장소**(gem12-agents, model-arena), **모든 위키 repo**(`<repo>.wiki.git` — push mirror 는 위키를 옮기지 않는다)
 - SQLite DB (업무기록 / 지식저장소 / 온톨로지)
-- n8n 워크플로와 자격증명
+- n8n 워크플로와 자격증명 (n8n credential 은 `config` 의 N8N_ENCRYPTION_KEY 와 한 쌍 — 두 파일이 함께 있어야 복호화된다. 둘 다 백업에 포함돼 있다)
 - 각 서비스 설정과 compose 파일 (Forgejo에도 있지만 이중화)
 
 Forgejo 는 선별하지 않고 디렉토리 통째로 싣는다 (2026-08-18 결정) — 현재 전체가 57MB 라 GitHub 미러가 있는 저장소를 걸러내는 로직의 위험이 절감 효과보다 크다. 용량이 문제될 때 미러 있는 저장소의 git 내용만 선별 제외로 전환한다.
@@ -491,6 +491,20 @@ Forgejo 는 선별하지 않고 디렉토리 통째로 싣는다 (2026-08-18 결
 - CI 캐시, Docker 레이어
 - Jellyfin 메타데이터, 트랜스코딩 임시파일
 - Immich 썸네일
+
+### 호스트 /root/.secrets — 1Password 가 SSOT 이다
+
+서버 스크립트·n8n 설정 주입용 시크릿은 `/root/.secrets/`(600)에 파일로 둔다. restic→Drive 백업 범위 밖이며, btrfs 스냅샷(24시간)에만 잡힌다. **원본은 1Password 에 있으므로 분실 시 재발급하면 되고, 재구축 시 아래 대응표대로 1Password 에서 다시 내려 받는다** (파일을 옮기는 게 아니라 재발급·재주입이 정답인 항목은 각주 참조).
+
+| 파일 | op:// 참조 | 비고 |
+|---|---|---|
+| discord-bot-token | `op://GEM12/DISCORD_BOT_TOKEN` | |
+| forgejo-devcontrol-token | core 에서 발급한 것 | dev-control 용 rw 토큰 — 유출 시 core에서 revoke 후 재발급 |
+| openrouter-api-key | `op://Personal/OPENROUTER_API_KEY` | ci의 `/etc/agent-loop.env`와 동일 값 공유 |
+| tavily-api-key | `op://Personal/TAVILY_API_KEY` | n8n 웹검색 도구 |
+| apify-api-key | `op://GEM12/APIFY_API_KEY` | youtube discover 수집 예정 |
+| devcontrol-webhook-secret | 발급 방법: `openssl rand -hex 24` | 어댑터↔n8n↔agent-run 종료 훅 공유 시크릿 — 유출 시 재생성 후 세 곳(n8n env·ci agent-loop.env·apps 어댑터 env)에 함께 갱신 |
+| discord-guild-id | 상수 (b95labs 서버) | 시크릿 아님, 편의용 |
 
 ### Litestream은 호스트에서 돈다
 
