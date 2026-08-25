@@ -581,7 +581,7 @@
     },
     {
       "parameters": {
-        "model": "anthropic/claude-sonnet-5",
+        "model": "google/gemini-3.7-flash",
         "options": {
           "timeout": 90000,
           "maxRetries": 1
