@@ -13,7 +13,7 @@
 | Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
 | core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) + Uptime Kuma 2.5 (Quadlet, :3001) | 전부 active |
 | ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
-| apps (10.10.10.13) | n8n · NocoDB (Docker), op CLI, Claude Code | 전부 가동 |
+| apps (10.10.10.13) | n8n · NocoDB (Docker), op CLI, Claude Code + cognee 위키 인덱서(`/opt/cognee`, 타이머·웹훅 트리거) | 전부 가동 |
 | ai (10.10.10.14) | llama.cpp Vulkan — `glimmer.service`(:8081)·`qwen.service`(:8083) GPU 교대(nemotron lightning 은 2026-08-25 제거) + `comfyui.service`(:8188, --cpu, OpenRouter 클라우드 전용) | 전부 정상 |
 | media (10.10.10.15) | Immich v3(Quadlet ×3, :2283) + Jellyfin 10(Quadlet, :8096, VAAPI H264/HEVC) | 전부 active |
 | 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
