@@ -64,7 +64,16 @@ case "$cmd" in
           npx flue run src/agents/implement.ts --id ${RUN_ID} \
           --message \"\$(cat ${AGENTS_DIR}/work/${RUN_ID}.msg)\" \
           > ${AGENTS_DIR}/logs/${RUN_ID}.log 2>&1
-        echo \$? > ${AGENTS_DIR}/logs/${RUN_ID}.status"
+        EXIT=\$?
+        echo \$EXIT > ${AGENTS_DIR}/logs/${RUN_ID}.status
+        # 종료 훅 — n8n 이 Discord 알림으로 중계한다(설정돼 있을 때만).
+        if [ -n \"\${AGENT_EVENT_WEBHOOK_URL:-}\" ]; then
+          curl -fsm 10 -X POST \"\${AGENT_EVENT_WEBHOOK_URL}\" \
+            -H 'Content-Type: application/json' \
+            -H \"X-Adapter-Secret: \${WEBHOOK_SHARED_SECRET:-}\" \
+            -d \"{\\\"event_type\\\":\\\"agent_finished\\\",\\\"run_id\\\":\\\"${RUN_ID}\\\",\\\"repo\\\":\\\"${SLUG}\\\",\\\"model\\\":\\\"${MODEL}\\\",\\\"exit_code\\\":\$EXIT}\" \
+            >/dev/null 2>&1 || true
+        fi"
     echo "투입됨: agent-${RUN_ID} (model ${MODEL}) — 조회: agent-run.sh status ${RUN_ID}"
     ;;
 

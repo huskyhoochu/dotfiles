@@ -1,0 +1,22 @@
+{
+  "name": "gem12-discord-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discord Gateway 이벤트를 GEM12 n8n dev-control webhook 으로 전달하는 얇은 어댑터",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev": "tsc && node dist/bot.js",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.2",
+    "@types/node": "^22.10.2",
+    "typescript": "7.0.1-rc"
+  }
+}
