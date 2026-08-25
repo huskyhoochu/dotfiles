@@ -31,11 +31,15 @@ dbs:
       - url: file:///mnt/data/backup/litestream/uptime-kuma
 
   # ── ci 컨테이너 ──────────────────────────────────────────────────
-  # 에이전트 실행 이력. restic 은 /mnt/data/ci 를 통째로 제외하므로
-  # (CI 캐시 전제) 이 복제본이 유일한 백업 경로다.
-  - path: /mnt/data/ci/sqlite/flue-agents.db
+  # flue-agents.db 와 gem12-driver.db 는 대상이 아니다 — Litestream 의 상시 읽기
+  # 잠금이 flue 런타임의 WAL 체크포인트를 굶겨 WAL 팽창과 database is locked 를
+  # 일으켰다(gem12-agents dev-log 2026-08-25). 사건 원장은 쓰기가 드물어 같은
+  # 경합이 나지 않는다고 보고 등록한다. restic 은 /mnt/data/ci 를 통째로
+  # 제외하므로 이 복제본이 원장의 유일한 백업이다. -wal 이 팽창하면 여기서 빼고
+  # gc 타이머의 sqlite3 .backup 사본으로 바꾼다.
+  - path: /mnt/data/ci/sqlite/moon-bird.ledger.db
     replicas:
-      - url: file:///mnt/data/backup/litestream/flue-agents
+      - url: file:///mnt/data/backup/litestream/moon-bird-ledger
 
   # ── apps 컨테이너 ────────────────────────────────────────────────
   - path: /mnt/data/apps/sqlite/arxiv-candidates.db
@@ -45,6 +49,14 @@ dbs:
   - path: /mnt/data/apps/sqlite/polydeukes-cognee.db
     replicas:
       - url: file:///mnt/data/backup/litestream/polydeukes-cognee
+
+  - path: /mnt/data/apps/sqlite/drop-manager-cognee.db
+    replicas:
+      - url: file:///mnt/data/backup/litestream/drop-manager-cognee
+
+  - path: /mnt/data/apps/sqlite/customer-debugger-cognee.db
+    replicas:
+      - url: file:///mnt/data/backup/litestream/customer-debugger-cognee
 
   - path: /mnt/data/apps/sqlite/cache.db
     replicas:

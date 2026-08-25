@@ -93,7 +93,7 @@ AOOSTAR GEM12+ 공식 사양은 다음과 같다. 실측값과 맞춰보면 확�
 | 데이터 | 원본 위치 | 복구 경로 |
 |---|---|---|
 | 코드 저장소 | Forgejo (core) | GitHub push mirror |
-| SQLite DB 8개 (gitea · kuma · flue-agents · arxiv-candidates · cognee · cache · n8n · jellyfin) | 컨테이너별 `/mnt/data/<컨테이너>/…` | **호스트** Litestream → `/mnt/data/backup/litestream/` |
+| SQLite DB 10개 (gitea · kuma · moon-bird.ledger · arxiv-candidates · cognee 3 · cache · n8n · jellyfin) | 컨테이너별 `/mnt/data/<컨테이너>/…` | **호스트** Litestream → `/mnt/data/backup/litestream/` |
 | LLM 모델 (GGUF) | ai `/mnt/data/models/` | HuggingFace 재다운로드 — `commands/incus/services/glimmer/download.sh` |
 | Obsidian vault | GitHub | clone |
 | 사진 · 블루레이 백업본 | **외장 SSD** | 서버의 Immich/Jellyfin 몫은 사본 |
