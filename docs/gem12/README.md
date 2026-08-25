@@ -16,6 +16,7 @@
 | [operations.md](operations.md) | 살아있는 참조 | 현재 구성 — 가동 상태, 컨테이너, 네트워크, 백업, Git 전략, 설계 원칙 |
 | [build-history.md](build-history.md) | 아카이브 | 구축 8단계와 검증 결과, 전체 Changelog |
 | [ai-pipeline.md](ai-pipeline.md) | 설계 | 맥북=결정 / 서버=구현 분리, Forgejo Actions + Glimmer 파이프라인 |
+| [discord-dev-control.md](discord-dev-control.md) | 설계 | Discord 로 Forgejo 파이프라인 제어·알림 수신, YouTube Discover → NocoDB 적재 |
 | [next-hardware.md](next-hardware.md) | 계획 | 2027년 차기 장비 사양·시세 |
 | [media-import.md](media-import.md) | 절차 | 외장 SSD 사진·영화 반입 |
 | [first-boot-wifi.md](first-boot-wifi.md) | 절차 | 초기 부팅과 Wi-Fi·1Password 설정 |
