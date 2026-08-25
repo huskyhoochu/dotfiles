@@ -183,22 +183,93 @@
       "parameters": {
         "dataType": "string",
         "value1": "={{ $json._action }}",
+        "options": {
+          "fallbackOutput": "extra"
+        },
         "rules": {
-          "rules": [
+          "values": [
             {
-              "value2": "create_issue",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._action }}",
+                    "rightValue": "create_issue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
               "outputKey": "create"
             },
             {
-              "value2": "label_implement",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._action }}",
+                    "rightValue": "label_implement",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
               "outputKey": "label"
             },
             {
-              "value2": "list_issues",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._action }}",
+                    "rightValue": "list_issues",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
               "outputKey": "listi"
             },
             {
-              "value2": "list_prs",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json._action }}",
+                    "rightValue": "list_prs",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
               "outputKey": "listp"
             }
           ]
@@ -207,7 +278,7 @@
       "id": "b2-route-cmd",
       "name": "Route Command",
       "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
+      "typeVersion": 3.2,
       "position": [
         720,
         -300
@@ -380,7 +451,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://discord.com/api/v10/webhooks/{{ $json._app }}/{{ $json._tok }}/messages/@original",
+        "url": "=https://discord.com/api/v10/webhooks/{{ $('Parse Command').first().json._app }}/{{ $('Parse Command').first().json._tok }}/messages/@original",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -392,7 +463,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content: String($json._reply).slice(0, 1900) || '완료되었습니다.' }) }}",
+        "jsonBody": "={{ JSON.stringify({ content: String($('Build Command Reply').first().json._reply).slice(0, 1900) }) }}",
         "options": {}
       },
       "id": "d1-reply-interaction",
@@ -401,6 +472,19 @@
       "typeVersion": 4.2,
       "position": [
         1480,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// 커맨드 분기별 최종 답장 문구를 만든다 (cross-node 참조를 여기서 한 번에 해결)\nconst cmd = $('Parse Command').first().json;\nlet reply;\nif (cmd._reply) {\n  reply = cmd._reply;\n} else {\n  const src = $input.first().json;\n  const data = Array.isArray(src) ? src[0] : src;\n  switch (cmd._action) {\n    case 'create_issue':\n      reply = data && data.number\n        ? `이슈 발급: #${data.number} ${data.title}\\n${data.html_url}`\n        : '이슈 생성에 실패했거나 응답을 파싱하지 못했습니다.';\n      break;\n    case 'label_implement':\n      reply = data\n        ? 'implement 라벨 부착 완료. 에이전트 루프에 투입합니다.'\n        : '라벨 부착 결과를 확인할 수 없습니다.';\n      break;\n    default:\n      reply = '완료되었습니다.';\n  }\n}\nreturn [{ json: { _reply: reply, _app: cmd._app, _tok: cmd._tok } }];\n"
+      },
+      "id": "d3-build-cmd-reply",
+      "name": "Build Command Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
         -200
       ]
     },
@@ -419,39 +503,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.tavily.com/search",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.TAVILY_API_KEY }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ query: $json.content, search_depth: 'basic', max_results: 5, include_answer: true }) }}",
-        "options": {}
+        "name": "web_search",
+        "description": "시의성 정보(뉴스·시세·버전·일정·최근 사건)가 필요해 훈련 지식만으로 답변하기 어려울 때 웹을 검색한다. 일반 지식 질문에는 호출하지 않는다.",
+        "jsCode": "const q = $fromAI('query', '검색어', 'string');\nlet key = null, src = '';\ntry { key = $env.TAVILY_API_KEY; src = '$env'; } catch (e1) {\n  try { key = process.env.TAVILY_API_KEY; src = 'process.env'; } catch (e2) { src = 'both-blocked'; }\n}\nconsole.log('[web_search] key source:', src, '| present:', !!key);\nif (!key) return JSON.stringify({ error: 'NO_KEY (src=' + src + ')' });\ntry {\n  const res = await fetch('https://api.tavily.com/search', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },\n    body: JSON.stringify({ query: q, search_depth: 'basic', max_results: 5, include_answer: true }),\n  });\n  console.log('[web_search] tavily status:', res.status);\n  if (!res.ok) { const t = await res.text(); console.log('[web_search] body:', t.slice(0,200)); return JSON.stringify({ error: 'Tavily HTTP ' + res.status }); }\n  const data = await res.json();\n  return JSON.stringify({ answer: data.answer || '', results: (data.results||[]).map(r => ({ title: r.title, url: r.url, snippet: (r.content||'').slice(0,300) })) });\n} catch (e) {\n  console.log('[web_search] exception:', e.message);\n  return JSON.stringify({ error: String(e && e.message || e) });\n}"
       },
-      "id": "e1-tavily-pre",
-      "name": "Pre Search",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "e1c-tavily-tool",
+      "name": "Web Search Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1,
       "position": [
-        590,
-        240
+        820,
+        420
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=[사용자 메시지]\n{{ $('Build Prompt').item.json.prompt }}\n\n[웹 검색 참고자료 — 필요할 때만 근거로 활용]\n{{ $json.answer || '요약 없음' }}\n{{ JSON.stringify(($json.results || []).map(r => ({ title: r.title, url: r.url, snippet: (r.content || '').slice(0, 300) }))) }}",
+        "text": "={{ $('Build Prompt').item.json.prompt }}",
         "options": {
           "systemMessage": "너는 GEM12 서버의 범용 개발 보조 챗봇이다. 관리자와 Discord 대화한다.\n\n## 역할\n- 질문에 답하고, 조사하고, 할 일을 함께 다듬는다. 과제가 구체화되면 `/issue` 커맨드로 이슈를 발급하라고 안내한다.\n- Forgejo(b95labs) 저장소의 에이전트 루프 상태, 완료 알림 등은 슬래시 커맨드(/status /runs /issues /pr)로 조회 가능함을 필요할 때 안내한다.\n\n## 말투\n- 항상 한국어로, 간결하게. 번역투를 피하고 자연스러운 한국어로 쓴다.\n- 코드·저장소명·기술 용어는 임의로 번역하지 않는다.\n\n## 웹 검색 도구\n- 훈련 지식만으로는 답변이 불가능한 시의성 정보(뉴스·시세·버전·일정) 확인에만 사용한다.\n- 검색 결과는 답변에 자연스럽게 녹이고, 출처 URL은 요청받지 않으면 나열하지 않는다."
-        },
-        "hasOutputParser": true
+        }
       },
       "id": "e0-agent",
       "name": "Chatbot Agent",
@@ -548,9 +619,7 @@
           "id": "cred-discord-bot",
           "name": "Discord Bot"
         }
-      },
-      "jsonBody": "={{ JSON.stringify({ content: String($json.output).slice(0, 1900) }) }}",
-      "channel?": null
+      }
     },
     {
       "parameters": {
@@ -706,7 +775,13 @@
             "index": 0
           }
         ],
-        []
+        [
+          {
+            "node": "Build Command Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Find implement Label": {
@@ -724,7 +799,7 @@
       "main": [
         [
           {
-            "node": "Reply via Interaction",
+            "node": "Build Command Reply",
             "type": "main",
             "index": 0
           }
@@ -735,7 +810,7 @@
       "main": [
         [
           {
-            "node": "Reply via Interaction",
+            "node": "Build Command Reply",
             "type": "main",
             "index": 0
           }
@@ -834,18 +909,29 @@
       "main": [
         [
           {
-            "node": "Pre Search",
+            "node": "Chatbot Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Pre Search": {
-      "main": [
+    "Web Search Tool": {
+      "ai_tool": [
         [
           {
             "node": "Chatbot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Command Reply": {
+      "main": [
+        [
+          {
+            "node": "Reply via Interaction",
             "type": "main",
             "index": 0
           }
@@ -857,5 +943,8 @@
   "pinData": {},
   "meta": {
     "instanceId": "gem12"
-  }
+  },
+  "id": "dev-control-workflow",
+  "versionId": "4127c299e0b642918e0259f48cbd26af",
+  "active": false
 }
