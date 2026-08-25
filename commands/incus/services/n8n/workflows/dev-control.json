@@ -456,7 +456,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://discord.com/api/v10/webhooks/{{ $('Parse Command').first().json._app }}/{{ $('Parse Command').first().json._tok }}/messages/@original",
+        "url": "=https://discord.com/api/v10/webhooks/{{ $json._app }}/{{ $json._tok }}/messages/@original",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -468,7 +468,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content: String($('Build Command Reply').first().json._reply).slice(0, 1900) }) }}",
+        "jsonBody": "={{ JSON.stringify({ content: String($json._reply).slice(0, 1900) }) }}",
         "options": {}
       },
       "id": "d1-reply-interaction",
