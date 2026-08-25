@@ -179,7 +179,7 @@ Instagram 수집으로 이미 검증된 계정을 그대로 쓴다.
 | NocoDB API token | NocoDB UI → Account → Tokens | 1Password + apps env |
 | YouTube Data API key | Google Cloud Console | 1Password + n8n credential |
 
-## 7. 사람이 할 일 (구현 전 준비)
+## 6. 사람이 할 일 (구현 전 준비)
 
 1. **Discord Developer Portal** (discord.com/developers/applications):
    - New Application → Bot 탭 → Reset Token → 토큰 복사해 1Password 등록
