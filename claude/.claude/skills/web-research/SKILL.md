@@ -178,7 +178,7 @@ Spawn extraction subagents simultaneously. Read `agents/extractor.md` for the te
 - `{workspace}`: workspace path
 - `{script_dir}`: script directory path
 
-**Subagent E — Video Analyzer** (only if YouTube URLs exist in source_matrix videos AND `GEMINI_API_KEY` is set — check with `[ -n "$GEMINI_API_KEY" ]`; if unset, skip and rely on Brave video metadata alone):
+**Subagent E — Video Analyzer** (only if YouTube URLs exist in source_matrix videos AND `OPENROUTER_API_KEY` is set — check with `[ -n "$OPENROUTER_API_KEY" ]`; if unset, skip and rely on Brave video metadata alone):
 
 Read `agents/video-analyzer.md`. Spawn with these variables:
 - `{video_urls}`: top 3 **YouTube** URLs from source_matrix videos (comma-separated). Only `youtube.com`/`youtu.be` URLs — Gemini's native video input supports YouTube only. Prefer videos whose title/description most directly address the query.
@@ -212,7 +212,6 @@ Provide the synthesizer with:
 - `{workspace}`: workspace path (synthesizer reads all JSON files)
 - `{query}`: research keyword
 - `{timestamp}`: from Phase 0
-- `{script_dir}`: script directory (for optional `perplexity_search.py reason` call)
 - `{report_template}`: full contents of `references/report-template.md`
 - `{source_matrix}`: contents of `source_matrix.json`
 - `{perplexity_overview}`: the overview text from `discovery/perplexity.json`
@@ -223,16 +222,7 @@ Provide the synthesizer with:
 - `{refinement_data}`: contents of `refinement.json` (if exists)
 - `{extraction_coverage}`: the extraction coverage summary built in Phase 3 (extracted/failed/skipped URLs)
 
-The synthesizer decides whether to call `perplexity_search.py reason` based on:
-
-| Condition | Action |
-|-----------|--------|
-| Sources conflict OR comparison/trade-off topic | Required |
-| Successful extractions <= 3 | Required (gap identification) |
-| Extractions >= 8 + source types >= 2 + clean consensus | Run **one disconfirming check** (ask `reason` for the strongest counter-case): if none surfaces, raise confidence; if one does, the stance must address it. Do NOT skip silently. |
-| Otherwise | Recommended |
-
-Note: skipping `reason` only skips the extra API call — it never skips forming a stance. Stance construction (Step 1.5 in the synthesizer) is always done inline.
+Cross-source adjudication is done by the synthesizer itself (Step 1 in the template): it must construct 2-3 candidate positions, weigh supporting vs counter evidence for each, and state rejection reasons — no external reasoning API call. Stance construction (Step 1.5) is always done inline.
 
 The synthesizer outputs the complete report text.
 
@@ -266,4 +256,4 @@ Use `scripts/tavily_search.py research "<query>" --model=mini` as a single-call 
 Degrade gracefully: a failed subagent or script call is noted and the pipeline continues with whatever succeeded. Specifics:
 
 - If no video results found, skip the video section entirely
-- If the Video Analyzer fails or is skipped (no `GEMINI_API_KEY`, quota, private videos), fall back to Brave video metadata
+- If the Video Analyzer fails or is skipped (no `OPENROUTER_API_KEY`, quota, private videos), fall back to Brave video metadata

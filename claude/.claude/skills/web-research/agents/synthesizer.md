@@ -15,25 +15,19 @@ You receive:
 - `{extraction_coverage}`: which URLs were extracted, which failed, which were skipped
 - `{query}`: original research keyword
 - `{timestamp}`: report date
-- `{script_dir}`: path to scripts directory
 - `{report_template}`: the report template to follow
 
-## Step 1: Cross-Source Analysis Decision
+## Step 1: Adversarial Cross-Source Analysis (mandatory — no external API call)
 
-Count successful extractions and source diversity, then decide:
+Before constructing the stance, run this discipline yourself, in your internal reasoning:
 
-| Condition | Action |
-|-----------|--------|
-| Sources conflict OR comparison/trade-off topic | Run `perplexity_search.py reason` |
-| Extractions <= 3 | Run `perplexity_search.py reason` (gap identification) |
-| Extractions >= 8 + source types >= 2 + clean consensus | Run one **disconfirming check** — don't skip silently. If no counter-case surfaces, raise confidence; if one does, your stance must address it. |
-| Otherwise | Recommended to run `perplexity_search.py reason` |
+1. **Candidate positions**: identify the 2-3 distinct positions the evidence could support — including the position the user probably hopes is true and its strongest rival. One candidate is not a spectrum: force genuinely different answers.
+2. **Weigh each candidate**: for every candidate, list its supporting evidence AND its counter evidence from the collected sources (`{refinement_data}` disconfirming results are first-class counter evidence — never ignore them).
+3. **Adjudicate**: state which candidate is best supported and WHY each rejected candidate is weaker — a rejected position must be refuted by evidence it fails to explain, not merely outvoted.
+4. **Disconfirming check**: even under clean consensus, explicitly search the collected material for the strongest counter-case. If none surfaces, raise confidence; if one does, your stance must address it. Do NOT skip silently.
+5. **Flip conditions**: list key uncertainties and what new evidence would change the conclusion.
 
-If running reason, prompt it for a **judgment**, not a description:
-```bash
-python3 {script_dir}/perplexity_search.py reason "Given these findings: <concise summary>. Identify the 2-3 candidate positions, weigh supporting vs counter evidence for each, state which is best supported and WHY the others are weaker, then list key uncertainties and what evidence would change the conclusion." --effort=high --context=high
-```
-The `reason` output is **raw material for your judgment** — do not transcribe it. Re-construct it as your own stance in Step 1.5.
+This produces the raw material for Step 1.5 — the discipline is the point: a stance that never faced a rival is a summary wearing a stance's clothes.
 
 ## Step 1.5: Construct the Stance (internal scratchpad — do NOT output this JSON)
 
@@ -78,7 +72,6 @@ Key rules:
 - Confidence levels: High (3+ sources agree), Medium (1-2 sources), Low (single unverified claim). **Adjust for source quality, not just count**: same-origin or low-quality cluster → drop one level; a single primary/official source → raise above Low; conflicting or sparse evidence → drop. (See `source-classification.md` quality hierarchy.)
 - If video results exist, include the video section. If none, omit entirely. When `{video_analysis}` has entries, treat those summaries as **first-class evidence** (same weight as extracted articles) — cite their claims in the argument, and use them to enrich the video section beyond title/metadata. Videos without analysis stay metadata-only.
 - If community results exist, include the community section. If none, omit entirely.
-- If `perplexity_search.py reason` was used, treat it as raw material — fold it into your stance, don't transcribe it.
 
 **Handling the "한계와 반대 근거" section — what belongs and what doesn't:**
 - Its numbered items are **conditions under which the conclusion could be wrong**: assumptions the stance depends on, disconfirming evidence found in `{refinement_data}`, and true research gaps (topic areas where *no source at all* was found — e.g., "AI 영화의 박스오피스 실적 데이터를 찾을 수 없었다").

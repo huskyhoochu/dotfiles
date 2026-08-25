@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Perplexity Sonar API client and timestamp utility.
+"""Perplexity Sonar client (via OpenRouter) and timestamp utility.
 
 Usage: python3 scripts/perplexity_search.py <command> [args...]
 
 Commands:
   ask <query> [--context=high] [--recency=month] [--domains=arxiv.org,nature.com]
-  reason <query> [--effort=high] [--context=high]
   timestamp [--tz=Asia/Seoul]
 """
 
@@ -14,12 +13,26 @@ from datetime import datetime, timedelta, timezone
 
 from _http import api_post, dump, error_exit, get_api_key, parse_args, run_cli
 
-API_URL = "https://api.perplexity.ai/chat/completions"
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
-def _chat(payload):
-    headers = {"Authorization": f"Bearer {get_api_key('PERPLEXITY_API_KEY')}"}
-    return api_post(API_URL, headers, payload, timeout=180)
+def _normalize_citations(data):
+    """OpenRouter returns citations as OpenAI-style message annotations
+    (url_citation); Perplexity-direct returned a top-level citations[] array.
+    Restore the top-level array so downstream agents keep one contract."""
+    if "citations" in data:
+        return data
+    urls = []
+    try:
+        for ann in data["choices"][0]["message"].get("annotations") or []:
+            url = (ann.get("url_citation") or {}).get("url")
+            if url and url not in urls:
+                urls.append(url)
+    except (KeyError, IndexError, TypeError, AttributeError):
+        pass
+    if urls:
+        data["citations"] = urls
+    return data
 
 
 def cmd_ask(args):
@@ -27,9 +40,8 @@ def cmd_ask(args):
     if not positional:
         error_exit("Usage: ask <query> [--context=high] [--recency=month] [--domains=a.com,b.com]")
     payload = {
-        "model": "sonar-pro",
+        "model": "perplexity/sonar-pro",
         "messages": [{"role": "user", "content": " ".join(positional)}],
-        "return_citations": True,
         "web_search_options": {
             "search_context_size": opts.get("context", "high"),
         },
@@ -38,23 +50,8 @@ def cmd_ask(args):
         payload["search_recency_filter"] = opts["recency"]
     if "domains" in opts:
         payload["search_domain_filter"] = opts["domains"].split(",")
-    dump(_chat(payload))
-
-
-def cmd_reason(args):
-    positional, opts = parse_args(args)
-    if not positional:
-        error_exit("Usage: reason <query> [--effort=high] [--context=high]")
-    payload = {
-        "model": "sonar-reasoning-pro",
-        "messages": [{"role": "user", "content": " ".join(positional)}],
-        "return_citations": True,
-        "reasoning_effort": opts.get("effort", "high"),
-        "web_search_options": {
-            "search_context_size": opts.get("context", "high"),
-        },
-    }
-    dump(_chat(payload))
+    headers = {"Authorization": f"Bearer {get_api_key('OPENROUTER_API_KEY')}"}
+    dump(_normalize_citations(api_post(API_URL, headers, payload, timeout=180)))
 
 
 TIMEZONE_OFFSETS = {
@@ -90,7 +87,6 @@ def cmd_timestamp(args):
 
 COMMANDS = {
     "ask": cmd_ask,
-    "reason": cmd_reason,
     "timestamp": cmd_timestamp,
 }
 

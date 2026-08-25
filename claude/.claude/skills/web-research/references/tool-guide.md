@@ -9,7 +9,6 @@ All scripts are in `scripts/` and run via the Bash tool. Each requires its corre
 | Role | Tool | Strength |
 |------|------|----------|
 | AI-synthesized overview + citations | `perplexity_search.py ask` | Fast summary with source URLs |
-| Cross-source analysis + gap detection | `perplexity_search.py reason` | Admits gaps rather than hallucinating |
 | URL collection (Step 1) | `brave_search.py web` | Low-cost web search, broad coverage |
 | Refinement search (Step 2c) | `tavily_search.py search` | Quality assessment via relevance score |
 | Page content extraction | `tavily_search.py extract` | URL → markdown, `--query` for relevance reranking |
@@ -22,21 +21,16 @@ All scripts are in `scripts/` and run via the Bash tool. Each requires its corre
 
 ## Tool Details
 
-### Perplexity (via `scripts/perplexity_search.py`)
+### Perplexity Sonar via OpenRouter (`scripts/perplexity_search.py`)
 
-Requires `PERPLEXITY_API_KEY` environment variable. Run with Bash tool.
+Requires `OPENROUTER_API_KEY` environment variable (calls `perplexity/sonar-pro` through OpenRouter — one billing account with the Gemini video calls). Run with Bash tool.
 
 #### `perplexity_search.py ask`
 - **Purpose**: Step 1 initial overview. Returns AI-synthesized summary with numbered citation URLs.
 - **Usage**: `scripts/perplexity_search.py ask "<query>" [--context=high] [--recency=month] [--domains=a.com,b.com]`
 - **Options**: `--context` (search context size, default: "high"), `--recency` (filter: day/week/month/year), `--domains` (comma-separated domain filter)
 - **Caveat**: Occasionally overconfident — cross-validate key claims with other sources.
-
-#### `perplexity_search.py reason`
-- **Purpose**: Step 4 cross-source analysis. Best for source conflicts, comparisons/trade-offs, and gap identification.
-- **Usage**: `scripts/perplexity_search.py reason "<query>" [--effort=high] [--context=high]`
-- **Options**: `--effort` (reasoning effort, default: "high"), `--context` (search context size, default: "high")
-- **Strength**: Explicitly admits when evidence is insufficient (flags gaps instead of hallucinating).
+- **Note**: the script normalizes OpenRouter's `annotations`-style citations back to a top-level `citations[]` array, so downstream parsing is unchanged.
 
 #### `perplexity_search.py timestamp`
 - **Purpose**: Step 0 timestamp collection.
@@ -104,16 +98,16 @@ Requires `EXA_API_KEY` environment variable. Run with Bash tool.
 - **Example**: `scripts/exa_search.py findsimilar "https://example.com/article" --count=10`
 - **Options**: `--count=` (default 10), `--highlights`
 
-### Gemini (via `scripts/gemini_video.py`)
+### Gemini via OpenRouter (`scripts/gemini_video.py`)
 
-Requires `GEMINI_API_KEY` environment variable. Run with Bash tool.
+Requires `OPENROUTER_API_KEY` environment variable (calls `google/gemini-2.5-flash` through OpenRouter, provider pinned to Google AI Studio — YouTube URL input only works there, not on Vertex). Run with Bash tool.
 
 #### `gemini_video.py summarize`
-- **Purpose**: Step 3 YouTube video content analysis. Passes the URL to Gemini as native multimodal input (`file_data.file_uri`) — Gemini watches the video directly, so the summary covers spoken claims, on-screen demos, and data, not just title/description.
-- **Usage**: `scripts/gemini_video.py summarize "<youtube_url>" [--query=topic] [--model=gemini-2.5-flash] [--timeout=240]`
-- **Options**: `--query` (research topic — focuses the summary), `--model` (default: "gemini-2.5-flash"), `--timeout` (seconds, default: 240)
+- **Purpose**: Step 3 YouTube video content analysis. Passes the URL to Gemini as native multimodal input — Gemini watches the video directly, so the summary covers spoken claims, on-screen demos, and data, not just title/description.
+- **Usage**: `scripts/gemini_video.py summarize "<youtube_url>" [--query=topic] [--model=google/gemini-2.5-flash] [--timeout=240]`
+- **Options**: `--query` (research topic — focuses the summary), `--model` (default: "google/gemini-2.5-flash"), `--timeout` (seconds, default: 240)
 - **Returns**: JSON with `url`, `model`, `summary` (Korean)
-- **Caveats**: YouTube URLs only (`youtube.com`/`youtu.be`); public videos only (private/unlisted fail). One video per call — loop for multiple, sequentially (slow: 30s-2min per video; parallel calls risk rate limits). Free tier caps YouTube input at ~8 hours of video per day; on HTTP 429 stop and fall back to Brave metadata.
+- **Caveats**: YouTube URLs only (`youtube.com`/`youtu.be`); public videos only (private/unlisted fail). One video per call — loop for multiple, sequentially (slow: 30s-2min per video; parallel calls risk rate limits). Billed per video token through OpenRouter credits; on HTTP 429 stop and fall back to Brave metadata.
 
 #### `exa_search.py answer`
 - **Purpose**: Direct answer generation for a single factual query, no source list needed. Not used in the standard pipeline; available for ad-hoc lookups.

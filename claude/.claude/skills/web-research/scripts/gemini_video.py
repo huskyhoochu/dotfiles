@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Gemini API client for native YouTube video analysis.
+"""Gemini native YouTube video analysis, called via OpenRouter.
+
+YouTube URL input only works with Gemini served by Google AI Studio, so the
+request pins the provider to google-ai-studio (Vertex AI accepts base64 only).
 
 Usage: python3 scripts/gemini_video.py <command> [args...]
 
 Commands:
-  summarize <youtube_url> [--query=topic] [--model=gemini-2.5-flash] [--timeout=240]
+  summarize <youtube_url> [--query=topic] [--model=google/gemini-2.5-flash] [--timeout=240]
 """
 
 import re
@@ -12,7 +15,7 @@ import sys
 
 from _http import api_post, dump, error_exit, get_api_key, parse_args, run_cli
 
-BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.|m\.)?(youtube\.com/(watch\?|shorts/|live/)|youtu\.be/)"
@@ -43,13 +46,13 @@ def cmd_summarize(args):
     if not positional:
         error_exit(
             "Usage: summarize <youtube_url> [--query=topic] "
-            "[--model=gemini-2.5-flash] [--timeout=240]"
+            "[--model=google/gemini-2.5-flash] [--timeout=240]"
         )
     url = positional[0]
     if not YOUTUBE_URL_RE.match(url):
         error_exit(f"Not a YouTube URL (only YouTube is supported natively): {url}")
 
-    model = opts.get("model", "gemini-2.5-flash")
+    model = opts.get("model", "google/gemini-2.5-flash")
     timeout = int(opts.get("timeout", "240"))
 
     prompt = SUMMARY_PROMPT
@@ -60,21 +63,24 @@ def cmd_summarize(args):
         )
 
     body = {
-        "contents": [
+        "model": model,
+        "provider": {"only": ["google-ai-studio"]},
+        "messages": [
             {
-                "parts": [
-                    {"file_data": {"file_uri": url}},
-                    {"text": prompt},
-                ]
+                "role": "user",
+                "content": [
+                    {"type": "video_url", "video_url": {"url": url}},
+                    {"type": "text", "text": prompt},
+                ],
             }
-        ]
+        ],
     }
-    headers = {"x-goog-api-key": get_api_key("GEMINI_API_KEY")}
-    data = api_post(f"{BASE_URL}/models/{model}:generateContent", headers, body, timeout=timeout)
+    headers = {"Authorization": f"Bearer {get_api_key('OPENROUTER_API_KEY')}"}
+    data = api_post(API_URL, headers, body, timeout=timeout)
 
     try:
-        summary = data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
+        summary = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
         error_exit({"unexpected_response": data})
 
     dump({"url": url, "model": model, "summary": summary})
