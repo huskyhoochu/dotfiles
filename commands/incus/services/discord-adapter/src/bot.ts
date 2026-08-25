@@ -269,7 +269,9 @@ async function handleInteraction(interaction: Interaction): Promise<void> {
 
   console.log('[event] 커맨드 수신', { command: payload.command });
 
-  await forwardToN8n(payload);
+  if (!(await forwardToN8n(payload))) {
+    await interaction.editReply(FORWARD_FAILED_MSG).catch(() => {});
+  }
 }
 
 /**
@@ -289,7 +291,9 @@ async function handleMessage(message: Message): Promise<void> {
   if (!message.channel.isTextBased() || message.channel.isDMBased()) return;
 
   const channel = message.channel;
-  const eventType = channel.isThread() ? ('thread' as const) : ('chat' as const);
+  const eventType = channel.isThread()
+    ? ('thread' as const)
+    : ('chat' as const);
   const target: TypingTarget = channel;
 
   console.log('[event] 메시지 수신', {
@@ -313,28 +317,51 @@ async function handleMessage(message: Message): Promise<void> {
     timestamp: message.createdAt.toISOString(),
   };
 
-  await forwardToN8n(payload);
-}
-
-async function forwardToN8n(payload: Record<string, unknown>): Promise<void> {
-  try {
-    const response = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Adapter-Secret': WEBHOOK_SHARED_SECRET,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      console.error(
-        `[forwardToN8n] n8n 응답 실패: ${response.status} ${response.statusText}`,
-      );
-    }
-  } catch (error) {
-    console.error('[forwardToN8n] 요청 실패', error);
+  if (!(await forwardToN8n(payload))) {
+    stopTypingLoop(target.id);
+    await channel.send(FORWARD_FAILED_MSG).catch(() => {});
   }
 }
+
+const FORWARD_RETRIES = 3;
+const FORWARD_RETRY_MS = 5_000;
+
+/**
+ * n8n 으로 전달한다. 실패하면 5초 간격으로 재시도하고 (n8n 재배포 창 ≈30초 흡수),
+ * 끝내 실패하면 false 를 돌려 호출자가 사용자에게 알리게 한다.
+ */
+async function forwardToN8n(
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= FORWARD_RETRIES; attempt++) {
+    try {
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Adapter-Secret': WEBHOOK_SHARED_SECRET,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) return true;
+      console.error(
+        `[forwardToN8n] n8n 응답 실패 (${attempt}/${FORWARD_RETRIES}): ${response.status} ${response.statusText}`,
+      );
+    } catch (error) {
+      console.error(
+        `[forwardToN8n] 요청 실패 (${attempt}/${FORWARD_RETRIES})`,
+        error,
+      );
+    }
+    if (attempt < FORWARD_RETRIES) {
+      await new Promise((r) => setTimeout(r, FORWARD_RETRY_MS));
+    }
+  }
+  return false;
+}
+
+const FORWARD_FAILED_MSG =
+  '⚠️ n8n 에 메시지를 전달하지 못했습니다. 잠시 후 다시 보내주세요.';
 
 client.login(DISCORD_BOT_TOKEN).catch((error) => {
   console.error('[fatal] Discord 로그인 실패', error);
