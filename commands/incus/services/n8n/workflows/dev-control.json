@@ -442,7 +442,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst src = $('Parse Command').item.json;\nconst out = [];\nfor (const item of $input.all()) {\n  if (item.json && item.json.error) {\n    const e = item.json.error;\n    out.push({ json: { _reply: `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`, _app: src._app, _tok: src._tok } });\n    continue;\n  }\n  const arr = Array.isArray(item.json) ? item.json : item.json.data || [];\n  const lines = arr.map(i => `#${i.number} ${i.title} (${(i.labels||[]).map(l=>l.name).join(',')||'라벨없음'})`);\n  out.push({ json: { _reply: lines.length ? lines.join('\\n') : '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\n}\nif (out.length === 0) out.push({ json: { _reply: '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\nreturn out;\n"
+        "jsCode": "\n// HTTP Request 노드는 배열 응답을 아이템 하나당 이슈 하나로 쪼개 넘긴다\nconst src = $('Parse Command').item.json;\nconst items = $input.all();\nconst first = items[0] && items[0].json;\nif (first && first.error) {\n  const e = first.error;\n  return [{ json: { _reply: `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`, _app: src._app, _tok: src._tok } }];\n}\nconst issues = items.flatMap(it => Array.isArray(it.json) ? it.json : (it.json && it.json.number != null ? [it.json] : (it.json && it.json.data) || []));\nconst lines = issues.map(i => `#${i.number} ${i.title} (${(i.labels||[]).map(l=>l.name).join(',')||'라벨없음'})`);\nreturn [{ json: { _reply: lines.length ? lines.join('\\n') : '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } }];\n"
       },
       "id": "d2-format-list",
       "name": "Format List",
