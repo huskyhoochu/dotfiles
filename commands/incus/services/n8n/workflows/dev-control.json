@@ -168,7 +168,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst HELP = [\n  '**GEM12 개발 제어 봇**',\n  '',\n  '`/issue 저장소 제목` — 이슈 발급 (implement 라벨 없음)',\n  '`/implement 저장소 번호` — implement 라벨 부착 → 에이전트 루프 투입',\n  '`/issues 저장소` — 열린 이슈 목록',\n  '`/pr 저장소` — 열린 PR 목록',\n  '`/status 실행ID` · `/runs` · `/cancel 실행ID` — 준비 중',\n  '',\n  '과제는 @b95labs_bot 멘션으로 대화하며 다듬는다. 구체화되면 /issue 로 발급.',\n].join('\\n');\n\nfor (const item of $input.all()) {\n  const c = item.json.command;\n  item.json._app = item.json.application_id;\n  item.json._tok = item.json.interaction_token;\n  if (!c) { item.json._reply = HELP; continue; }\n  const parts = String(item.json.content || '').split('\\n').filter(Boolean);\n  switch (c) {\n    case 'help':\n      item.json._reply = HELP;\n      break;\n    case 'issue':\n      if (!parts[0]) { item.json._reply = '사용법: `/issue owner/repo 제목`'; break; }\n      item.json._repo = parts[0];\n      item.json._title = parts.slice(1).join(' ') || 'Discord 에서 발급한 과제';\n      item.json._action = 'create_issue';\n      break;\n    case 'implement': {\n      const n = parseInt(parts[1], 10);\n      if (!parts[0] || !Number.isFinite(n)) {\n        item.json._reply = '사용법: `/implement owner/repo 이슈번호`';\n      } else {\n        item.json._repo = parts[0];\n        item.json._issue_number = n;\n        item.json._action = 'label_implement';\n      }\n      break;\n    }\n    case 'issues':\n    case 'pr':\n      if (!parts[0]) {\n        item.json._reply = `사용법: \\`/${c} owner/repo\\``;\n      } else {\n        item.json._repo = parts[0];\n        item.json._action = c === 'issues' ? 'list_issues' : 'list_prs';\n      }\n      break;\n    default:\n      item.json._reply = `\\`${c}\\` 커맨드는 아직 준비 중입니다.`;\n  }\n}\nreturn $input.all();\n"
+        "jsCode": "\nconst HELP = [\n  '**GEM12 개발 제어 봇**',\n  '',\n  '`/issue 저장소 제목` — 이슈 발급 (implement 라벨 없음)',\n  '`/implement 저장소 번호` — implement 라벨 부착 → 에이전트 루프 투입',\n  '`/issues 저장소` — 열린 이슈 목록',\n  '`/pr 저장소` — 열린 PR 목록',\n  '`/status 실행ID` · `/runs` · `/cancel 실행ID` — 준비 중',\n  '',\n  '채널에 그냥 말하면 챗봇이 답한다(멘션 불필요). 과제가 구체화되면 /issue 로 발급.',\n].join('\\n');\n\nfor (const item of $input.all()) {\n  const c = item.json.command;\n  item.json._app = item.json.application_id;\n  item.json._tok = item.json.interaction_token;\n  if (!c) { item.json._reply = HELP; continue; }\n  const parts = String(item.json.content || '').split('\\n').filter(Boolean);\n  switch (c) {\n    case 'help':\n      item.json._reply = HELP;\n      break;\n    case 'issue':\n      if (!parts[0] || !parts[1]) { item.json._reply = '사용법: `/issue owner/repo 제목`'; break; }\n      item.json._repo = parts[0];\n      item.json._title = parts.slice(1).join(' ');\n      item.json._action = 'create_issue';\n      break;\n    case 'implement': {\n      const n = parseInt(parts[1], 10);\n      if (!parts[0] || !Number.isFinite(n)) {\n        item.json._reply = '사용법: `/implement owner/repo 이슈번호`';\n      } else {\n        item.json._repo = parts[0];\n        item.json._issue_number = n;\n        item.json._action = 'label_implement';\n      }\n      break;\n    }\n    case 'issues':\n    case 'pr':\n      if (!parts[0]) {\n        item.json._reply = `사용법: \\`/${c} owner/repo\\``;\n      } else {\n        item.json._repo = parts[0];\n        item.json._action = c === 'issues' ? 'list_issues' : 'list_prs';\n      }\n      break;\n    default:\n      item.json._reply = `\\`${c}\\` 커맨드는 아직 준비 중입니다.`;\n  }\n}\nreturn $input.all();\n"
       },
       "id": "b1-parse",
       "name": "Parse Command",
@@ -298,7 +298,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ title: $json._title, body: 'Discord 스레드에서 발급됨. 상세는 스레드 참조.' }) }}",
+        "jsonBody": "={{ JSON.stringify({ title: $json._title, body: 'Discord /issue 커맨드로 발급 (작성자 ' + $json.author_id + ')' }) }}",
         "options": {}
       },
       "id": "c1-create-issue",
@@ -345,7 +345,8 @@
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -361,7 +362,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ labels: [($json.data || []).filter(l => l.name === 'implement').map(l => l.id)[0]] }) }}",
+        "jsonBody": "={{ JSON.stringify({ labels: [$json.label_id] }) }}",
         "options": {}
       },
       "id": "c3-add-label",
@@ -408,7 +409,8 @@
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -438,7 +440,8 @@
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -482,7 +485,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// 커맨드 분기별 최종 답장 문구를 만든다 (cross-node 참조를 여기서 한 번에 해결)\nconst cmd = $('Parse Command').first().json;\nconst errMsg = (e) => `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`;\nlet reply;\nif (cmd._reply) {\n  reply = cmd._reply;\n} else {\n  const src = $input.first().json;\n  if (src && src.error) {\n    reply = errMsg(src.error);\n  } else {\n  const data = Array.isArray(src) ? src[0] : src;\n  switch (cmd._action) {\n    case 'create_issue':\n      reply = data && data.number\n        ? `이슈 발급: #${data.number} ${data.title}\\n${data.html_url}`\n        : '이슈 생성에 실패했거나 응답을 파싱하지 못했습니다.';\n      break;\n    case 'label_implement':\n      reply = data\n        ? 'implement 라벨 부착 완료. 에이전트 루프에 투입합니다.'\n        : '라벨 부착 결과를 확인할 수 없습니다.';\n      break;\n    default:\n      reply = '완료되었습니다.';\n  }\n  }\n}\nreturn [{ json: { _reply: reply, _app: cmd._app, _tok: cmd._tok } }];\n"
+        "jsCode": "\n// 커맨드 분기별 최종 답장 문구를 만든다 (cross-node 참조를 여기서 한 번에 해결)\nconst cmd = $('Parse Command').first().json;\nconst errMsg = (e) => `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`;\nlet reply;\nif (cmd._reply) {\n  reply = cmd._reply;\n} else {\n  const src = $input.first().json;\n  if (src && src._reply) {\n    reply = src._reply;\n  } else if (src && src.error) {\n    reply = errMsg(src.error);\n  } else {\n  const data = Array.isArray(src) ? src[0] : src;\n  switch (cmd._action) {\n    case 'create_issue':\n      reply = data && data.number\n        ? `이슈 발급: #${data.number} ${data.title}\\n${data.html_url}`\n        : '이슈 생성에 실패했거나 응답을 파싱하지 못했습니다.';\n      break;\n    case 'label_implement':\n      reply = data\n        ? 'implement 라벨 부착 완료. 에이전트 루프에 투입합니다.'\n        : '라벨 부착 결과를 확인할 수 없습니다.';\n      break;\n    default:\n      reply = '완료되었습니다.';\n  }\n  }\n}\nreturn [{ json: { _reply: reply, _app: cmd._app, _tok: cmd._tok } }];\n"
       },
       "id": "d3-build-cmd-reply",
       "name": "Build Command Reply",
@@ -700,6 +703,53 @@
           "name": "Discord Bot"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Find implement Label 은 라벨당 아이템 하나로 온다. implement 라벨 id 하나만 고른다\nconst items = $input.all();\nconst first = items[0] && items[0].json;\nif (first && first.error) return [{ json: { error: first.error } }];\nconst labels = items.flatMap(it => Array.isArray(it.json) ? it.json : (it.json && it.json.name ? [it.json] : []));\nconst hit = labels.find(l => l.name === 'implement');\nif (!hit) return [{ json: { _reply: 'implement 라벨이 저장소에 없습니다. Forgejo 에서 라벨을 먼저 만드세요.' } }];\nreturn [{ json: { label_id: hit.id } }];\n"
+      },
+      "name": "Pick implement Label",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        120
+      ],
+      "id": "pick-implement-label"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-label",
+              "leftValue": "={{ $json.label_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has implement Label",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1380,
+        120
+      ],
+      "id": "has-implement-label"
     }
   ],
   "connections": {
@@ -818,7 +868,7 @@
       "main": [
         [
           {
-            "node": "Attach implement Label",
+            "node": "Pick implement Label",
             "type": "main",
             "index": 0
           }
@@ -962,6 +1012,35 @@
         [
           {
             "node": "Reply via Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick implement Label": {
+      "main": [
+        [
+          {
+            "node": "Has implement Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has implement Label": {
+      "main": [
+        [
+          {
+            "node": "Attach implement Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Command Reply",
             "type": "main",
             "index": 0
           }

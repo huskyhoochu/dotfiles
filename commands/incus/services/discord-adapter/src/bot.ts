@@ -49,9 +49,9 @@ const SLASH_COMMANDS: ApplicationCommandDataResolvable[] = [
       },
       {
         name: '제목',
-        description: '이슈 제목 (비우면 대화에서 추론)',
+        description: '이슈 제목',
         type: ApplicationCommandOptionType.String,
-        required: false,
+        required: true,
       },
     ],
   },
@@ -76,7 +76,7 @@ const SLASH_COMMANDS: ApplicationCommandDataResolvable[] = [
   },
   {
     name: 'status',
-    description: '에이전트 루프 실행 상태와 로그를 조회합니다',
+    description: '(준비 중) 에이전트 루프 실행 상태와 로그를 조회합니다',
     contexts: [InteractionContextType.Guild],
     options: [
       {
@@ -89,12 +89,12 @@ const SLASH_COMMANDS: ApplicationCommandDataResolvable[] = [
   },
   {
     name: 'runs',
-    description: '최근 에이전트 루프 실행 목록을 봅니다',
+    description: '(준비 중) 최근 에이전트 루프 실행 목록을 봅니다',
     contexts: [InteractionContextType.Guild],
   },
   {
     name: 'cancel',
-    description: '진행 중인 에이전트 루프를 중지합니다',
+    description: '(준비 중) 진행 중인 에이전트 루프를 중지합니다',
     contexts: [InteractionContextType.Guild],
     options: [
       {
