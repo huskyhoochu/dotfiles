@@ -30,9 +30,22 @@
 - 같은 수정을 반복해도 결과가 완전히 같으면 수정 지점이 실행 경로 위에 있는지부터 의심한다.
 - exec 17 의 Discord 404 는 별개 원인: 기본 채널(ID = 길드 ID) 에서 온 메시지에 봇 게시 권한이 없다.
 
-### 남은 미검증
+### 슬래시 커맨드 전수 점검 (같은 날 밤)
 
-- `/issue`·`/implement` 실제 Discord E2E (스모크는 가짜 interaction token 이라 Discord PATCH 단계는 404 로 끝남)
+exec 40–54 로 8종 전부 실측. 고친 것:
+
+- `/implement`: Find Label 의 라벨당 아이템 응답을 Attach 가 `$json.data` 로 읽어 `labels:[null]` 전송 → **Pick implement Label**(Code) + **Has implement Label**(IF) 노드 신설. 라벨 없으면 안내 답장
+- `/issues` `/pr`: 결과 0건이면 HTTP 노드가 아이템을 안 내보내 Format List 미실행 → 무응답. `alwaysOutputData` 로 해결. Format List 는 아이템당 이슈 하나인 응답 형태를 처리
+- Reply via Interaction 이 `$('Build Command Reply')` 를 참조해 목록 경로에서 미실행 노드 오류 → `$json._reply/_app/_tok` 사용
+- `/issue`: 제목 옵션 필수화(추론 기능은 없음), 본문 "스레드 참조" 문구 제거
+- `/status` `/runs` `/cancel`: 미구현. 호스트 `agent-run.sh` 를 n8n 에서 못 부르므로 ci 쪽 HTTP 셈이 있어야 한다. 커맨드 설명에 "(준비 중)" 표기
+- `/implement` 답장의 "에이전트 루프에 투입" 문구 제거 — Forgejo webhook → agent-run.sh 연결이 아직 없다
+- 어댑터: n8n 전달 실패 시 5초 간격 3회 재시도, 최종 실패는 채널/interaction 에 알림 (deploy.sh 재시작 창 ≈30초 대응)
+
+### 남은 것
+
+- `/implement` 후 실제 루프 투입: Forgejo webhook → agent-run.sh 연결
+- `/status` `/runs` `/cancel` 구현 (ci 컨테이너 HTTP 셈 필요)
 
 ## 한줄 요약
 
