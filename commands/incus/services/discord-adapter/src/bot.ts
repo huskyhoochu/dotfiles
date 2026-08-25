@@ -28,9 +28,12 @@ const TYPING_REFRESH_MS = 8_000;
 /** 영상 해석 등 긴 작업 중 표시가 먼저 꺼지지 않게 5분까지 버틴다 */
 const TYPING_MAX_MS = 300_000;
 
-// 슬래시 커맨드는 길드 스코프로 등록한다 — 전역 등록은 전파에 최대 1시간이 걸린다.
-// 주의: 커맨드 추가 시 n8n dev-control 워크플로의 라우팅에도 항목을 추가해야 한다
-// (두 곳 등록 시임 — docs/gem12/discord-dev-control.md §A2).
+/**
+ * 슬래시 커맨드는 길드 스코프로 등록한다.
+ * 일반 채팅은 별도 경로(chat 이벤트)로 전달된다 — 허용 사용자의 모든 길드 메시지가
+ * 범용 챗봇 파이프라인으로 간다. 주의: 커맨드 추가 시 n8n dev-control 워크플로의
+ * 라우팅에도 항목을 추가해야 한다 (두 곳 등록 시임).
+ */
 const SLASH_COMMANDS: ApplicationCommandDataResolvable[] = [
   {
     name: 'issue',
@@ -226,15 +229,6 @@ function stripBotMention(content: string): string {
     .trim();
 }
 
-/** 대화 본문에서 스레드 이름을 만든다 (Discord 제한: 1~100자) */
-function threadNameFrom(content: string): string {
-  const base = stripBotMention(content)
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return base.length > 0 ? base.slice(0, 50) : '과제 논의';
-}
-
 /**
  * 슬래시 커맨드 처리. deferReply 로 ACK 한 뒤 n8n 에 넘긴다.
  * 응답은 n8n 이 interaction token 으로 원본 답장을 직접 수정한다 (유효 15분).
@@ -278,6 +272,10 @@ async function handleInteraction(interaction: Interaction): Promise<void> {
   await forwardToN8n(payload);
 }
 
+/**
+ * 일반 채팅: 허용 사용자의 모든 길드 메시지를 범용 챗봇 파이프라인으로 보낸다.
+ * 봇 자신의 메시지는 typing 종료 신호로만 쓰인다.
+ */
 async function handleMessage(message: Message): Promise<void> {
   if (!client.user) return;
 
@@ -290,33 +288,9 @@ async function handleMessage(message: Message): Promise<void> {
   if (!ALLOWED_USER_IDS.has(message.author.id)) return;
   if (!message.channel.isTextBased() || message.channel.isDMBased()) return;
 
-  const isMentioned =
-    message.mentions.has(client.user.id) && !message.mentions.everyone;
-
   const channel = message.channel;
-  let eventType: 'mention' | 'thread';
-  let target: TypingTarget;
-
-  if (channel.isThread()) {
-    // 봇이 만든 스레드 안에서는 멘션 없이도 응답, 외부 스레드는 멘션 시에만
-    if (channel.ownerId !== client.user.id && !isMentioned) return;
-    eventType = 'thread';
-    target = channel;
-  } else if (isMentioned) {
-    eventType = 'mention';
-    if (/https?:\/\//.test(message.content)) {
-      message.suppressEmbeds(true).catch(() => {});
-    }
-    target =
-      message.hasThread && message.thread
-        ? message.thread
-        : await message.startThread({
-            name: threadNameFrom(message.content),
-            autoArchiveDuration: 1440,
-          });
-  } else {
-    return;
-  }
+  const eventType = channel.isThread() ? ('thread' as const) : ('chat' as const);
+  const target: TypingTarget = channel;
 
   console.log('[event] 메시지 수신', {
     eventType,
@@ -330,7 +304,7 @@ async function handleMessage(message: Message): Promise<void> {
     event_type: eventType,
     command: null,
     message_id: message.id,
-    thread_id: target.id === message.channelId ? null : target.id,
+    thread_id: null,
     channel_id: message.channelId,
     author_id: message.author.id,
     content: stripBotMention(message.content),

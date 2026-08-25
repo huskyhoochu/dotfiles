@@ -1,0 +1,861 @@
+{
+  "name": "dev-control",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dev-control",
+        "responseMode": "onReceived",
+        "options": {},
+        "authentication": "headerAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "cred-adapter-secret",
+            "name": "DevControl Shared Secret"
+          }
+        }
+      },
+      "id": "a1-webhook",
+      "name": "Dev Control Inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ],
+      "webhookId": "dev-control",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-adapter-secret",
+          "name": "DevControl Shared Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body;\nb.headers = $input.first().json.headers;\nreturn [{ json: b }];"
+      },
+      "id": "a3-normalize",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "command",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "commands"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "mention",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "chat"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "thread",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "chat"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "chat"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "agent_finished",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "finished"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a4-switch",
+      "name": "Route Event",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        260,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst HELP = [\n  '**GEM12 개발 제어 봇**',\n  '',\n  '`/issue 저장소 제목` — 이슈 발급 (implement 라벨 없음)',\n  '`/implement 저장소 번호` — implement 라벨 부착 → 에이전트 루프 투입',\n  '`/issues 저장소` — 열린 이슈 목록',\n  '`/pr 저장소` — 열린 PR 목록',\n  '`/status 실행ID` · `/runs` · `/cancel 실행ID` — 준비 중',\n  '',\n  '과제는 @b95labs_bot 멘션으로 대화하며 다듬는다. 구체화되면 /issue 로 발급.',\n].join('\\n');\n\nfor (const item of $input.all()) {\n  const c = item.json.command;\n  item.json._app = item.json.application_id;\n  item.json._tok = item.json.interaction_token;\n  if (!c) { item.json._reply = HELP; continue; }\n  const parts = String(item.json.content || '').split('\\n').filter(Boolean);\n  switch (c) {\n    case 'help':\n      item.json._reply = HELP;\n      break;\n    case 'issue':\n      if (!parts[0]) { item.json._reply = '사용법: `/issue owner/repo 제목`'; break; }\n      item.json._repo = parts[0];\n      item.json._title = parts.slice(1).join(' ') || 'Discord 에서 발급한 과제';\n      item.json._action = 'create_issue';\n      break;\n    case 'implement': {\n      const n = parseInt(parts[1], 10);\n      if (!parts[0] || !Number.isFinite(n)) {\n        item.json._reply = '사용법: `/implement owner/repo 이슈번호`';\n      } else {\n        item.json._repo = parts[0];\n        item.json._issue_number = n;\n        item.json._action = 'label_implement';\n      }\n      break;\n    }\n    case 'issues':\n    case 'pr':\n      if (!parts[0]) {\n        item.json._reply = `사용법: \\`/${c} owner/repo\\``;\n      } else {\n        item.json._repo = parts[0];\n        item.json._action = c === 'issues' ? 'list_issues' : 'list_prs';\n      }\n      break;\n    default:\n      item.json._reply = `\\`${c}\\` 커맨드는 아직 준비 중입니다.`;\n  }\n}\nreturn $input.all();\n"
+      },
+      "id": "b1-parse",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json._action }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "create_issue",
+              "outputKey": "create"
+            },
+            {
+              "value2": "label_implement",
+              "outputKey": "label"
+            },
+            {
+              "value2": "list_issues",
+              "outputKey": "listi"
+            },
+            {
+              "value2": "list_prs",
+              "outputKey": "listp"
+            }
+          ]
+        }
+      },
+      "id": "b2-route-cmd",
+      "name": "Route Command",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/issues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": null,
+            "name": "Forgejo DevControl"
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json._title, body: 'Discord 스레드에서 발급됨. 상세는 스레드 참조.' }) }}",
+        "options": {}
+      },
+      "id": "c1-create-issue",
+      "name": "Forgejo Create Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        -560
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-forgejo-dev",
+          "name": "Forgejo DevControl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $('Parse Command').item.json._repo }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": null,
+            "name": "Forgejo DevControl"
+          }
+        },
+        "options": {}
+      },
+      "id": "c2-find-label",
+      "name": "Find implement Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        -360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-forgejo-dev",
+          "name": "Forgejo DevControl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $('Parse Command').item.json._repo }}/issues/{{ $('Parse Command').item.json._issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": null,
+            "name": "Forgejo DevControl"
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: [($json.data || []).filter(l => l.name === 'implement').map(l => l.id)[0]] }) }}",
+        "options": {}
+      },
+      "id": "c3-add-label",
+      "name": "Attach implement Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-forgejo-dev",
+          "name": "Forgejo DevControl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/issues?state=open&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": null,
+            "name": "Forgejo DevControl"
+          }
+        },
+        "options": {}
+      },
+      "id": "c4-list-issues",
+      "name": "Forgejo List Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        -160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-forgejo-dev",
+          "name": "Forgejo DevControl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/pulls?state=open&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": null,
+            "name": "Forgejo DevControl"
+          }
+        },
+        "options": {}
+      },
+      "id": "c5-list-prs",
+      "name": "Forgejo List PRs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        40
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-forgejo-dev",
+          "name": "Forgejo DevControl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst src = $('Parse Command').item.json;\nconst out = [];\nfor (const item of $input.all()) {\n  const arr = Array.isArray(item.json) ? item.json : item.json.data || [];\n  const lines = arr.map(i => `#${i.number} ${i.title} (${(i.labels||[]).map(l=>l.name).join(',')||'라벨없음'})`);\n  out.push({ json: { _reply: lines.length ? lines.join('\\n') : '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\n}\nif (out.length === 0) out.push({ json: { _reply: '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\nreturn out;\n"
+      },
+      "id": "d2-format-list",
+      "name": "Format List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://discord.com/api/v10/webhooks/{{ $json._app }}/{{ $json._tok }}/messages/@original",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: String($json._reply).slice(0, 1900) || '완료되었습니다.' }) }}",
+        "options": {}
+      },
+      "id": "d1-reply-interaction",
+      "name": "Reply via Interaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1480,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// 화자·시각 메타를 붙여 프롬프트 조립\nconst src = $('Normalize').first().json;\nconst NAMES = { '983731763182469191': '관리자' };\nconst now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });\nconst speaker = NAMES[src.author_id] ?? '미등록';\nreturn [{ json: {\n  ...src,\n  prompt: `[현재 시각: ${now} KST] [화자: ${speaker}]\\n${src.content}`,\n} }];\n"
+      },
+      "id": "e1b-buildprompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        470,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.TAVILY_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.content, search_depth: 'basic', max_results: 5, include_answer: true }) }}",
+        "options": {}
+      },
+      "id": "e1-tavily-pre",
+      "name": "Pre Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        590,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=[사용자 메시지]\n{{ $('Build Prompt').item.json.prompt }}\n\n[웹 검색 참고자료 — 필요할 때만 근거로 활용]\n{{ $json.answer || '요약 없음' }}\n{{ JSON.stringify(($json.results || []).map(r => ({ title: r.title, url: r.url, snippet: (r.content || '').slice(0, 300) }))) }}",
+        "options": {
+          "systemMessage": "너는 GEM12 서버의 범용 개발 보조 챗봇이다. 관리자와 Discord 대화한다.\n\n## 역할\n- 질문에 답하고, 조사하고, 할 일을 함께 다듬는다. 과제가 구체화되면 `/issue` 커맨드로 이슈를 발급하라고 안내한다.\n- Forgejo(b95labs) 저장소의 에이전트 루프 상태, 완료 알림 등은 슬래시 커맨드(/status /runs /issues /pr)로 조회 가능함을 필요할 때 안내한다.\n\n## 말투\n- 항상 한국어로, 간결하게. 번역투를 피하고 자연스러운 한국어로 쓴다.\n- 코드·저장소명·기술 용어는 임의로 번역하지 않는다.\n\n## 웹 검색 도구\n- 훈련 지식만으로는 답변이 불가능한 시의성 정보(뉴스·시세·버전·일정) 확인에만 사용한다.\n- 검색 결과는 답변에 자연스럽게 녹이고, 출처 URL은 요청받지 않으면 나열하지 않는다."
+        },
+        "hasOutputParser": true
+      },
+      "id": "e0-agent",
+      "name": "Chatbot Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        700,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst src = $('Normalize').first().json;\nconst out = $input.first().json;\nconst reply = typeof out.output === 'object' && out.output !== null ? String(out.output.reply ?? JSON.stringify(out.output)) : String(out.output ?? '');\nreturn [{ json: {\n  channel_id: src.thread_id || src.channel_id,\n  content: reply.slice(0, 1900),\n} }];\n"
+      },
+      "id": "e2b-prepare",
+      "name": "Prepare Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-5",
+        "options": {
+          "timeout": 90000,
+          "maxRetries": 1
+        }
+      },
+      "id": "e1-model",
+      "name": "Gemini 3.7 Flash",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        500,
+        380
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "cred-openrouter",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Normalize').item.json.channel_id }}:{{ $('Normalize').item.json.author_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "e3-memory",
+      "name": "Channel Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $json.channel_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "e3-post-chat",
+      "name": "Post Chat Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        240
+      ],
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-discord-bot",
+          "name": "Discord Bot"
+        }
+      },
+      "jsonBody": "={{ JSON.stringify({ content: String($json.output).slice(0, 1900) }) }}",
+      "channel?": null
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst e = $input.first().json;\nconst icon = e.exit_code === 0 ? '✅' : '❌';\nconst verdict = e.exit_code === 0 ? '완료' : `실패(exit ${e.exit_code})`;\nreturn [{ json: {\n  channel_id: '1540982524140855306',\n  content: `${icon} **에이전트 루프 ${verdict}**\\nrun-id: \\`${e.run_id}\\` · repo: \\`${e.repo}\\` · model: \\`${e.model}\\``\n} }];\n"
+      },
+      "id": "f1-fmt-finished",
+      "name": "Format Finished",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $json.channel_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "f2-post-finished",
+      "name": "Post Finished Notice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        520
+      ],
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cred-discord-bot",
+          "name": "Discord Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Dev Control Inbound": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Route Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Event": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Finished",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Command": {
+      "main": [
+        [
+          {
+            "node": "Forgejo Create Issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find implement Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Forgejo List Issues",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Forgejo List PRs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Find implement Label": {
+      "main": [
+        [
+          {
+            "node": "Attach implement Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forgejo Create Issue": {
+      "main": [
+        [
+          {
+            "node": "Reply via Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach implement Label": {
+      "main": [
+        [
+          {
+            "node": "Reply via Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forgejo List Issues": {
+      "main": [
+        [
+          {
+            "node": "Format List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forgejo List PRs": {
+      "main": [
+        [
+          {
+            "node": "Format List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List": {
+      "main": [
+        [
+          {
+            "node": "Reply via Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Finished": {
+      "main": [
+        [
+          {
+            "node": "Post Finished Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatbot Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini 3.7 Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Chatbot Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Channel Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chatbot Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reply": {
+      "main": [
+        [
+          {
+            "node": "Post Chat Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Pre Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Search": {
+      "main": [
+        [
+          {
+            "node": "Chatbot Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "pinData": {},
+  "meta": {
+    "instanceId": "gem12"
+  }
+}
