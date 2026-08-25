@@ -1,0 +1,87 @@
+{
+  "id": "web-search-workflow",
+  "name": "web-search",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "name": "Search Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ws-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: String($json.query ?? $json.input ?? ''), search_depth: 'basic', max_results: 5, include_answer: true }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "cred-tavily",
+          "name": "Tavily Bearer"
+        }
+      },
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "id": "ws-tavily",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nif (d.error) return [{ json: { response: JSON.stringify({ error: String(d.error.message || d.error).slice(0, 300) }) } }];\nreturn [{ json: { response: JSON.stringify({\n  answer: d.answer || '',\n  results: (d.results || []).map(r => ({ title: r.title, url: r.url, snippet: (r.content || '').slice(0, 300) })),\n}) } }];"
+      },
+      "name": "Format Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ],
+      "id": "ws-format"
+    }
+  ],
+  "connections": {
+    "Search Input": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Format Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

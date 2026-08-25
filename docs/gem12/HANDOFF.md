@@ -3,47 +3,41 @@
 > 이 문서는 2026-08-25 하루 동안의 작업 결과와 현재 상태, 남은 일을 정리한다.
 > 다음 세션이 이어서 작업할 때 이 문서 하나로 상황을 파악할 수 있어야 한다.
 
-## ⚠️ 세션 2 (2026-08-25 밤) — 부분 실패 상태로 종료
+## ✅ 세션 3 (2026-08-25 저녁) — 웹검색 도구 복구 완료
 
-### 해결됨 (서버 배포 + 실측 검증까지 완료)
+### 해결됨 (서버 배포 + exec 27 실측 검증)
 
-1. **슬래시 커맨드 답장 안 붙는 문제** — 원인 3건 수정:
-   - Reply via Interaction이 `$json._app/_tok`를 Forgejo 응답에서 참조하던 버그 → `$('Parse Command')` 직접 참조 + 신설 **Build Command Reply** 노드로 통합 조립
-   - Post Chat Reply의 중복 jsonBody/오참조 제거
-   - **Route Command Switch v1 → v3.2 마이그레이션**: n8n 임포트가 v1 파라미터의 `fallbackOutput`/`outputKey`를 조용히 삭제함(DB 직접 조회로 확인). `/help`가 무응답으로 끝나던 원인. v3.2로 전환 후 **exec 14 (`/help`) 성공 확인**
-2. 배포 절차 확립: export물 JSON에 top-level `id`(=dev-control-workflow) 필수 — 없으면 import NOT NULL 제약 위반. `webhook_entity` 테이블에 옛 워크플로의 고아 등록이 남으면 "Conflicting Webhook Path" 발생 → 해당 행 삭제 후 재시작으로 해결.
+웹검색 실패는 서로 다른 원인 4겹이 겹쳐 있었다. 하나를 고치면 다음 층이 드러나는 구조라 세션 2 는 첫 층조차 못 벗겼다.
 
-### ❌ 미해결: web_search 도구(toolCode)가 에이전트 안에서 계속 실패
+| # | 층 | 증거 | 수정 |
+|---|---|---|---|
+| 1 | toolCode 안의 `$fromAI('query')` 가 실행 컨텍스트 없이 예외 | `execution_data` 에 `No execution data available at ToolCode.node.ts:102` | 세션 2 코드는 첫 줄에서 죽어 이후 수정이 전부 무의미했음 |
+| 2 | Task Runner vm 컨텍스트에 `fetch`·`process` 없음 | `js-task-runner.js getNativeVariables()` 직접 확인 | toolCode 폐기 → **toolWorkflow + 서브워크플로 `web-search`** (HTTP Request + Tavily Bearer credential) |
+| 3 | 2.x 는 서브워크플로도 활성(published) 이어야 호출 가능 | `Workflow is not active and cannot be executed` | deploy.sh 가 `workflows/*.json` 전부 import + 활성화 |
+| 4 | 도구 출력은 있는데 모델에 `Tool: ""` | n8n#26202 — Agent V3 재개 항목이 도구보다 먼저 큐에서 소비되는 FIFO 버그, **legacy 실행 순서에서만** 발생. `settings: {}` 였음 | `settings.executionOrder = "v1"` |
 
-- 현상: 채팅에서 시의성 질문 시 모델이 web_search를 호출하지만 실패하고 재시도를 반복 → **Max iterations (10) 도달** (exec 15). 선검색(Pre Search)은 제거했고 도구 방식으로 전환한 상태.
-- 시도한 것 (전부 dotfiles JSON 수정 + 서버 재배포 반영됨):
-  - `this.helpers.httpRequest` → 동일 실패
-  - 글로벌 `fetch()` + `process.env.TAVILY_API_KEY` → 동일 실패 (단, 컨테이너 안 plain node로 fetch+키 조합 직접 테스트하면 200 정상 — 인스턴스 외부에서는 잘 된다)
-  - `$env.TAVILY_API_KEY` 단독 사용
-  - try/catch로 에러를 JSON 텍스트로 모델에 반환(무한재시도 방지) — 그래도 max iterations
-  - 최종 버전: `[web_search] key source...` console.log 진단 코드 삽입까지 했으나, **마지막 테스트에서 해당 로그 라인이 docker logs에 하나도 안 찍힘** → 도구 코드 자체가 실행조차 안 되고 있을 가능성(또는 task runner stdout 미전달). 여기서 조사 중단.
-- 유력 가설 (다음 세션 첫 확인 사항):
-  1. n8n 2.x JS Task Runner 샌드박스에서 toolCode의 env 접근 차단 — `N8N_RUNNERS_*` 관련 env 또는 task runner 비활성화(`N8N_RUNNERS_ENABLED=false`)로 검증해볼 것
-  2. toolCode가 아닌 **HTTP Request Tool의 재시도**(원래 버그 노드) 또는 **Call n8n Workflow Tool로 Tavily 호출을 서브워크플로화**하는 우회 — 서브워크플로 내 일반 HTTP Request 노드는 httpRequestTool 버그와 무관하게 정상 작동하므로 가장 유망
-  3. 최후 폴백: Pre Search 복원 + IF 노드(키워드 정규식, AI 불필요)로 조건 검색 — 이건 반드시 된다
-- 참고: exec 13에서 "floci 26회 등록"은 검색 결과가 아니라 모델 자체 지식 기반 답변이었을 가능성 높음(성공 판정 오류였음).
+4번이 HANDOFF 가 "httpRequestTool 버그" 로 기록한 것의 진짜 정체다 — 도구 종류와 무관하게 `executionOrder` 미지정 워크플로에서 모든 도구가 빈 값으로 보인다.
 
-### ❌ 추가 발견 (미처리)
+### 함께 처리
 
-- **커맨드 에러 시 무응답**: exec 16 — `/issues drop_manager`(owner 누락) → Forgejo 404 → 실행이 error로 끝나면서 interaction PATCH가 안 날아감. **Forgejo HTTP 노드들에 onError: continueRegularOutput 설정(또는 error branch)해서 에러 메시지를 답장으로 돌려줘야 함**
-- `deploy.sh` 두 군데 수정 필요: ① `N8N_DATA=/mnt/data/n8n`(현재 apps/n8n은 잘못된 경로), ② 워크플로 JSON에 id 필드 보증 로직
+- Forgejo HTTP 노드 5개 `onError: continueRegularOutput`, Build Command Reply·Format List 가 `error` 아이템을 "Forgejo 요청 실패: …" 답장으로 변환 (exec 19 검증)
+- `deploy.sh`: `N8N_DATA=/mnt/data/n8n`(실경로), id 필드 보증, 컨테이너에 있던 env(`N8N_HOST`/`N8N_PROTOCOL`/`N8N_WEBHOOK_URL`/`NODE_FUNCTION_ALLOW_BUILTIN`) 반영
+- `TAVILY_API_KEY` env 주입은 더 이상 사용처가 없다(credential 로 대체). 제거는 보류.
 
-### 현재 서버 상태 (세션 2 종료 시점)
+### 진단에서 얻은 규칙
 
-- dev-control 워크플로 활성화됨, webhook 정상 응답(403 게이트 확인). 채팅 일반 대화·`/help`는 정상.
-- **웹검색 있는 답변은 깨진 상태**(max iterations → Discord에 "생각 중" 후 타임아웃 or 실패 통보)
-- dotfiles의 `dev-control.json` = 서버에 배포된 것과 동일(최신 versionId). SSOT 교체 완료. 커밋 필요.
-- 장기기억 설계 문서 신설: `docs/gem12/chat-memory-design.md` (미구현)
+- n8n 도구 실패는 `execution_data` 테이블이 1차 증거다. 도구 호출 스택·모델이 받은 `Tool:` 문자열이 그대로 남는다.
+- 같은 수정을 반복해도 결과가 완전히 같으면 수정 지점이 실행 경로 위에 있는지부터 의심한다.
+- exec 17 의 Discord 404 는 별개 원인: 기본 채널(ID = 길드 ID) 에서 온 메시지에 봇 게시 권한이 없다.
+
+### 남은 미검증
+
+- `/issue`·`/implement` 실제 Discord E2E (스모크는 가짜 interaction token 이라 Discord PATCH 단계는 404 로 끝남)
 
 ## 한줄 요약
 
 Discord 챗봇(범용 대화 + Forgejo 개발 제어)이 GEM12에서 가동 중이다.
-단, **웹검색 도구는 미해결 버그로 깨진 상태**(세션 2 참조) — 일반 대화와 /help·/issues 등 커맨드 조회는 정상.
+웹검색 도구는 세션 3 에서 복구됐다(toolWorkflow + executionOrder v1). 일반 대화·/help·/issues 등 커맨드 조회 정상.
 YouTube Discover 파이프라인은 설계만 완료되고 미구현이다.
 
 ## 완성된 것
@@ -63,7 +57,7 @@ n8n **2.36.6**에서 가동 중. 세 갈래 라우팅:
 
 | 분기 | 흐름 |
 |---|---|
-| chat | Build Prompt → Tavily 선검색 → gemini-3.7-flash 답변 → Discord posting |
+| chat | Build Prompt → gemini-3.7-flash 에이전트(도구: web_search 서브워크플로) → Discord posting |
 | command | /issue→Forgejo 이슈 생성 · /implement→라벨 부착 · /issues /pr→목록 조회 |
 | agent_finished | exit 코드에 따라 ✅/❌ 알림 → #drop_manager posting |
 
@@ -99,7 +93,7 @@ Discord (#chat 등)
   ↕ discord-adapter (apps docker)
     ↕ POST /webhook/dev-control + X-Adapter-Secret
 n8n 2.36.6 (apps :5678)
-  ├─ chat: Build Prompt → Tavily 선검색 → gemini-3.7-flash → Discord
+  ├─ chat: Build Prompt → gemini-3.7-flash 에이전트 ─(web_search)→ 서브워크플로 web-search → Tavily
   ├─ command: Forgejo API (core :3000)
   └─ agent_finished: ci agent-run.sh 종료 훅 → 알림
 ```
@@ -146,9 +140,6 @@ n8n 2.36.6 (apps :5678)
 
 ### 즉시 (다음 세션 첫 작업)
 
-0. **수정된 워크플로 재임포트 + 스모크** — chat 분기(검색 필요/불필요 질문 각각),
-   `/issue`·`/issues`·`/help` E2E 확인. 성공 후 서버에서 re-export해서 dotfiles 커밋
-
 1. **`/implement` E2E 테스트** — 실제 이슈에 implement 라벨 붙여서 에이전트 루프
    트리거까지 확인. Forgejo webhook → agent-run.sh 경로 연결 필요
 2. **agent-run.sh 종료 훅 활성화** — `/etc/agent-loop.env`에 이미 설정됨,
@@ -185,7 +176,8 @@ dotfiles/
 │   │   ├── deploy.sh           # apps docker 배포
 │   │   └── .env.example        # 환경변수 목록
 │   ├── n8n/
-│   │   ├── workflows/dev-control.json  # 워크플로 정의 (export물)
+│   │   ├── workflows/dev-control.json  # 메인 워크플로
+│   │   ├── workflows/web-search.json   # web_search 서브워크플로 (Tavily)
 │   │   └── deploy.sh           # 컨테이너 재생성+임포트+활성화
 │   └── agent-loop/
 │       └── agent-run.sh        # 종료 훅 추가됨

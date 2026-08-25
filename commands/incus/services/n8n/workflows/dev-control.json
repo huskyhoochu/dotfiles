@@ -314,7 +314,8 @@
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -343,7 +344,8 @@
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -375,7 +377,8 @@
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -404,7 +407,8 @@
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -433,11 +437,12 @@
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "\nconst src = $('Parse Command').item.json;\nconst out = [];\nfor (const item of $input.all()) {\n  const arr = Array.isArray(item.json) ? item.json : item.json.data || [];\n  const lines = arr.map(i => `#${i.number} ${i.title} (${(i.labels||[]).map(l=>l.name).join(',')||'라벨없음'})`);\n  out.push({ json: { _reply: lines.length ? lines.join('\\n') : '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\n}\nif (out.length === 0) out.push({ json: { _reply: '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\nreturn out;\n"
+        "jsCode": "\nconst src = $('Parse Command').item.json;\nconst out = [];\nfor (const item of $input.all()) {\n  if (item.json && item.json.error) {\n    const e = item.json.error;\n    out.push({ json: { _reply: `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`, _app: src._app, _tok: src._tok } });\n    continue;\n  }\n  const arr = Array.isArray(item.json) ? item.json : item.json.data || [];\n  const lines = arr.map(i => `#${i.number} ${i.title} (${(i.labels||[]).map(l=>l.name).join(',')||'라벨없음'})`);\n  out.push({ json: { _reply: lines.length ? lines.join('\\n') : '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\n}\nif (out.length === 0) out.push({ json: { _reply: '열린 항목이 없습니다.', _app: src._app, _tok: src._tok } });\nreturn out;\n"
       },
       "id": "d2-format-list",
       "name": "Format List",
@@ -477,7 +482,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// 커맨드 분기별 최종 답장 문구를 만든다 (cross-node 참조를 여기서 한 번에 해결)\nconst cmd = $('Parse Command').first().json;\nlet reply;\nif (cmd._reply) {\n  reply = cmd._reply;\n} else {\n  const src = $input.first().json;\n  const data = Array.isArray(src) ? src[0] : src;\n  switch (cmd._action) {\n    case 'create_issue':\n      reply = data && data.number\n        ? `이슈 발급: #${data.number} ${data.title}\\n${data.html_url}`\n        : '이슈 생성에 실패했거나 응답을 파싱하지 못했습니다.';\n      break;\n    case 'label_implement':\n      reply = data\n        ? 'implement 라벨 부착 완료. 에이전트 루프에 투입합니다.'\n        : '라벨 부착 결과를 확인할 수 없습니다.';\n      break;\n    default:\n      reply = '완료되었습니다.';\n  }\n}\nreturn [{ json: { _reply: reply, _app: cmd._app, _tok: cmd._tok } }];\n"
+        "jsCode": "\n// 커맨드 분기별 최종 답장 문구를 만든다 (cross-node 참조를 여기서 한 번에 해결)\nconst cmd = $('Parse Command').first().json;\nconst errMsg = (e) => `Forgejo 요청 실패: ${String(e.message || e).split('\\n')[0].slice(0, 300)}`;\nlet reply;\nif (cmd._reply) {\n  reply = cmd._reply;\n} else {\n  const src = $input.first().json;\n  if (src && src.error) {\n    reply = errMsg(src.error);\n  } else {\n  const data = Array.isArray(src) ? src[0] : src;\n  switch (cmd._action) {\n    case 'create_issue':\n      reply = data && data.number\n        ? `이슈 발급: #${data.number} ${data.title}\\n${data.html_url}`\n        : '이슈 생성에 실패했거나 응답을 파싱하지 못했습니다.';\n      break;\n    case 'label_implement':\n      reply = data\n        ? 'implement 라벨 부착 완료. 에이전트 루프에 투입합니다.'\n        : '라벨 부착 결과를 확인할 수 없습니다.';\n      break;\n    default:\n      reply = '완료되었습니다.';\n  }\n  }\n}\nreturn [{ json: { _reply: reply, _app: cmd._app, _tok: cmd._tok } }];\n"
       },
       "id": "d3-build-cmd-reply",
       "name": "Build Command Reply",
@@ -505,12 +510,37 @@
       "parameters": {
         "name": "web_search",
         "description": "시의성 정보(뉴스·시세·버전·일정·최근 사건)가 필요해 훈련 지식만으로 답변하기 어려울 때 웹을 검색한다. 일반 지식 질문에는 호출하지 않는다.",
-        "jsCode": "const q = $fromAI('query', '검색어', 'string');\nlet key = null, src = '';\ntry { key = $env.TAVILY_API_KEY; src = '$env'; } catch (e1) {\n  try { key = process.env.TAVILY_API_KEY; src = 'process.env'; } catch (e2) { src = 'both-blocked'; }\n}\nconsole.log('[web_search] key source:', src, '| present:', !!key);\nif (!key) return JSON.stringify({ error: 'NO_KEY (src=' + src + ')' });\ntry {\n  const res = await fetch('https://api.tavily.com/search', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },\n    body: JSON.stringify({ query: q, search_depth: 'basic', max_results: 5, include_answer: true }),\n  });\n  console.log('[web_search] tavily status:', res.status);\n  if (!res.ok) { const t = await res.text(); console.log('[web_search] body:', t.slice(0,200)); return JSON.stringify({ error: 'Tavily HTTP ' + res.status }); }\n  const data = await res.json();\n  return JSON.stringify({ answer: data.answer || '', results: (data.results||[]).map(r => ({ title: r.title, url: r.url, snippet: (r.content||'').slice(0,300) })) });\n} catch (e) {\n  console.log('[web_search] exception:', e.message);\n  return JSON.stringify({ error: String(e && e.message || e) });\n}"
+        "workflowId": {
+          "__rl": true,
+          "value": "web-search-workflow",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $fromAI('query', '검색어 (영어 또는 한국어)', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
       },
       "id": "e1c-tavily-tool",
       "name": "Web Search Tool",
-      "type": "@n8n/n8n-nodes-langchain.toolCode",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
       "position": [
         820,
         420
@@ -939,7 +969,9 @@
       ]
     }
   },
-  "settings": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
   "meta": {
     "instanceId": "gem12"
