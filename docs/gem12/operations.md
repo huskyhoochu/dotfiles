@@ -9,12 +9,12 @@
 
 | 계층 | 구성 | 상태 |
 |---|---|---|
-| 호스트 | Fedora Server 44 (커널 6.19.10), btrfs 단일 파티션 | 29G / 929G 사용 |
+| 호스트 | Fedora Server 44 (커널 7.1.9, 2026-08-25 실측), btrfs 단일 파티션 | 266G / 929G 사용 |
 | Tailscale | 1.102.2, 노드 `gem12` (100.73.205.75), 서브넷 라우트 10.10.10.0/24 승인 | 키 만료 해제 확인 |
 | core (10.10.10.11) | Forgejo 16.0.2 (Podman Quadlet, SQLite, Git SSH 2222) + Uptime Kuma 2.5 (Quadlet, :3001) | 전부 active |
 | ci (10.10.10.12) | Forgejo Runner v13.0.0 (`gem12-ci`) + Docker + **에이전트 루프** (`/opt/agents`, node 24·tea·flue) | 전부 active |
 | apps (10.10.10.13) | n8n · NocoDB (Docker), op CLI, Claude Code | 전부 가동 |
-| ai (10.10.10.14) | llama.cpp Vulkan — `glimmer.service`(:8081)·`lightning.service`(:8082)·`qwen.service`(:8083) GPU 교대 + `comfyui.service`(:8188, --cpu, OpenRouter 클라우드 전용) | 전부 정상 |
+| ai (10.10.10.14) | llama.cpp Vulkan — `glimmer.service`(:8081)·`qwen.service`(:8083) GPU 교대(nemotron lightning 은 2026-08-25 제거) + `comfyui.service`(:8188, --cpu, OpenRouter 클라우드 전용) | 전부 정상 |
 | media (10.10.10.15) | Immich v3(Quadlet ×3, :2283) + Jellyfin 10(Quadlet, :8096, VAAPI H264/HEVC) | 전부 active |
 | 백업 (호스트) | `backup.timer` 매시(btrfs 스냅샷 + restic→Drive), `backup-prune.timer` 주 1회, Incus 스냅샷 매일 04:00 (7d) | 첫 백업 87.4 MiB, 복원 리허설 통과 |
 | 모니터링·업데이트 (호스트) | `healthcheck.timer` 5분(점검 → Kuma push), `dnf5-automatic.timer` 매일 06:00 보안 업데이트 (호스트 + 컨테이너 5개) | 전부 active |
@@ -38,7 +38,7 @@ https://gem12.tail4555a7.ts.net:8188           # ComfyUI
 에이전트 루프 투입 (경계 원칙 — 맥은 단발 신호만, 루프·도구 실행·추론은 전부 서버 안):
 
 ```bash
-echo "<과제>" | ssh b95labs@gem12 "sudo /root/dotfiles/commands/incus/services/agent-loop/agent-run.sh run <id> <owner/repo> [glimmer|lightning]"
+echo "<과제>" | ssh b95labs@gem12 "sudo /root/dotfiles/commands/incus/services/agent-loop/agent-run.sh run <id> <owner/repo> [glimmer|qwen]"
 ssh b95labs@gem12 "sudo .../agent-run.sh status <id>"   # 조회 — 로그·종료 코드
 ```
 
@@ -59,7 +59,7 @@ ssh b95labs@gem12 "sudo .../agent-run.sh status <id>"   # 조회 — 로그·종
 | dGPU | RX 7900 XTX (`03:00.0`, IOMMU 그룹 17 단독, OCuLink PCIe 4.0 x4) |
 | 유선 NIC | 2.5GbE × 2 (`eno1`, `enp5s0`) — 랜선이 없어 사용하지 않음 |
 | 무선 NIC | Intel Wi-Fi 6 AX200 (`wlp6s0`, `iwlwifi`) — **주 연결** |
-| 디스크 사용량 | 29GB / 929GB (2026-08-18, 서버 전환 후) |
+| 디스크 사용량 | 266GB / 929GB (2026-08-25, 미디어 반입 반영) — 서버 전환 직후 29GB(2026-08-18)였다 |
 
 ### 공식 스펙과 대조
 
@@ -135,7 +135,7 @@ Jellyfin 미디어                                미정
 |---|---|
 | **Forgejo + Actions** | Git 저장소와 CI/CD. GitHub로 미러 복제. |
 | **Tailscale** (호스트) | 개인 계정 tailnet 접속 + 컨테이너 대역(10.10.10.0/24) 서브넷 라우팅. 컨테이너가 아니라 호스트에 직접 설치한다. |
-| **llama.cpp + Muse Glimmer 30B** | 로컬 LLM 추론. 7900 XTX 사용. Nemotron 3.5 Lightning·Qwen 3.8-27B 가 같은 GPU 를 두고 교대(`Conflicts=`)하며, 부팅 기본은 Glimmer 다. |
+| **llama.cpp + Muse Glimmer 30B** | 로컬 LLM 추론. 7900 XTX 사용. Qwen 3.8-27B 가 같은 GPU 를 두고 교대(`Conflicts=`)하며, 부팅 기본은 Glimmer 다. |
 | **ComfyUI** | 이미지·영상 작업. OpenRouter 클라우드 전용 — ByteDance Seedream 5.0(이미지)·Seedance 2.5/2.0(비디오)을 자작 노드로, 기타 모델은 커뮤니티 챗 노드로. 로컬 모델은 보류([README.md](README.md) 미결 판단). |
 | **SQLite + Litestream** | 업무 기록, 지식저장소, 온톨로지의 저장 계층. 서비스별 파일 분리. |
 | **n8n** | 자동화 워크플로. 외부 서비스 연동은 n8n 웹 UI에서 설정한다. |
@@ -231,7 +231,7 @@ GEM12 / Fedora Server (베어메탈) + Incus
 │   └── Litestream → 로컬 경로 (rclone이 Drive로 올림, §7 참조)
 │
 ├── ai            6 vCPU / 24GB   Fedora + Podman  ← /dev/dri (7900 XTX)
-│   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter / Lightning 교대)
+│   ├── llama.cpp (Muse Glimmer 30B + DFlash drafter / Qwen 3.8 교대)
 │   └── ComfyUI (--cpu, OpenRouter 클라우드 전용 — Seedream·Seedance)
 │
 └── media         4 vCPU / 8GB    Fedora + Podman  ← /dev/dri (780M)

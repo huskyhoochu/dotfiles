@@ -6,7 +6,7 @@
 #
 # 클라우드 전용 구성이다 (사용자 결정 2026-08-18): OpenRouter API 로 이미지 생성을
 # 라우팅하고 로컬 모델은 받지 않는다. 그래서 torch 는 CPU 휠로 충분하고
-# (ROCm 스택 수 GB 대비 가볍다), VRAM 을 쓰지 않아 glimmer/lightning 과 경합이 없다.
+# (ROCm 스택 수 GB 대비 가볍다), VRAM 을 쓰지 않아 glimmer/qwen 과 경합이 없다.
 #
 # venv 를 3.13 으로 만드는 이유: ai 의 기본 python 3.14(cp314)는 torch 생태계 휠이
 # 아직 preview 수준이라 의존성(av 등)이 빠진다. cp313 휠은 전부 있다.

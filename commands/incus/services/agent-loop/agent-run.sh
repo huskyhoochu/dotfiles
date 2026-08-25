@@ -3,7 +3,7 @@
 # 루프는 systemd 일회 유닛으로 ci 컨테이너 안에 남는다 (SSH 가 끊겨도 계속).
 #
 #   실행:   echo "<task message>" | sudo ./agent-run.sh run <run-id> <owner/repo> [model]
-#           model: glimmer(기본) | lightning | 전체 지정자(예: or-extra/...)
+#           model: glimmer(기본) | qwen | 전체 지정자(예: or-extra/...)
 #   조회:   sudo ./agent-run.sh status <run-id>
 #   목록:   sudo ./agent-run.sh list
 #
@@ -19,7 +19,7 @@ resolve_model() {
   case "$1" in
     */*)       echo "$1" ;;
     glimmer)   echo "glimmer/muse-glimmer" ;;
-    lightning) echo "lightning/nemotron-lightning" ;;
+    qwen)      echo "qwen/qwen3.8" ;;
     *) echo "알 수 없는 모델: $1" >&2; exit 2 ;;
   esac
 }

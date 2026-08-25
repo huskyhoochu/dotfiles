@@ -4,8 +4,8 @@
 # 호스트에서 root 로 실행한다. 여러 번 실행해도 안전하다.
 #   sudo ./deploy.sh
 #
-# Glimmer·Lightning 과 상호 배타(Conflicts=)라, 이 서비스를 켜면 둘 다 내려간다.
-# 전환:  systemctl start qwen  /  systemctl start glimmer  /  systemctl start lightning
+# Glimmer 와 상호 배타(Conflicts=)라, 이 서비스를 켜면 glimmer 가 내려간다.
+# 전환:  systemctl start qwen  /  systemctl start glimmer
 #
 # 모델 가중치는 이 스크립트가 받지 않는다 — download.sh 를 따로 실행한다.
 #
@@ -43,8 +43,8 @@ incus file push "${SCRIPT_DIR}/qwen.service" \
   "${CONTAINER}/etc/systemd/system/qwen.service"
 incus exec "$CONTAINER" -- systemctl daemon-reload
 
-# Conflicts= 라 start 가 glimmer/lightning 을 내린다 — 의도된 동작
-log "Starting qwen.service (glimmer/lightning 이 켜져 있으면 내려간다)"
+# Conflicts= 라 start 가 glimmer 를 내린다 — 의도된 동작
+log "Starting qwen.service (glimmer 가 켜져 있으면 내려간다)"
 incus exec "$CONTAINER" -- systemctl restart qwen
 
 # 부팅 기본은 여전히 glimmer 다. qwen 은 수동 전환 전용이므로 enable 하지 않는다.

@@ -252,12 +252,12 @@ useModel('local/muse-glimmer', {
 축출하다 `radv/amdgpu: CS rejected (-13)` 로 GPU 가 멈췄고, 드라이버 재바인딩이
 `discovery failed: -2` 로 실패해 **재부팅으로만 회복됐다.** 이 상태에서는 llama-server 가
 영원히 못 뜨므로, systemd `Restart=` 는 회복이 아니라 은폐가 된다(당시 72회를 돌았고
-유닛은 내내 `activating` 이라 로딩 중과 구분되지 않았다). 그래서 glimmer·lightning 에
+유닛은 내내 `activating` 이라 로딩 중과 구분되지 않았다). 그래서 llama.cpp 서비스에
 `StartLimitBurst=5` 를 걸어 5회 실패 후 `failed` 로 확정시킨다.
 
 CI 쪽 함의: 추론 엔드포인트가 죽으면 작업이 **무한 대기**할 수 있다. 호출에 타임아웃을
 두고, 실패가 반복되면 재시도 대신 `needs-human` 으로 넘긴다. 감시는 Kuma `gem12-ai`
-모니터가 맡는다(`llm` 점검 — glimmer :8081 또는 lightning :8082 중 하나라도 응답).
+모니터가 맡는다(`llm` 점검 — glimmer :8081 또는 qwen :8083 중 하나라도 응답).
 
 ---
 

@@ -136,10 +136,9 @@ systemctl is-active --quiet backup.timer || fail backup "backup-timer"
 
 for ct in core apps ci ai media; do ct_check "$ct"; done
 
-# ai 의 llama.cpp 는 glimmer(:8081)·lightning(:8082)·qwen(:8083)이 GPU 를 두고
-# 교대한다 (agent-run.sh 가 전환) — 어느 쪽이든 하나 살아 있으면 추론 계층은 정상이다.
+# ai 의 llama.cpp 는 glimmer(:8081)와 qwen(:8083)이 GPU 를 두고 교대한다
+# (Conflicts= 가 전환) — 어느 쪽이든 하나 살아 있으면 추론 계층은 정상이다.
 curl -fsm 5 http://10.10.10.14:8081/health >/dev/null \
-  || curl -fsm 5 http://10.10.10.14:8082/health >/dev/null \
   || curl -fsm 5 http://10.10.10.14:8083/health >/dev/null \
   || fail ai "llm"
 curl -fsm 5 -o /dev/null http://10.10.10.13:5678/ || fail apps "n8n"
