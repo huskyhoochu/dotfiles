@@ -74,11 +74,12 @@ n8n **2.36.6**에서 가동 중. 세 갈래 라우팅:
 | command | /issue→Forgejo 이슈 생성 · /implement→라벨 부착 · /issues /pr→목록 조회 |
 | agent_finished | exit 코드에 따라 ✅/❌ 알림 → #drop_manager posting |
 
-**핵심 설계 결정 — httpRequestTool 버그 우회**: n8n 2.x의 httpRequestTool은
-실행 로그에 데이터가 있음에도 모델에게 빈 값으로 전달되는 버그가 있다
-(커뮤니티 다수 보고, v1.x에서는 정상). 이를 우회하기 위해 **도구를 에이전트에
-붙이지 않고**, Tavily 검색을 워크플로 앞단의 일반 HTTP Request 노드로 실행해
-결과를 프롬프트에 삽입하는 선(先)검색 방식으로 재구성했다.
+**핵심 설계 — 도구는 서브워크플로로**: 웹검색은 `toolWorkflow` 노드가 서브워크플로
+`web-search`(`workflows/web-search.json`: Execute Workflow Trigger → HTTP Request(Tavily Bearer
+credential) → Format Search)를 호출하는 구조다. n8n 2.x 의 Code/toolCode 는 Task Runner vm
+안에서 돌아 `fetch`·`process` 가 없으므로 외부 HTTP 는 반드시 HTTP Request 노드로 뺀다.
+두 워크플로 모두 `settings.executionOrder = "v1"` 이어야 한다 — 미지정(legacy 순서)이면
+Agent V3 가 모든 도구 결과를 빈 문자열로 받는다(n8n#26202). 세션 3 표 참조.
 
 **credential 5종** (DB 저장, `/root/.secrets/`에 원본):
 
@@ -115,7 +116,7 @@ n8n 2.36.6 (apps :5678)
 
 | # | 문제 | 해결 |
 |---|---|---|
-| 1 | httpRequestTool → 모델에게 빈 결과 전달 (n8n 2.x 버그) | 도구 제거 → Tavily 선검색 방식으로 우회 |
+| 1 | 도구 결과가 모델에 빈 값으로 전달 | (세션 1 진단은 오진) 진짜 원인은 `executionOrder` 미지정 — 세션 3 표 4번 |
 | 2 | credential 미적용 (`authentication` 파라미터 누락) | 모든 HTTP 노드에 명시 |
 | 3 | Route Event 라우팅 불일치 | 규칙 5개 ↔ 연결 배열 정렬 |
 | 4 | cross-node 참조 깨짐 (`$('Normalize').item`) | Prepare Reply Code 노드로 분리 |
@@ -126,28 +127,13 @@ n8n 2.36.6 (apps :5678)
 
 | 항목 | 값 |
 |---|---|
-| n8n | 2.36.6, apps :5678, dev-control 활성화 |
+| n8n | 2.36.6, apps :5678, dev-control·web-search 두 워크플로 활성화 |
 | discord-adapter | apps docker, b95labs_bot#4692, 커맨드 8개 등록 |
 | 길드 | b95labs (1540982276895277079) |
 | 채널 | #chat(대화), #drop_manager(알림), #research(예정) |
 | Forgejo 토큰 | 스모크 테스트 통과 (이슈 생성·라벨 부착·삭제) |
 | implement 라벨 | repo별 생성 필요 (gem12-agents에는 id=40 존재) |
 | dotfiles | 최신 커밋 push 완료, 서버 사본 동기화 |
-
-### 5. 선검색 제거 → Custom Code Tool 전환 + 슬래시 커맨드 수리 (2026-08-26)
-
-- **Pre Search 노드 삭제**. Tavily 검색을 `toolCode`(Custom Code Tool) `web_search`로
-  감싸 에이전트 도구로 부착 — 모델이 필요할 때만 호출(추가 AI 판단 호출 불필요).
-  httpRequestTool 버그는 toolCode에는 재현되지 않는 별도 노드 타입.
-- **슬래시 커맨드 무응답 원인 3건 수정**:
-  1. Reply via Interaction이 `$json._app/_tok` 참조 → Forgejo 응답에서 유실 →
-     `$('Parse Command')` 직접 참조로 변경, 답장 문구는 신설 **Build Command Reply** 노드에서 통합 조립
-  2. Route Command에 fallbackOutput 추가 — help·사용법 답변(`_action` 없음)이 버려지던 것 수정
-  3. Post Chat Reply의 중복 jsonBody/`$json.output` 오참조 및 잔여 키 제거
-- **장기기억 설계 완료**: [chat-memory-design.md](chat-memory-design.md) —
-  better-sqlite3 기반 Load/Save Memory + facts 테이블 + 야간 통합 배치 설계. 미구현.
-- ⚠️ dotfiles의 JSON은 편집본 — 서버 n8n에 재임포트 후 실동작 검증 필요.
-  toolCode가 2.x에서 문제를 일으키면 대안: IF 노드 + 시의성 키워드 정규식으로 Pre Search 복원.
 
 ## 남은 작업
 
@@ -201,10 +187,13 @@ dotfiles/
 
 ## 주의사항
 
-- **워크플로 JSON은 export 물이다**: SSOT는 n8n 인스턴스. 수정 후 re-export해서
-  dotfiles에 커밋하는 것을 잊지 말 것
+- **워크플로 SSOT 는 dotfiles 의 `workflows/*.json`**: `deploy.sh` 가 DB 의 같은 id 를 지우고
+  재임포트한다. n8n UI 에서 고친 것은 배포 시 사라지므로 반드시 JSON 에 반영할 것
+- **서버 반영은 `git pull` 로만**: `/root/dotfiles` 에 scp 로 덮어쓰면 다음 pull 이 막힌다
+- **`deploy.sh` 는 n8n 을 약 30초 내린다**: 어댑터가 3회 재시도하지만, 사용 중이면 먼저 알릴 것
 - **커맨드는 두 곳에 등록**: 어댑터 `SLASH_COMMANDS` + n8n 라우팅. 한쪽만 바꾸면
   커맨드가 보이는데 아무것도 안 한다
-- **n8n 컨테이너 재생성 시**: env 플래그(`N8N_BLOCK_ENV_ACCESS_IN_NODE=false`,
-  `DEVCONTROL_WEBHOOK_SECRET`, `TAVILY_API_KEY`) 누락 주의 — `deploy.sh` 사용
+- **n8n 컨테이너 재생성 시**: env(`N8N_HOST`/`N8N_PROTOCOL`/`N8N_WEBHOOK_URL`,
+  `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`, `DEVCONTROL_WEBHOOK_SECRET`) 누락 주의 — `deploy.sh` 사용.
+  `TAVILY_API_KEY` env 는 사용처가 없다(credential 로 대체)
 - **credential은 DB 볼륨 유지 시 재주입 불필요** — 볼륨 새로 만들 때만 재임포트
