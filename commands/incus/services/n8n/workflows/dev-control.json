@@ -1,19 +1,14 @@
 {
+  "id": "dev-control-workflow",
   "name": "dev-control",
+  "active": true,
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "dev-control",
-        "responseMode": "onReceived",
-        "options": {},
         "authentication": "headerAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": "cred-adapter-secret",
-            "name": "DevControl Shared Secret"
-          }
-        }
+        "options": {}
       },
       "id": "a1-webhook",
       "name": "Dev Control Inbound",
@@ -21,7 +16,7 @@
       "typeVersion": 2,
       "position": [
         -400,
-        0
+        432
       ],
       "webhookId": "dev-control",
       "credentials": {
@@ -40,8 +35,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        40,
-        -60
+        -176,
+        432
       ]
     },
     {
@@ -52,6 +47,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -73,6 +70,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -94,6 +93,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -115,6 +116,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -136,6 +139,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -162,8 +167,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        260,
-        -60
+        48,
+        384
       ]
     },
     {
@@ -175,23 +180,20 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        -300
+        272,
+        -96
       ]
     },
     {
       "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json._action }}",
-        "options": {
-          "fallbackOutput": "extra"
-        },
         "rules": {
           "values": [
             {
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -213,6 +215,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -234,6 +238,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -255,6 +261,8 @@
               "conditions": {
                 "options": {
                   "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
                   "version": 2
                 },
                 "combinator": "and",
@@ -273,6 +281,9 @@
               "outputKey": "listp"
             }
           ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
         }
       },
       "id": "b2-route-cmd",
@@ -280,8 +291,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        720,
-        -300
+        624,
+        -144
       ]
     },
     {
@@ -290,12 +301,6 @@
         "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/issues",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": null,
-            "name": "Forgejo DevControl"
-          }
-        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ title: $json._title, body: 'Discord /issue 커맨드로 발급 (작성자 ' + $json.author_id + ')' }) }}",
@@ -306,7 +311,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        980,
+        1632,
         -560
       ],
       "credentials": {
@@ -319,16 +324,9 @@
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $('Parse Command').item.json._repo }}/labels",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": null,
-            "name": "Forgejo DevControl"
-          }
-        },
         "options": {}
       },
       "id": "c2-find-label",
@@ -336,17 +334,17 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        980,
-        -360
+        960,
+        -336
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput",
-      "alwaysOutputData": true
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -354,12 +352,6 @@
         "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $('Parse Command').item.json._repo }}/issues/{{ $('Parse Command').item.json._issue_number }}/labels",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": null,
-            "name": "Forgejo DevControl"
-          }
-        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ labels: [$json.label_id] }) }}",
@@ -370,8 +362,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
-        -360
+        1632,
+        -368
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -383,16 +375,9 @@
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/issues?state=open&limit=10",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": null,
-            "name": "Forgejo DevControl"
-          }
-        },
         "options": {}
       },
       "id": "c4-list-issues",
@@ -400,30 +385,23 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        980,
-        -160
+        960,
+        48
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput",
-      "alwaysOutputData": true
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "=http://10.10.10.11:3000/api/v1/repos/{{ $json._repo }}/pulls?state=open&limit=10",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "credentials": {
-          "httpHeaderAuth": {
-            "id": null,
-            "name": "Forgejo DevControl"
-          }
-        },
         "options": {}
       },
       "id": "c5-list-prs",
@@ -431,17 +409,17 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        980,
-        40
+        960,
+        240
       ],
+      "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
           "id": "cred-forgejo-dev",
           "name": "Forgejo DevControl"
         }
       },
-      "onError": "continueRegularOutput",
-      "alwaysOutputData": true
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -452,8 +430,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1220,
-        -80
+        1184,
+        64
       ]
     },
     {
@@ -479,8 +457,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1480,
-        -200
+        2080,
+        -128
       ]
     },
     {
@@ -492,8 +470,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        -200
+        1856,
+        -368
       ]
     },
     {
@@ -505,13 +483,12 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        470,
-        240
+        272,
+        432
       ]
     },
     {
       "parameters": {
-        "name": "web_search",
         "description": "시의성 정보(뉴스·시세·버전·일정·최근 사건)가 필요해 훈련 지식만으로 답변하기 어려울 때 웹을 검색한다. 일반 지식 질문에는 호출하지 않는다.",
         "workflowId": {
           "__rl": true,
@@ -545,8 +522,8 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        820,
-        420
+        760,
+        552
       ]
     },
     {
@@ -562,8 +539,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3,
       "position": [
-        700,
-        240
+        560,
+        320
       ]
     },
     {
@@ -575,8 +552,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1060,
-        240
+        960,
+        432
       ]
     },
     {
@@ -592,8 +569,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        500,
-        380
+        504,
+        552
       ],
       "credentials": {
         "openRouterApi": {
@@ -613,14 +590,16 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        640,
-        520
+        632,
+        552
       ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://discord.com/api/v10/channels/{{ $json.channel_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -633,17 +612,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
-        "options": {},
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
+        "options": {}
       },
       "id": "e3-post-chat",
       "name": "Post Chat Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1180,
-        240
+        1184,
+        432
       ],
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth",
@@ -663,14 +640,16 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        700,
-        520
+        272,
+        720
       ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://discord.com/api/v10/channels/{{ $json.channel_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -683,17 +662,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
-        "options": {},
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth"
+        "options": {}
       },
       "id": "f2-post-finished",
       "name": "Post Finished Notice",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        940,
-        520
+        624,
+        720
       ],
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth",
@@ -712,8 +689,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1180,
-        120
+        1184,
+        -336
       ],
       "id": "pick-implement-label"
     },
@@ -746,8 +723,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1380,
-        120
+        1408,
+        -336
       ],
       "id": "has-implement-label"
     }
@@ -1049,13 +1026,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
-  },
-  "pinData": {},
-  "meta": {
-    "instanceId": "gem12"
-  },
-  "id": "dev-control-workflow",
-  "versionId": "4127c299e0b642918e0259f48cbd26af",
-  "active": false
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
 }
