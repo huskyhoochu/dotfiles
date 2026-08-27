@@ -57,13 +57,23 @@
           "input": [
             "text"
           ],
-          "contextWindow": 32768,
+          "contextWindow": 81920,
           "maxTokens": 8192,
           "cost": {
             "input": 0,
             "output": 0,
             "cacheRead": 0,
             "cacheWrite": 0
+          },
+          "thinkingLevelMap": {
+            "minimal": "low",
+            "low": "low",
+            "medium": "medium",
+            "high": "medium",
+            "xhigh": "medium"
+          },
+          "compat": {
+            "supportsReasoningEffort": true
           }
         }
       ]
