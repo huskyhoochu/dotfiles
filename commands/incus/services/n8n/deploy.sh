@@ -59,7 +59,12 @@ CRED_TMP=$(mktemp)
 python3 -c "import json,sys; json.dump([{'id':'cred-ledger','name':'Ledger Bearer','type':'httpBearerAuth','data':{'token':open('/root/.secrets/ledger-token').read().strip()}}], open(sys.argv[1],'w'))" "$CRED_TMP"
 incus file push "$CRED_TMP" $CONTAINER/tmp/cred-ledger.json >/dev/null
 rm -f "$CRED_TMP"
-incus exec $CONTAINER -- sh -c "docker cp /tmp/cred-ledger.json n8n:/tmp/cred-ledger.json && docker exec -u node n8n n8n import:credentials --input=/tmp/cred-ledger.json 2>&1 | grep -iE 'success|error' | tail -1; rm -f /tmp/cred-ledger.json"
+# docker cp 는 권한을 그대로 옮긴다 — incus file push 가 남긴 600 이면 -u node 가 못 읽는다.
+# 컨테이너 안에서만 잠깐 느슨하게 두고 쓰는 즉시 지운다.
+incus exec $CONTAINER -- sh -c "docker cp /tmp/cred-ledger.json n8n:/tmp/cred-ledger.json && \
+docker exec -u root n8n chmod 644 /tmp/cred-ledger.json && \
+docker exec -u node n8n n8n import:credentials --input=/tmp/cred-ledger.json 2>&1 | grep -iE 'success|error' | tail -1
+docker exec -u root n8n rm -f /tmp/cred-ledger.json; rm -f /tmp/cred-ledger.json"
 
 log "Importing workflows: $(ls "$WF_DIR" | tr '\n' ' ')"
 for wf in "$WF_DIR"/*.json; do
