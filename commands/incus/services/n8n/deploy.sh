@@ -9,10 +9,10 @@
 #   2. workflows/*.json 을 전부 import + 활성화
 #
 # 전제:
-#   - /root/.secrets/{devcontrol-webhook-secret,tavily-api-key} 존재
+#   - /root/.secrets/{devcontrol-webhook-secret,tavily-api-key,discord-bot-token,ledger-token} 존재
 #   - n8n credential(Forgejo DevControl·Discord Bot·OpenRouter·Tavily Bearer
 #     ·DevControl Shared Secret)은 DB에 이미 있음 — 볼륨(/mnt/data/n8n)이
-#     유지되는 한 재주입 불필요
+#     유지되는 한 재주입 불필요. cred-ledger 만 이 스크립트가 멱등하게 넣는다
 
 source "$(dirname "$0")/../../lib.sh"
 
@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WF_DIR="$SCRIPT_DIR/workflows"
 N8N_DATA="/mnt/data/n8n"
 
-for f in devcontrol-webhook-secret tavily-api-key discord-bot-token; do
+for f in devcontrol-webhook-secret tavily-api-key discord-bot-token ledger-token; do
   [ -f "/root/.secrets/$f" ] || die "시크릿 없음: /root/.secrets/$f"
 done
 ls "$WF_DIR"/*.json >/dev/null 2>&1 || die "워크플로 파일 없음: $WF_DIR/*.json"
@@ -50,6 +50,16 @@ docker run -d --name n8n --restart unless-stopped -p 5678:5678 \
 
 log "Waiting for n8n..."
 sleep 15
+
+# cred-ledger 는 이 저장소가 워크플로와 함께 소유한다 — 볼륨을 잃으면 워크플로가
+# 조용히 401 을 받으므로, 다른 credential 과 달리 배포가 매번 보장한다.
+log "Ensuring credential: cred-ledger"
+# 토큰을 셸 인용에 태우지 않는다 — 파일로 만들어 밀어 넣는다(워크플로와 같은 방식).
+CRED_TMP=$(mktemp)
+python3 -c "import json,sys; json.dump([{'id':'cred-ledger','name':'Ledger Bearer','type':'httpBearerAuth','data':{'token':open('/root/.secrets/ledger-token').read().strip()}}], open(sys.argv[1],'w'))" "$CRED_TMP"
+incus file push "$CRED_TMP" $CONTAINER/tmp/cred-ledger.json >/dev/null
+rm -f "$CRED_TMP"
+incus exec $CONTAINER -- sh -c "docker cp /tmp/cred-ledger.json n8n:/tmp/cred-ledger.json && docker exec -u node n8n n8n import:credentials --input=/tmp/cred-ledger.json 2>&1 | grep -iE 'success|error' | tail -1; rm -f /tmp/cred-ledger.json"
 
 log "Importing workflows: $(ls "$WF_DIR" | tr '\n' ' ')"
 for wf in "$WF_DIR"/*.json; do

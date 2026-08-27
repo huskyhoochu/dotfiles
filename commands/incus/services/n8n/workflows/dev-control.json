@@ -476,7 +476,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// 화자·시각 메타를 붙여 프롬프트 조립\nconst src = $('Normalize').first().json;\nconst NAMES = { '983731763182469191': '관리자' };\nconst now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });\nconst speaker = NAMES[src.author_id] ?? '미등록';\nreturn [{ json: {\n  ...src,\n  prompt: `[현재 시각: ${now} KST] [화자: ${speaker}]\\n${src.content}`,\n} }];\n"
+        "jsCode": "// 화자·시각·프로젝트 메타를 붙여 프롬프트 조립\nconst src = $('Normalize').first().json;\nconst NAMES = { '983731763182469191': '관리자' };\n\n// 슬러그 대응표 (T-22). 정본은 vault projects/<슬러그>/ 폴더명이고,\n// 여기 없는 채널은 _unrouted 로 둔다 — 분류기를 두지 않는다(미결 1 결정).\nconst CHANNEL_SLUGS = {\n  '1540982278073745490': 'moon_bird',      // #chat\n  '1540982524140855306': 'drop_manager',   // #drop_manager\n};\nconst project = CHANNEL_SLUGS[src.channel_id] ?? '_unrouted';\n\nconst now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });\nconst speaker = NAMES[src.author_id] ?? '미등록';\nreturn [{ json: {\n  ...src,\n  project,\n  prompt: `[현재 시각: ${now} KST] [화자: ${speaker}] [프로젝트: ${project}]\\n${src.content}`,\n} }];\n"
       },
       "id": "e1b-buildprompt",
       "name": "Build Prompt",
@@ -727,6 +727,42 @@
         -336
       ],
       "id": "has-implement-label"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.10.10.12:3001/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ts: new Date().toISOString(), project: $('Build Prompt').first().json.project, kind: 'chat.turn', actor: $('Normalize').first().json.author_id, payload: JSON.stringify({ question: $('Normalize').first().json.content, answer: $('Prepare Reply').first().json.content, channel_id: $('Normalize').first().json.channel_id }), source_ref: 'discord:' + $('Normalize').first().json.channel_id + '/' + $('Normalize').first().json.message_id }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1408,
+        432
+      ],
+      "id": "record-chat-turn",
+      "name": "Record Chat Turn",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "cred-ledger",
+          "name": "Ledger Bearer"
+        }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -1018,6 +1054,17 @@
         [
           {
             "node": "Build Command Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Chat Reply": {
+      "main": [
+        [
+          {
+            "node": "Record Chat Turn",
             "type": "main",
             "index": 0
           }
