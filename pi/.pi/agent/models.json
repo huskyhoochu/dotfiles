@@ -57,8 +57,8 @@
           "input": [
             "text"
           ],
-          "contextWindow": 65536,
-          "maxTokens": 16384,
+          "contextWindow": 32768,
+          "maxTokens": 8192,
           "cost": {
             "input": 0,
             "output": 0,
