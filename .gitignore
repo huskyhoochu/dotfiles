@@ -30,4 +30,3 @@ claude/.claude/*
 claude/**/CLAUDE.md
 !claude/.claude/CLAUDE.md
 __pycache__/
-docs/gem12/HANDOFF.md

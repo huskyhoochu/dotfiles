@@ -94,6 +94,15 @@ Used across tmux and zsh. When adding new tool configs, prefer Catppuccin Mocha 
 - Identify the target platform before editing: macOS-only (`aerospace/`), Linux-only (`deskflow-linux/`), or cross-platform.
 - Fedora packages needing extra repos (COPR/vendor) are declared in the `repo:` section of `commands/packages_fedora.txt` — do not hardcode repo setup in scripts.
 
+## Related Repositories
+
+GEM12 서버(Fedora Server 44 + Incus)를 세우고 운영하는 코드와 문서는 2026-08-27 부터
+별도 저장소 `gem12-ops`(`~/Documents/personal/gem12-ops`)에 있다. 이 저장소에는 맥·Linux
+공용 셸 환경과 클라이언트 설정만 남는다 — 서버 배포 스크립트를 찾는다면 거기다.
+
+`pi/`·`litellm/` 은 GEM12 를 프로바이더로 참조하지만 맥의 클라이언트 설정이므로 여기
+남았다. `commands/llamacpp/` 도 맥에서 로컬 실행에 쓰이므로 남는다.
+
 ## File References
 
 - Package lists: `commands/packages_homebrew.txt`, `commands/packages_fedora.txt`
