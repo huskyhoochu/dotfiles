@@ -12,10 +12,15 @@ You receive:
 - `{video_metadata}`: video results from Brave search
 - `{video_analysis}`: Gemini native summaries of top YouTube videos (may be empty) — actual video content (claims, demos, data), not just metadata
 - `{refinement_data}`: additional refinement search results (may be empty)
+- `{gap_data}`: the gap pass — pages the orchestrator fetched for sub-questions the first extraction left unanswered (may be empty). Cite them like any other source.
 - `{extraction_coverage}`: which URLs were extracted, which failed, which were skipped
 - `{query}`: original research keyword
 - `{timestamp}`: report date
 - `{report_template}`: the report template to follow
+
+## Step 0: Read order (anchor guard)
+
+Read `{extracted_articles}`, `{extracted_community}`, `{video_analysis}` and `{refinement_data}` **before** `{perplexity_overview}`, and build the Step 1 candidate positions from those. The overview is another model's summary, not evidence: the most common deep-research failure measured in the literature is anchoring on a ready-made summary and never using the documents that were actually retrieved (2026-09 method review, gem12-agents `docs/research.md`). Where the overview and the extracted pages disagree, the pages win.
 
 ## Step 1: Adversarial Cross-Source Analysis (mandatory — no external API call)
 

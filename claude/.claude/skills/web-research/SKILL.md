@@ -204,6 +204,16 @@ This agent gets native content summaries (spoken claims, demos, data shown on sc
 - `failed`: URLs where extraction was attempted but failed (bot blocking, timeout, etc.)
 - `skipped`: all remaining source_matrix URLs that were not sent to extraction (due to pipeline limits)
 
+### Phase 3.5: Gap Pass (inline, full mode only)
+
+Recall is the weakest dimension of deep-research systems — they over-rely on the few documents they extracted (DeepResearch Bench II). One targeted round closes the biggest holes cheaply:
+
+1. From `source_matrix` titles and the Perplexity `entities`, list the 2-4 sub-questions of `{query}` that no extracted page addresses (be concrete: "가격", "벤치마크 출처", "경쟁 제품 대비").
+2. For at most 2 of them run `scripts/brave_search.py web "<sub-question query>" --count=5` and extract at most 3 new URLs with `scripts/tavily_search.py extract <urls> --query="<query>" --depth=basic`.
+3. Save to `extraction/gap.json` as `{"results": [{url, title, content, sub_question}]}` and add those URLs to `extraction_coverage.extracted`.
+
+Skip when every sub-question is already covered — say so in the coverage summary rather than searching for form's sake.
+
 ### Phase 4: Synthesis
 
 Spawn **one synthesis subagent**. Read `agents/synthesizer.md` for the template, and also read `references/report-template.md` to include in the prompt.
@@ -220,16 +230,24 @@ Provide the synthesizer with:
 - `{video_metadata}`: video entries from source_matrix
 - `{video_analysis}`: contents of `extraction/videos.json` (if exists) — Gemini native summaries
 - `{refinement_data}`: contents of `refinement.json` (if exists)
+- `{gap_data}`: contents of `extraction/gap.json` (if exists) — the Phase 3.5 pages
 - `{extraction_coverage}`: the extraction coverage summary built in Phase 3 (extracted/failed/skipped URLs)
+
+**Order the prompt so the extracted content comes first and `{perplexity_overview}` comes last.** The synthesizer's Step 0 depends on it: candidate positions must be built from pages, not from a ready-made summary (anchor effect).
 
 Cross-source adjudication is done by the synthesizer itself (Step 1 in the template): it must construct 2-3 candidate positions, weigh supporting vs counter evidence for each, and state rejection reasons — no external reasoning API call. Stance construction (Step 1.5) is always done inline.
 
 The synthesizer outputs the complete report text.
 
-### Phase 5: Output & Save
+### Phase 5: Audit, Output & Save
 
-1. Output the synthesizer's report directly in the chat response
-2. Use `AskUserQuestion` to ask whether to save (in Korean):
+1. Write the report to `$WORKSPACE/report.md` and run the citation audit:
+   ```bash
+   python3 scripts/audit_citations.py "$WORKSPACE/report.md" "$WORKSPACE"
+   ```
+   It marks every 출처 line whose URL never appeared in `source_matrix.json`, `refinement.json`, `extraction/*.json` or the Perplexity citations with `⚠️ 수집 목록에 없는 URL`, and prints how many. Citation-existence failures are the most common deep-research defect (78-94% accuracy across systems); the marker lets the reader trust the unmarked lines. Show the audited report, not the raw one.
+2. Output the audited report directly in the chat response
+3. Use `AskUserQuestion` to ask whether to save (in Korean):
    - Don't save → do nothing
    - Save to file → user provides path → Write the report verbatim
 
