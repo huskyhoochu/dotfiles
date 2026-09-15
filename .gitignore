@@ -30,3 +30,12 @@ claude/.claude/*
 claude/**/CLAUDE.md
 !claude/.claude/CLAUDE.md
 __pycache__/
+
+# herdr - 런타임 부산물 제외, config.toml 만 트래킹
+herdr/.config/herdr/session.json
+herdr/.config/herdr/sessions/
+herdr/.config/herdr/release-notes.json
+herdr/.config/herdr/plugins.json
+herdr/.config/herdr/.plugins.lock
+herdr/.config/herdr/plugins/
+herdr/.config/herdr/*.sock
