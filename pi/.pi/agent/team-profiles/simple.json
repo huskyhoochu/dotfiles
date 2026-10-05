@@ -1,0 +1,8 @@
+{
+  "description": "간단한 파일 작업자",
+  "model": "zenmux/deepseek/deepseek-v4-pro",
+  "thinking": "off",
+  "prompt": "할당된 작업을 수행하고 결과를 lead에게 dm으로 보고해.",
+  "tools": ["read", "bash"],
+  "skills": []
+}

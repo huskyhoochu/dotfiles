@@ -1,0 +1,28 @@
+{
+  "lastChangelogVersion": "1.0.2",
+  "defaultProvider": "openrouter",
+  "defaultModel": "z-ai/glm-5.3-flash",
+  "defaultThinkingLevel": "medium",
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "collapseChangelog": true,
+  "theme": "tundra-dark",
+  "packages": [
+    "npm:@upstash/context7-pi",
+    "npm:@smoose/pi-themes",
+    "npm:pi-zentui",
+    "npm:@gaodes/pi-graphify",
+    "npm:pi-review-loop",
+    "npm:pi-lsp",
+    "npm:pi-subagents",
+    "npm:pi-web-access",
+    "npm:pi-lens"
+  ],
+  "skills": [
+    "!**/.agents/skills/impeccable"
+  ],
+  "quietStartup": true,
+  "treeFilterMode": "default",
+  "tuiMode": "fullscreen"
+}
