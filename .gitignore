@@ -26,6 +26,7 @@ claude/.claude/*
 !claude/.claude/hooks/
 !claude/.claude/CLAUDE.md
 !claude/.claude/skills/
+claude/.claude/skills/synced/
 !claude/.claude/rules/
 claude/**/CLAUDE.md
 !claude/.claude/CLAUDE.md
