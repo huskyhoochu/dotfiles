@@ -7,7 +7,7 @@
     "showTerminalProgress": true
   },
   "collapseChangelog": true,
-  "theme": "tundra-dark",
+  "theme": "tokyonight-dark",
   "packages": [
     "npm:@upstash/context7-pi",
     "npm:@smoose/pi-themes",
