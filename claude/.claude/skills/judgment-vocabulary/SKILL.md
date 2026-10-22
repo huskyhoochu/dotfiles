@@ -1,6 +1,6 @@
 ---
 name: judgment-vocabulary
-description: 복잡한 요구·규칙·이질적 외부 시스템을 기계가 결정적으로 판정하는 닫힌 어휘로 유형화하는 절차. 서로 파생하지 않는 축으로 의미를 쪼개고, 복합 의미는 축을 필드로 묶은 레코드로, 바깥 철자는 경계의 단사 코드표로만 만들고, 판정하지 못한 것은 통과가 아니라 이름 붙은 상태(unknown·skipped·draft·capability)로 남기며, 어휘 자체를 반증 신호가 달린 가설로 운영한다. Use whenever the user designs or reviews enums, status/state values, event names, error or stop reasons, storage codes, wire/API vocabularies, an IR or adapter layer over several hosts/providers/trackers (GitHub·Forgejo·GitLab, model providers, CI systems), agent rules or policy declarations (AGENTS.md 규칙을 검사로, polydeukes discipline), or a contract package shared by services — or when names drift ("같은 뜻인데 철자가 둘", "이 상태값이 두 가지 뜻"), a string is built from other words (`not-${x}`, `${a}-retry`, `session-started`), or "no data" is silently read as success. Trigger on "축", "어휘 설계", "유형화", "코드표", "IR", "계약", "상태값 정리", "enum 설계", "판정 어휘", "규칙을 검사로", "호스트 중립", even when the user only says "이름 정리해줘" for values that code branches on. For a plain glossary or ADR write-up with no values that code judges, domain-modeling is the better fit.
+description: 복잡한 요구·규칙·이질적 외부 시스템을 기계가 결정적으로 판정하는 닫힌 어휘로 유형화하는 절차.
 ---
 
 # 판정 어휘 — 요구를 닫힌 어휘로 유형화하기
@@ -78,7 +78,7 @@ description: 복잡한 요구·규칙·이질적 외부 시스템을 기계가 �
 ## 결함 모양 (리뷰할 때 찾을 것)
 
 | 모양 | 예 | 고치는 방향 |
-|---|---|---|
+| --- | --- | --- |
 | 낱말 이어 붙이기 | `` `${role}-retry` ``, `` `not-${OUTCOME.succeeded}` `` | 레코드 필드로 분리 (`{ role, attempt }`), 부정 값은 축에 따로 둔 값으로 |
 | 같은 뜻 두 철자 | 이슈 이벤트 `stopped/resumed` 와 IR `closed/reopened` | 한 축에 하나, 나머지는 경계 코드표로 |
 | 한 철자 두 뜻 | 상태 축 값 `closed` 를 사유 자리에도 씀 | 질문별로 다른 축 |
