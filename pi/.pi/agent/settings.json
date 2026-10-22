@@ -1,7 +1,7 @@
 {
   "lastChangelogVersion": "1.3.0",
   "defaultProvider": "openrouter",
-  "defaultModel": "minimax/minimax-m3.1-flash:free",
+  "defaultModel": "deepseek/deepseek-v4.1-flash-1017",
   "defaultThinkingLevel": "medium",
   "terminal": {
     "showTerminalProgress": true
