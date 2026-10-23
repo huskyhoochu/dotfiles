@@ -1,14 +1,15 @@
 ---
 name: pi-tdd
-description: "Run a TDD role (test writer, auditor, implementer, review fix) as a pi run on DeepSeek V4.1 Flash 1017 through OpenRouter instead of a Claude subagent. Use whenever a project's TDD or ticket loop delegates code or test writing — the main Claude session keeps the contract, the gates and the merge; pi writes the code. Project skills (cghds-erp `ticket`, cghds_ontology `ontology-tdd`) own the phase order and the role files; this skill owns how a phase is launched."
+description: "Run a TDD role (test writer, auditor, implementer, review fix) as a pi run on DeepSeek V4.1 Flash 1017 through OpenRouter instead of a Claude subagent. Use when a project's TDD or ticket loop delegates code or test writing in pi mode (the owner names sonnet or pi mode per ticket or phase) — the main Claude session keeps the contract, the gates and the merge; pi writes the code. Project skills (cghds-erp `ticket`, cghds_ontology `ontology-tdd`) own the phase order and the role files; this skill owns how a phase is launched."
 ---
 
 # TDD roles on pi + DeepSeek
 
-The owner's rule (2026-10-22): only the main session runs on Opus. TDD roles run
-on pi with `openrouter/deepseek/deepseek-v4.1-flash-1017`. A Claude agent that
-still works in a worktree (a fallback role run, a review fix) gets
-`model: "sonnet"`.
+Only the main session runs on Opus. TDD roles run in one of two modes the owner
+names per ticket or per phase (2026-10-23): **pi mode**, this skill, on
+`openrouter/deepseek/deepseek-v4.1-flash-1017`; or **sonnet mode**, the project's
+role agent through the `Agent` tool with `model: "sonnet"`. When the owner has
+named no mode for the ticket, ask once before the first TDD phase.
 
 ## Machine setup (already shared — do not duplicate)
 

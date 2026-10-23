@@ -1,8 +1,7 @@
 {
   "permissions": {
-    "defaultMode": "auto"
+    "defaultMode": "bypassPermissions"
   },
-  "model": "claude-fable-5[1m]",
   "statusLine": {
     "type": "command",
     "command": "echo \"$(basename \"$(pwd)\") $(git -c core.useBuiltinFSMonitor=false branch --show-current 2>/dev/null | sed 's/^/on /')\""
